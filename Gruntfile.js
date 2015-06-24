@@ -17,10 +17,7 @@ module.exports = function(grunt) {
 
     var testBrowsers = ['chrome','firefox','safari','opera'];
 
-    var testUnits = [
-      'event',
-      //'peer'
-    ];
+    var testUnits = ['api','async','debug','event','helper','message','peer','sdp','socket','stream','transfer'];
 
     var i, j;
 

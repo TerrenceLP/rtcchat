@@ -14,7 +14,9 @@ module.exports = function(config) {
 
 
     // list of files / patterns to load in the browser
-    files: [],
+    files: [
+      '../../publish/skylink.complete.js'
+    ],
 
 
     // list of files to exclude
