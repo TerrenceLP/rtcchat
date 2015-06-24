@@ -11,6 +11,52 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-compress');
     grunt.loadNpmTasks('grunt-replace');
 
+    var replaceTask = {};
+
+    var concatTask = {};
+
+    var testBrowsers = ['chrome','firefox','safari','opera'];
+
+    var testUnits = [
+      'event',
+      //'peer'
+    ];
+
+    var i, j;
+
+    for (i = 0; i < testBrowsers.length; i += 1) {
+      var browser = testBrowsers[i];
+
+      for (j = 0; j < testUnits.length; j += 1) {
+        var unit = testUnits[j];
+
+        var key = browser + '.' + unit;
+
+        replaceTask[key] = {
+          options: {
+            variables: {
+              'browser': '../config/' + browser + '.conf.js',
+              'spec': '../spec/' + unit +'.js',
+              'port': parseInt('50' + i + j, 10),
+              'source': '../../source/' + unit + '.js'
+            },
+            prefix: '@@'
+          },
+          files: [{
+            expand: true,
+            flatten: true,
+            src: ['tests/gen/' + key + '.conf.js'],
+            dest: 'tests/gen/'
+          }]
+        };
+
+        concatTask[key] = {
+          src: ['tests/config/spec.conf.js'],
+          dest: 'tests/gen/' + key + '.conf.js'
+        };
+      }
+    }
+
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
 
@@ -23,6 +69,10 @@ module.exports = function(grunt) {
         production: 'publish',
 
         bamboo: 'bamboo',
+
+        concat: concatTask,
+
+        replace: replaceTask,
 
         clean: {
             production: ['<%= production %>/'],
@@ -60,40 +110,6 @@ module.exports = function(grunt) {
                     src: ['doc/**', 'demo/**'],
                     dest: '<%= bamboo %>/doc/latest'
                 }],
-            },
-        },
-
-        concat: {
-            options: {
-                separator: '\n',
-                stripBanners: true,
-                banner: '/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
-                    (new Date()).toString() + ' */\n\n'
-            },
-
-            production: {
-                files: {
-                    '<%= production %>/skylink.debug.js': [
-                        '<%= template %>/header.js',
-                        '<%= source %>/*.js',
-                        '<%= template %>/footer.js'
-                    ],
-                    '<%= production %>/skyway.debug.js': [
-                        '<%= template %>/header.js',
-                        '<%= source %>/*.js',
-                        '<%= template %>/footer.js'
-                    ],
-                    '<%= production %>/skylink.complete.js': [
-                        'node_modules/socket.io-client/socket.io.js',
-                        'node_modules/adapterjs/publish/adapter.debug.js',
-                        '<%= production %>/skylink.debug.js'
-                    ],
-                    '<%= production %>/skyway.complete.js': [
-                        'node_modules/socket.io-client/socket.io.js',
-                        'node_modules/adapterjs/publish/adapter.debug.js',
-                        '<%= production %>/skyway.debug.js'
-                    ]
-                }
             },
         },
 
@@ -166,28 +182,6 @@ module.exports = function(grunt) {
                 files: {
                     '/': ['tests/preflight-*.js']
                 }
-            }
-        },
-
-        replace: {
-            production: {
-                options: {
-                    variables: {
-                        'rev': '<%= grunt.config.get("meta.rev") %>',
-                        'date': '<%= grunt.config.get("meta.date") %>',
-                        'tag': '<%= grunt.config.get("meta.tag") %>',
-                        'version': '<%= pkg.version %>'
-                    },
-                    prefix: '@@'
-                },
-                files: [{
-                    expand: true,
-                    flatten: true,
-                    src: [
-                        '<%= production %>/**/*.js'
-                    ],
-                    dest: '<%= production %>/'
-                }]
             }
         },
 
@@ -279,6 +273,11 @@ module.exports = function(grunt) {
                                 'version_release=' + grunt.config('pkg.version_release'));
 		grunt.log.writeln('bamboo/vars file successfully created');
 	});
+
+    grunt.registerTask('karma', [
+        'concat',
+        'replace'
+    ]);
 
     grunt.registerTask('publish', [
     	'versionise',
