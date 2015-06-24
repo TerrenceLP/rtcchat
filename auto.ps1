@@ -1,11 +1,11 @@
 function openNewTab{
 	param([string]$script);
-	cmd /c start powershell.exe -noexit -command $botScript
+	cmd /c start powershell.exe -noexit -command $script
 }
 
 function runWithoutBot{
 	param([string]$test, [string]$client);
-	openNewTab -test "./test-client.ps1 -test $test -client $client"
+	openNewTab -script "./test-client.ps1 -test $test -client $client"
 	If ($client -eq "chrome"){
 		browserify test-bots/donothing-bot.js | testling -x "start chrome.exe"
 	}
@@ -23,7 +23,7 @@ function runWithoutBot{
 function runWithBot{
 
 	param([string]$test, [string]$bot, [string]$client);
-	openNewTab -test "./test-client.ps1 -test $test -client $client"
+	openNewTab -script "./test-client.ps1 -test $test -client $client"
 	If ($client -eq "chrome"){
 		browserify test-bots/"$test-bot.js" | testling -x "start chrome.exe"
 	}
