@@ -220,6 +220,18 @@ Skylink.prototype._mediaScreen = null;
 Skylink.prototype._mediaScreenClone = null;
 
 /**
+ * Tells whether the call is being recorded by the MCU
+ * @attribute _enableRecording
+ * @type Boolean
+ * @default false
+ * @private
+ * @component Stream
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._enableRecording = false;
+
+/**
  * The user stream settings.
  * @attribute _defaultStreamSettings
  * @type JSON
