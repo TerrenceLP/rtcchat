@@ -678,6 +678,7 @@ Skylink.prototype.init = function(options, callback) {
       var enableDataChannel = true;
       var enableSTUNServer = true;
       var enableTURNServer = true;
+      var enableRecording = false;
       var TURNTransport = self.TURN_TRANSPORT.ANY;
       var audioFallback = false;
       var forceSSL = false;
@@ -720,6 +721,9 @@ Skylink.prototype.init = function(options, callback) {
         // set turn server option
         enableTURNServer = (typeof options.enableTURNServer === 'boolean') ?
           options.enableTURNServer : enableTURNServer;
+        // set recording flag
+        enableRecording = (typeof options.enableRecording === 'boolean') ?
+          options.enableRecording : enableRecording;
         // set the force ssl always option
         forceSSL = (typeof options.forceSSL === 'boolean') ?
           options.forceSSL : forceSSL;
@@ -792,6 +796,7 @@ Skylink.prototype.init = function(options, callback) {
       self._enableDataChannel = enableDataChannel;
       self._enableSTUN = enableSTUNServer;
       self._enableTURN = enableTURNServer;
+      self._enableRecording = enableRecording;
       self._TURNTransport = TURNTransport;
       self._audioFallback = audioFallback;
       self._forceSSL = forceSSL;
@@ -812,6 +817,7 @@ Skylink.prototype.init = function(options, callback) {
         enableIceTrickle: self._enableIceTrickle,
         enableTURNServer: self._enableTURN,
         enableSTUNServer: self._enableSTUN,
+        enableRecording: self._enableRecording,
         TURNTransport: self._TURNTransport,
         audioFallback: self._audioFallback,
         forceSSL: self._forceSSL,
