@@ -848,6 +848,7 @@ Skylink.prototype.init = function(options, callback) {
               enableIceTrickle: self._enableIceTrickle,
               enableTURNServer: self._enableTURN,
               enableSTUNServer: self._enableSTUN,
+              enableRecording: self._enableRecording,
               TURNTransport: self._TURNTransport,
               audioFallback: self._audioFallback,
               forceSSL: self._forceSSL,

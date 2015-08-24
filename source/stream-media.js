@@ -336,6 +336,33 @@ Skylink.prototype._mediaStreamsStatus = {};
 Skylink.prototype._audioFallback = false;
 
 /**
+ * Send socket message to MCU to turn on/off recording based on init settings.
+ * @method _updateRecordingStatus
+ * @private
+ * @required
+ * @component Stream
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._updateRecordingStatus = function(){
+  var self = this;
+  if (self._hasMCU){
+    self._sendChannelMessage({
+      type: self._SIG_MESSAGE_TYPE.RECORDING,
+      mid: self._user.sid,
+      rid: self._room.id,
+      target: 'MCU',
+      record: self._enableRecording
+    });
+  }
+  else{
+    if (self._enableRecording){
+      log.warn('MCU is not connecting. Please enable MCU to use recording');
+    }
+  }
+};
+
+/**
  * Access to user's MediaStream is successful.
  * @method _onUserMediaSuccess
  * @param {MediaStream} stream MediaStream object.
