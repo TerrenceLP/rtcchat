@@ -39,6 +39,47 @@ Skylink.prototype._user = null;
 Skylink.prototype._userData = '';
 
 /**
+ * Set user email and format for recorded video to be converted and sent to.
+ * @method setUserEmail
+ * @public
+ * @required
+ * @component User
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.setUserEmail = function(email, format){
+  var self = this;
+
+  function isValidEmail(email){
+    var reg = new RegExp('^[a-z0-9]+([_|\.|-]{1}[a-z0-9]+)*@[a-z0-9]+([_|\.|-]{1}[a-z0-9]+)*[\.]{1}[a-z]{2,6}$', 'i');
+    return reg.test(email);
+  };
+
+  function isValidFormat(format){
+    var validFormats = ['avi', 'mkv', 'mov', 'mp4', 'webm', 'wmv'];
+    if (validFormats.indexOf(format)>-1){
+      return true;
+    }
+    return false;
+  };
+
+  if (isValidEmail(email)){
+    self._sendChannelMessage({
+      type: self._SIG_MESSAGE_TYPE.RECORDING,
+      mid: self._user.sid,
+      rid: self._room.id,
+      target: 'MixingServer',
+      mail: email,
+      format: isValidFormat(format) ? format : 'webm'
+    });
+  }
+  else{
+    log.error('Email address is invalid. Please try again');
+  }
+};
+
+
+/**
  * Update/Set the User custom data. This Data can be a simple string or a JSON data.
  * It is let to user choice to decide how this information must be handled.
  * The Skylink demos provided use this parameter as a string for displaying user name.
