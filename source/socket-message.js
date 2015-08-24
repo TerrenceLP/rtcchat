@@ -67,6 +67,7 @@ Skylink.prototype._SIG_MESSAGE_TYPE = {
   PRIVATE_MESSAGE: 'private',
   STREAM: 'stream',
   GROUP: 'group',
+  RECORDING: 'recording', // For Recording
   SIP_CALL: 'call', // For SIP
   SIP_CANCEL_CALL: 'cancelcall', // For SIP
   SIP_CANCEL_ALL_CALL: 'cancelAllCall', // For SIP
@@ -280,6 +281,12 @@ Skylink.prototype._processSingleMessage = function(message) {
     break;
   case this._SIG_MESSAGE_TYPE.SIP_EVENT:
     this._SIPEventHandler(message);
+    break;
+  case this._SIG_MESSAGE_TYPE.SIP_EVENT:
+    this._SIPEventHandler(message);
+    break;
+  case this._SIG_MESSAGE_TYPE.RECORDING:
+    this._recordingHandler(message);
     break;
   default:
     log.error([message.mid, null, null, 'Unsupported message ->'], message.type);
@@ -1205,6 +1212,23 @@ Skylink.prototype._SIPEventHandler = function(message) {
     log.error(['SIP-' + message.memberID, 'SIPMember', 'SIP', 'Invalid action "' +
       message.action + '" received'], message);
   }
+};
+
+/**
+ * Handles the recording socket messages.
+ * @method _recordingHandler
+ * @param {JSON} message The message object received.
+ * @param {String} message.mid Sender peerId ('MCU').
+ * @param {String} message.target Receiver peerId.
+ * @param {String} message.rid Room ID.
+ * @param {Boolean} message.recording Recording status. -1: error , 0: recording ended, 1: recording started
+ * @private
+ * @component Message
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._recordingHandler = function(message){
+  this.trigger('recordingStatusChange',message.target,message.rid,message.recording);
 };
 
 /**
