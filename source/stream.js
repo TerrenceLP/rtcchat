@@ -20,7 +20,7 @@ var Stream = function () {
   self._videoTracks = [];
 
   // Append events settings in here
-  Event.mixin(self);
+  Event._mixin(self);
 };
 
 
