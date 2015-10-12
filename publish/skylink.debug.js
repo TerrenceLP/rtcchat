@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Mon Oct 12 2015 16:49:03 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Mon Oct 12 2015 17:07:59 GMT+0800 (SGT) */
 
 var Globals = {
   /**
@@ -327,7 +327,7 @@ var Debugger = {
 };
 
 Debugger.setLevel(4);
-var Peer = function (id, config) {
+var Peer = function (config) {
 
   // The object reference
   var ref = this;
@@ -340,7 +340,7 @@ var Peer = function (id, config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.id = id;
+  ref.id = null;
 
   /**
    * The Peer custom user data information.
@@ -351,7 +351,7 @@ var Peer = function (id, config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.userData = config.userData || null;
+  ref.userData = null;
 
   /**
    * The Peer privileged status.
@@ -362,7 +362,7 @@ var Peer = function (id, config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.privileged = typeof config.isPrivileged === 'boolean' ? config.isPrivileged : false;
+  ref.privileged = false;
 
   /**
    * The Peer agent information.
@@ -371,7 +371,6 @@ var Peer = function (id, config) {
    * @param agent.version The Peer agent version.
    * @param agent.os The Peer agent platform.
    * @type JSON
-   * @default null
    * @readOnly
    * @for Peer
    * @since 1.0.0
@@ -381,6 +380,63 @@ var Peer = function (id, config) {
     version: window.webrtcDetectedVersion,
     os: window.navigator.platform
   };
+
+  /**
+   * The Peer RTCPeerConnection object reference.
+   * @attribute _ref
+   * @type RTCPeerConnection
+   * @default null
+   * @private
+   * @for Peer
+   * @since 1.0.0
+   */
+  ref._ref = null;
+
+  /**
+   * The Peer RTCPeerConnection constraints object.
+   * @attribute _constraints
+   * @type JSON
+   * @default null
+   * @private
+   * @for Peer
+   * @since 1.0.0
+   */
+  ref._constraints = null;
+
+
+
+  ref.hook = function (obj) {
+
+  };
+
+
+  ref.connect = function (streams, settings) {
+    var rtcPeerConn = new RTCPeerConnection(ref._constraints);
+
+    if (Array.isArray(streams)) {
+
+    }
+  };
+
+
+
+
+  // Check the passed configuration if they are valid
+  if (typeof config !== 'object') {
+    throw new Error('Passed Peer configuration is not an object');
+  }
+
+  if (typeof config.id !== 'string') {
+    throw new Error('Passed Peer ID is not a valid ID (string)');
+  }
+
+  // Define object based on passed configuration data
+  ref.id = config.id;
+  ref.userData = config.userData || ref.userData;
+  ref.privileged = typeof config.isPrivileged === 'boolean' ? config.isPrivileged : ref.privileged;
+  ref._constraints = typeof config.constraints === 'object' ? config.constraints : ref._constraints;
+
+
 };
 var Socket = function () {
 

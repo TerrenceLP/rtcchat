@@ -8,9 +8,19 @@ var peerUserData = {
 
 // Redefine Peer class
 before(function(done) {
-  peer = new Peer(peerId, {
+  peer = new Peer({
+  	id: peerId,
     userData: peerUserData,
-    isPrivileged: true
+    isPrivileged: true,
+    constraints: {
+    	iceServers: [{
+				url: 'turn:leticia.choo@temasys.com.sg@numb.viagenie.ca',
+				credential: 'xxxxxxxxxxx'
+			}, {
+				url: 'stun:leticia.choo@temasys.com.sg@numb.viagenie.ca'
+			}]
+    },
+
   });
   done();
 });
@@ -22,6 +32,9 @@ before(function(done) {
  */
 describe('Peer', function() {
 
+	/**
+	 * Attributes
+	 */
   describe('#id', function() {
     it('is typeof "string"', function(done) {
       this.timeout(testItemTimeout);
@@ -92,5 +105,35 @@ describe('Peer', function() {
       done();
     });
   });
+
+  describe('#_ref', function() {
+    it('is typeof "object"', function(done) {
+      this.timeout(testItemTimeout);
+      expect(typeof peer._ref).to.equal('object');
+      done();
+    });
+    it('is null by default', function(done) {
+      this.timeout(testItemTimeout);
+      expect(peer._ref).to.equal(null);
+      done();
+    });
+  });
+
+  describe('#_constraints', function() {
+    it('is typeof "object"', function(done) {
+      this.timeout(testItemTimeout);
+      expect(peer._constraints).to.equal(null);
+      done();
+    });
+    it('is null by default', function(done) {
+      this.timeout(testItemTimeout);
+      expect(peer._constraints).to.equal(null);
+      done();
+    });
+  });
+
+  /**
+	 * Methods
+	 */
 
 });
