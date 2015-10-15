@@ -106,28 +106,33 @@ describe('Peer', function() {
     });
   });
 
-  describe('#_ref', function() {
+  describe('#_connection', function() {
     it('is typeof "object"', function(done) {
       this.timeout(testItemTimeout);
-      expect(typeof peer._ref).to.equal('object');
+      expect(typeof peer._connection).to.equal('object');
       done();
     });
     it('is null by default', function(done) {
       this.timeout(testItemTimeout);
-      expect(peer._ref).to.equal(null);
+      expect(peer._connection).to.equal(null);
       done();
     });
   });
 
-  describe('#_constraints', function() {
+  describe('#_iceServers', function() {
     it('is typeof "object"', function(done) {
       this.timeout(testItemTimeout);
-      expect(peer._constraints).to.equal(null);
+      expect(typeof peer._iceServers).to.equal('object');
       done();
     });
-    it('is null by default', function(done) {
+    it('is Array', function(done) {
       this.timeout(testItemTimeout);
-      expect(peer._constraints).to.equal(null);
+      assert.isArray(peer._iceServers);
+      done();
+    });
+    it('is empty by default', function(done) {
+      this.timeout(testItemTimeout);
+      expect(peer._iceServers).to.have.length(0);
       done();
     });
   });

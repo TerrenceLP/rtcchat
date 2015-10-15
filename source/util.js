@@ -11,13 +11,17 @@ Util.generateUUID = function () {
   /* jshint ignore:end */
 };
 
-// Helps to polyfill IE's unsupported throw.
-// If supported throw, if not console error
-Util.throwError = function (error) {
-  if (window.webrtcDetectedBrowser === 'IE') {
-    console.error(error);
-    return;
+Util.cloneObject = function (obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
   }
-  throw error;
+
+  var copy = obj.constructor();
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) {
+      copy[attr] = obj[attr];
+    }
+  }
+  return copy;
 };
 

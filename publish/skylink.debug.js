@@ -1,61 +1,5 @@
-/*! skylinkjs - v1.0.0 - Mon Oct 12 2015 17:07:59 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Thu Oct 15 2015 13:13:10 GMT+0800 (SGT) */
 
-var Globals = {
-  /**
-   * The default Application Key.
-   * @attribute defaultAppKey
-   * @type String
-   * @for Globals
-   * @since 1.0.0
-   */
-  defaultAppKey: null,
-
-  /**
-   * The default room.
-   * @attribute defaultRoom
-   * @type String
-   * @for Globals
-   * @since 1.0.0
-   */
-  defaultRoom: null,
-
-  /**
-   * The default room credentials used for non-CORS connection or
-   *   starting a meeting for persistent Application Keys.
-   * @attribute defaultRoomCredentials
-   * @param {String} start The start datetime stamp (in ISO 8601 format) based off
-   *   the <a href="http://www.w3schools.com/jsref/jsref_toisostring.asp">Date.toISOString() method</a>.
-   *    For non-persistent Application Key, you may provide the current time.
-   * @param {Number} duration The duration (in hours) that the meeting would take
-   *   in this room. For non-persistent Application Key, you may provide any value as it has no affect on it.
-   * @param {Number} credentials The duration (in hours) that the meeting would take
-   *   in this room. This credentials is based off the provided <code>.start</code> and <code>.duration</code>.
-   *   <br><br>
-   *   <u>To generate the credentials:</u><br>
-   *   <ol>
-   *   <li>Concatenate a string that consists of the room name
-   *     the room meeting duration (in hours) and the start datetime stamp (in ISO 8601 format).<br>
-   *     <small>Format <code>room + "_" + duration + "_" + start</code></small></li>
-   *   <li>Hash the concatenated string with the Application Key token using
-   *     <a href="https://en.wikipedia.org/wiki/SHA-1">SHA-1</a>.
-   *     You may use the <a href="https://code.google.com/p/crypto-js/#HMAC">CryptoJS.HmacSHA1</a> function to do so.<br>
-   *     <small>Example <code>var hash = CryptoJS.HmacSHA1(concatenatedString, token);</code></small></li>
-   *   <li>Convert the hash to a <a href="https://en.wikipedia.org/wiki/Base64">Base64</a> encoded string. You may use the
-   *     <a href="https://code.google.com/p/crypto-js/#The_Cipher_Output">CryptoJS.enc.Base64</a> function
-   *     to do so.<br><small>Example <code>var base64String = hash.toString(CryptoJS.enc.Base64); </code></small></li>
-   *   <li>Encode the Base64 encoded string to a URI component using UTF-8 encoding with
-   *     <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent">encodeURIComponent()</a>.<br>
-   *     <small>Example <code>var credentials = encodeURIComponent(base64String);</code></small></li>
-   *   </ol><br>
-   * @for Globals
-   * @since 1.0.0
-   */
-  defaultRoomCredentials: {
-    start: null,
-    duration: 0,
-    credentials: null
-  }
-};
 var DataChannel = function(channel){
 	'use strict';
 	var self = this;
@@ -329,9 +273,6 @@ var Debugger = {
 Debugger.setLevel(4);
 var Peer = function (config) {
 
-  // The object reference
-  var ref = this;
-
   /**
    * The Peer ID.
    * @attribute id
@@ -340,7 +281,7 @@ var Peer = function (config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.id = null;
+  this.id = null;
 
   /**
    * The Peer custom user data information.
@@ -351,7 +292,7 @@ var Peer = function (config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.userData = null;
+  this.userData = null;
 
   /**
    * The Peer privileged status.
@@ -362,7 +303,7 @@ var Peer = function (config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.privileged = false;
+  this.privileged = false;
 
   /**
    * The Peer agent information.
@@ -375,7 +316,7 @@ var Peer = function (config) {
    * @for Peer
    * @since 1.0.0
    */
-  ref.agent = {
+  this.agent = {
     name: window.webrtcDetectedBrowser,
     version: window.webrtcDetectedVersion,
     os: window.navigator.platform
@@ -383,42 +324,25 @@ var Peer = function (config) {
 
   /**
    * The Peer RTCPeerConnection object reference.
-   * @attribute _ref
+   * @attribute _connection
    * @type RTCPeerConnection
    * @default null
    * @private
    * @for Peer
    * @since 1.0.0
    */
-  ref._ref = null;
+  this._connection = null;
 
   /**
-   * The Peer RTCPeerConnection constraints object.
-   * @attribute _constraints
-   * @type JSON
+   * The list of ICE servers that the RTCPeerConnection should use.
+   * @attribute _iceServers
+   * @type Array
    * @default null
    * @private
    * @for Peer
    * @since 1.0.0
    */
-  ref._constraints = null;
-
-
-
-  ref.hook = function (obj) {
-
-  };
-
-
-  ref.connect = function (streams, settings) {
-    var rtcPeerConn = new RTCPeerConnection(ref._constraints);
-
-    if (Array.isArray(streams)) {
-
-    }
-  };
-
-
+  this._iceServers = [];
 
 
   // Check the passed configuration if they are valid
@@ -431,10 +355,66 @@ var Peer = function (config) {
   }
 
   // Define object based on passed configuration data
-  ref.id = config.id;
-  ref.userData = config.userData || ref.userData;
-  ref.privileged = typeof config.isPrivileged === 'boolean' ? config.isPrivileged : ref.privileged;
-  ref._constraints = typeof config.constraints === 'object' ? config.constraints : ref._constraints;
+  // The Peer ID - Peer.id
+  this.id = config.id;
+
+  // The Peer custom userData - Peer.userData
+  this.userData = config.userData || this.userData;
+
+  // The Peer privileged status - Peer.privileged
+  if (config.isPrivileged) {
+    this.privileged = config.isPrivileged;
+  }
+
+  // The Peer ICE servers to use and connect with
+  if (config.iceServers) {
+    this._iceServers = config.iceServers;
+  }
+
+  Event._mixin(this);
+};
+
+Peer.prototype._doOffer = function () {
+  var self = this;
+  self._connection.createOffer(function (offer) {
+
+  }, function (error) {
+    throw error;
+  });
+};
+
+Peer.prototype._doAnswer = function () {
+
+};
+
+
+Peer.prototype.addStream = function (stream) {
+
+};
+
+Peer.prototype.removeStream = function (streamId) {
+
+};
+
+/**
+ * Connects with the Peer and begins and
+ * @method _onIceCandidate
+ * @param {String} targetMid The Peer ID associated with the ICE
+ *   candidate object received.
+ * @param {Event} event The event object received in the <code>RTCPeerConnection.
+ *   onicecandidate</code> to parse the ICE candidate and determine
+ *   if gathering has completed.
+ * @trigger candidateGenerationState
+ * @private
+ * @since 0.1.0
+ * @component ICE
+ * @for Skylink
+ */
+Peer.prototype.connect = function () {
+  var self = this;
+  var peer = new RTCPeerConnection({
+    iceServers: self._iceServers
+  });
 
 
 };
