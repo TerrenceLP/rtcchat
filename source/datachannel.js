@@ -8,7 +8,7 @@ var DataChannel = function(channel){
 
 	self._channelType = 'generic';
 
-	self._objectRef = channel;
+	self._objectRef = null;
 
 	Event.mixin(this);
 
@@ -18,14 +18,27 @@ var DataChannel = function(channel){
 
 DataChannel.prototype.disconnect = function(){
 	var self = this;
-	objectRef.close();
+	self._objectRef.close();
 };
 
-DataChannel._bindHandlers = function(){
+DataChannel.prototype.send = function(file){
 	var self = this;
+	self._objectRef.send(file);
+}
+
+DataChannel.prototype._bindHandlers = function(){
+	var self = this;
+
+	if (channel){
+		self._objectRef = channel;
+	}
+	else{
+		throw 'DataChannel undefined';
+	}
 
 	// The native RTCDataChannel is actually opening
 	if (self._objectRef.readyState === 'open'){
+
 		self._objectRef.onopen = function(event){
 			this._trigger('connected', event);
 		};
@@ -41,6 +54,7 @@ DataChannel._bindHandlers = function(){
 		self._objectRef.onerror = function(event){
 			this._trigger('error', event);
 		};
+
 	}
 	else{
 		throw 'The WebRTC DataChannel is not open. Can not bind handlers';
