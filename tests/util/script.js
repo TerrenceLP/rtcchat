@@ -11,7 +11,7 @@ var testTimeout = 35000;
 var gUMTimeout = 25000;
 var testItemTimeout = 4000;
 
-var util = require('./util');
+@@util
 
 /* Template */
 describe('@@test', function () {
