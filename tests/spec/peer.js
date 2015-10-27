@@ -1,144 +1,160 @@
-// Globals used by test
-var peer = null;
-var peerId = Date.now().toString(); //util.generateUUID();
-var peerUserData = {
-  test: 'This is SPARTA!....',
-  spartan: true
-};
+/**
+ * Constructor test
+ */
+describe('- constructor', function () {
 
-// Redefine Peer class
-before(function(done) {
-  peer = new Peer({
-  	id: peerId,
-    userData: peerUserData,
-    isPrivileged: true,
-    constraints: {
-    	iceServers: [{
-				url: 'turn:leticia.choo@temasys.com.sg@numb.viagenie.ca',
-				credential: 'xxxxxxxxxxx'
-			}, {
-				url: 'stun:leticia.choo@temasys.com.sg@numb.viagenie.ca'
-			}]
-    },
+  describe.skip('#socketRef: To be confirmed to use socketRef', function () {});
+
+  describe('#config', function () {
+
+    var shouldError = function (config) {
+      (function (config) {
+        it('throw an error when (.., ' + printJSON(config) + ')', function () {
+          expect(function () {
+            var peer = new Peer(null, config);
+          }).to.throw(Error);
+        });
+      })(config);
+    };
+
+    var shouldSuccess = function (config) {
+      (function (config) {
+        it('does not throw an error when (.., ' + printJSON(config) + ')', function () {
+          expect(function () {
+            var peer = new Peer(null, config);
+          }).to.not.throw(Error);
+        });
+      })(config);
+    };
+
+    // Error cases
+    shouldError(null);
+    shouldError({});
+    shouldError({ id: null });
+    shouldError({ id: 123 });
+    shouldError({ id: '232323' });
+    shouldError({ id: '232323', agent: null });
+    shouldError({ id: '232323', agent: 'wwewe' });
+    shouldError({ id: '232323', agent: 123123 });
+    shouldError({ id: '232323', agent: {}, iceServers: null });
+    shouldError({ id: '232323', agent: {}, iceServers: 123123 });
+    shouldError({ id: '232323', agent: {}, iceServers: '123123' });
+    shouldError({ id: '232323', agent: {}, iceServers: [] });
+    shouldError({ id: '232323', agent: {}, iceServers: [], room: null });
+    shouldError({ id: '232323', agent: {}, iceServers: [], room: 123123 });
+    shouldError({ id: '232323', agent: {}, iceServers: [], room: {} });
+
+    // Success cases
+    shouldSuccess({ id: 'dsdsd', agent: {}, iceServers: [], room: 'xxx' });
+    shouldSuccess({ id: 'dsdsd', agent: {}, iceServers: [{}], room: 'xxx' });
 
   });
-  done();
+
 });
 
 /**
- * @test Peer
- * @for Skylink
- * @updated 1.0.0
+ * Attributes test
  */
-describe('Peer', function() {
+describe('- attributes', function () {
+  // globals used by test
+  var peer = null;
+  var config = {
+    id: generateUUID(),
+    userData: 'test',
+    iceServers: [{
+      url: 'turn:leticia.choo@temasys.com.sg@numb.viagenie.ca',
+      credential: 'xxxxxxxxxxx'
+    }, {
+      url: 'stun:leticia.choo@temasys.com.sg@numb.viagenie.ca'
+    }],
+    agent: {
+      name: window.webrtcDetectedBrowser,
+      version: window.webrtcDetectedVersion,
+      os: window.navigator.platform
+    },
+    room: 'test-room'
+  };
 
-	/**
-	 * Attributes
-	 */
+  before(function (done) {
+    peer = new Peer(null, config);
+    done();
+  });
+
   describe('#id', function() {
     it('is typeof "string"', function(done) {
-      this.timeout(testItemTimeout);
       assert.typeOf(peer.id, 'string');
       done();
     });
     it('matches given ID', function(done) {
-      this.timeout(testItemTimeout);
-      expect(peer.id).to.equal(peerId);
+      expect(peer.id).to.equal(config.id);
       done();
     });
   });
 
   describe('#userData', function() {
-    it('is typeof "object"', function(done) {
-      this.timeout(testItemTimeout);
-      assert.typeOf(peer.userData, 'object');
+    it('is an existing property', function(done) {
+      expect(peer).to.have.ownProperty('userData');
       done();
     });
     it('matches given userData', function(done) {
-      this.timeout(testItemTimeout);
-      expect(peer.userData).to.equal(peerUserData);
+      expect(peer.userData).to.equal(config.userData);
       done();
     });
   });
 
   describe('#agent', function() {
     it('is typeof "object"', function(done) {
-      this.timeout(testItemTimeout);
       assert.typeOf(peer.agent, 'object');
       done();
     });
 
     describe('#name', function() {
       it('is typeof "string"', function(done) {
-        this.timeout(testItemTimeout);
         assert.typeOf(peer.agent.name, 'string');
+        done();
+      });
+      it('matches given agent.name', function(done) {
+        expect(peer.agent.name).to.equal(config.agent.name);
         done();
       });
     });
 
     describe('#version', function() {
       it('is typeof "number"', function(done) {
-        this.timeout(testItemTimeout);
         assert.typeOf(peer.agent.version, 'number');
+        done();
+      });
+      it('matches given agent.version', function(done) {
+        expect(peer.agent.version).to.equal(config.agent.version);
         done();
       });
     });
 
     describe('#os', function() {
       it('is typeof "string"', function(done) {
-        this.timeout(testItemTimeout);
         assert.typeOf(peer.agent.os, 'string');
+        done();
+      });
+      it('matches given agent.os', function(done) {
+        expect(peer.agent.os).to.equal(config.agent.os);
         done();
       });
     });
   });
 
-  describe('#privileged', function() {
-    it('is typeof "boolean"', function(done) {
-      this.timeout(testItemTimeout);
-      assert.typeOf(peer.privileged, 'boolean');
-      done();
-    });
-    it('matches given isPrivileged', function(done) {
-      this.timeout(testItemTimeout);
-      expect(peer.privileged).to.equal(true);
-      done();
-    });
-  });
-
-  describe('#_connection', function() {
-    it('is typeof "object"', function(done) {
-      this.timeout(testItemTimeout);
-      expect(typeof peer._connection).to.equal('object');
-      done();
-    });
-    it('is null by default', function(done) {
-      this.timeout(testItemTimeout);
-      expect(peer._connection).to.equal(null);
-      done();
-    });
-  });
-
   describe('#_iceServers', function() {
     it('is typeof "object"', function(done) {
-      this.timeout(testItemTimeout);
       expect(typeof peer._iceServers).to.equal('object');
       done();
     });
     it('is Array', function(done) {
-      this.timeout(testItemTimeout);
       assert.isArray(peer._iceServers);
       done();
     });
-    it('is empty by default', function(done) {
-      this.timeout(testItemTimeout);
-      expect(peer._iceServers).to.have.length(0);
+    it('matches given iceServers', function(done) {
+      expect(peer._iceServers).to.equal(config.iceServers)
       done();
     });
   });
-
-  /**
-	 * Methods
-	 */
 
 });

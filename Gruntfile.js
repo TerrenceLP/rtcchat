@@ -67,7 +67,7 @@ module.exports = function(grunt) {
         var url = 'tests/spec/' + item + '.js';
         // copy layout first and into the gen folder
         concatTask[item] = {
-          src: ['tests/util/script.js'],
+          src: ['tests/util/script.js', 'node_modules/adapterjs/publish/adapter.screenshare.js'],
           dest: 'tests/gen/units/' + item + '.js'
         };
 
@@ -77,7 +77,8 @@ module.exports = function(grunt) {
             variables: {
               'test': item,
               'script': grunt.file.read(url, { encoding: 'UTF-8' }),
-              'util': grunt.file.read('tests/util/util.js', { encoding: 'UTF-8' }) 
+              'util': grunt.file.read('tests/util/util.js', { encoding: 'UTF-8' }),
+              'adapter': grunt.file.read('node_modules/adapterjs/publish/adapter.screenshare.js', { encoding: 'UTF-8' })
             },
             prefix: '@@'
           },

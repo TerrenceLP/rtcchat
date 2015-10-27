@@ -11,6 +11,7 @@ var testTimeout = 35000;
 var gUMTimeout = 25000;
 var testItemTimeout = 4000;
 
+@@adapter
 @@util
 
 /* Template */

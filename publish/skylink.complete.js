@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Thu Oct 15 2015 13:13:10 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 17:51:08 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -93,7 +93,7 @@ exports.connect = lookup;
 exports.Manager = _dereq_('./manager');
 exports.Socket = _dereq_('./socket');
 
-},{"./manager":3,"./socket":5,"./url":6,"debug":10,"socket.io-parser":46}],3:[function(_dereq_,module,exports){
+},{"./manager":3,"./socket":5,"./url":6,"debug":10,"socket.io-parser":44}],3:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -598,7 +598,7 @@ Manager.prototype.onreconnect = function(){
   this.emitAll('reconnect', attempt);
 };
 
-},{"./on":4,"./socket":5,"./url":6,"backo2":7,"component-bind":8,"component-emitter":9,"debug":10,"engine.io-client":11,"indexof":42,"object-component":43,"socket.io-parser":46}],4:[function(_dereq_,module,exports){
+},{"./on":4,"./socket":5,"./url":6,"backo2":7,"component-bind":8,"component-emitter":9,"debug":10,"engine.io-client":11,"indexof":40,"object-component":41,"socket.io-parser":44}],4:[function(_dereq_,module,exports){
 
 /**
  * Module exports.
@@ -1011,7 +1011,7 @@ Socket.prototype.disconnect = function(){
   return this;
 };
 
-},{"./on":4,"component-bind":8,"component-emitter":9,"debug":10,"has-binary":38,"socket.io-parser":46,"to-array":50}],6:[function(_dereq_,module,exports){
+},{"./on":4,"component-bind":8,"component-emitter":9,"debug":10,"has-binary":36,"socket.io-parser":44,"to-array":48}],6:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -1088,7 +1088,7 @@ function url(uri, loc){
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"debug":10,"parseuri":44}],7:[function(_dereq_,module,exports){
+},{"debug":10,"parseuri":42}],7:[function(_dereq_,module,exports){
 
 /**
  * Expose `Backoff`.
@@ -2230,7 +2230,7 @@ Socket.prototype.filterUpgrades = function (upgrades) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./transport":14,"./transports":15,"component-emitter":9,"debug":22,"engine.io-parser":25,"indexof":42,"parsejson":34,"parseqs":35,"parseuri":36}],14:[function(_dereq_,module,exports){
+},{"./transport":14,"./transports":15,"component-emitter":9,"debug":22,"engine.io-parser":25,"indexof":40,"parsejson":32,"parseqs":33,"parseuri":34}],14:[function(_dereq_,module,exports){
 /**
  * Module dependencies.
  */
@@ -3320,7 +3320,7 @@ Polling.prototype.uri = function(){
   return schema + '://' + this.hostname + port + this.path + query;
 };
 
-},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":35,"xmlhttprequest":20}],19:[function(_dereq_,module,exports){
+},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":33,"xmlhttprequest":20}],19:[function(_dereq_,module,exports){
 /**
  * Module dependencies.
  */
@@ -3560,7 +3560,7 @@ WS.prototype.check = function(){
   return !!WebSocket && !('__initialize' in WebSocket && this.name === WS.prototype.name);
 };
 
-},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":35,"ws":37}],20:[function(_dereq_,module,exports){
+},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":33,"ws":35}],20:[function(_dereq_,module,exports){
 // browser shim for xmlhttprequest module
 var hasCORS = _dereq_('has-cors');
 
@@ -3598,7 +3598,7 @@ module.exports = function(opts) {
   }
 }
 
-},{"has-cors":40}],21:[function(_dereq_,module,exports){
+},{"has-cors":38}],21:[function(_dereq_,module,exports){
 
 module.exports = function(a, b){
   var fn = function(){};
@@ -3689,7 +3689,7 @@ function formatArgs() {
   var index = 0;
   var lastC = 0;
   args[0].replace(/%[a-z%]/g, function(match) {
-    if ('%' === match) return;
+    if ('%%' === match) return;
     index++;
     if ('%c' === match) {
       // we only are interested in the *last* %c
@@ -3854,7 +3854,7 @@ function debug(namespace) {
     var index = 0;
     args[0] = args[0].replace(/%([a-z%])/g, function(match, format) {
       // if we encounter an escaped % then don't increase the array index
-      if (match === '%') return match;
+      if (match === '%%') return match;
       index++;
       var formatter = exports.formatters[format];
       if ('function' === typeof formatter) {
@@ -4665,7 +4665,7 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./keys":26,"after":27,"arraybuffer.slice":28,"base64-arraybuffer":29,"blob":30,"has-binary":31,"utf8":33}],26:[function(_dereq_,module,exports){
+},{"./keys":26,"after":27,"arraybuffer.slice":28,"base64-arraybuffer":29,"blob":30,"has-binary":36,"utf8":31}],26:[function(_dereq_,module,exports){
 
 /**
  * Gets the keys for an object.
@@ -4825,8 +4825,22 @@ var BlobBuilder = global.BlobBuilder
 
 var blobSupported = (function() {
   try {
-    var b = new Blob(['hi']);
-    return b.size == 2;
+    var a = new Blob(['hi']);
+    return a.size === 2;
+  } catch(e) {
+    return false;
+  }
+})();
+
+/**
+ * Check if Blob constructor supports ArrayBufferViews
+ * Fails in Safari 6, so we need to map to ArrayBuffers there.
+ */
+
+var blobSupportsArrayBufferView = blobSupported && (function() {
+  try {
+    var b = new Blob([new Uint8Array([1,2])]);
+    return b.size === 2;
   } catch(e) {
     return false;
   }
@@ -4840,19 +4854,52 @@ var blobBuilderSupported = BlobBuilder
   && BlobBuilder.prototype.append
   && BlobBuilder.prototype.getBlob;
 
+/**
+ * Helper function that maps ArrayBufferViews to ArrayBuffers
+ * Used by BlobBuilder constructor and old browsers that didn't
+ * support it in the Blob constructor.
+ */
+
+function mapArrayBufferViews(ary) {
+  for (var i = 0; i < ary.length; i++) {
+    var chunk = ary[i];
+    if (chunk.buffer instanceof ArrayBuffer) {
+      var buf = chunk.buffer;
+
+      // if this is a subarray, make a copy so we only
+      // include the subarray region from the underlying buffer
+      if (chunk.byteLength !== buf.byteLength) {
+        var copy = new Uint8Array(chunk.byteLength);
+        copy.set(new Uint8Array(buf, chunk.byteOffset, chunk.byteLength));
+        buf = copy.buffer;
+      }
+
+      ary[i] = buf;
+    }
+  }
+}
+
 function BlobBuilderConstructor(ary, options) {
   options = options || {};
 
   var bb = new BlobBuilder();
+  mapArrayBufferViews(ary);
+
   for (var i = 0; i < ary.length; i++) {
     bb.append(ary[i]);
   }
+
   return (options.type) ? bb.getBlob(options.type) : bb.getBlob();
+};
+
+function BlobConstructor(ary, options) {
+  mapArrayBufferViews(ary);
+  return new Blob(ary, options || {});
 };
 
 module.exports = (function() {
   if (blobSupported) {
-    return global.Blob;
+    return blobSupportsArrayBufferView ? global.Blob : BlobConstructor;
   } else if (blobBuilderSupported) {
     return BlobBuilderConstructor;
   } else {
@@ -4863,74 +4910,7 @@ module.exports = (function() {
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],31:[function(_dereq_,module,exports){
 (function (global){
-
-/*
- * Module requirements.
- */
-
-var isArray = _dereq_('isarray');
-
-/**
- * Module exports.
- */
-
-module.exports = hasBinary;
-
-/**
- * Checks for binary data.
- *
- * Right now only Buffer and ArrayBuffer are supported..
- *
- * @param {Object} anything
- * @api public
- */
-
-function hasBinary(data) {
-
-  function _hasBinary(obj) {
-    if (!obj) return false;
-
-    if ( (global.Buffer && global.Buffer.isBuffer(obj)) ||
-         (global.ArrayBuffer && obj instanceof ArrayBuffer) ||
-         (global.Blob && obj instanceof Blob) ||
-         (global.File && obj instanceof File)
-        ) {
-      return true;
-    }
-
-    if (isArray(obj)) {
-      for (var i = 0; i < obj.length; i++) {
-          if (_hasBinary(obj[i])) {
-              return true;
-          }
-      }
-    } else if (obj && 'object' == typeof obj) {
-      if (obj.toJSON) {
-        obj = obj.toJSON();
-      }
-
-      for (var key in obj) {
-        if (obj.hasOwnProperty(key) && _hasBinary(obj[key])) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  return _hasBinary(data);
-}
-
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"isarray":32}],32:[function(_dereq_,module,exports){
-module.exports = Array.isArray || function (arr) {
-  return Object.prototype.toString.call(arr) == '[object Array]';
-};
-
-},{}],33:[function(_dereq_,module,exports){
-(function (global){
-/*! http://mths.be/utf8js v2.0.0 by @mathias */
+/*! https://mths.be/utf8js v2.0.0 by @mathias */
 ;(function(root) {
 
 	// Detect free variables `exports`
@@ -4951,7 +4931,7 @@ module.exports = Array.isArray || function (arr) {
 
 	var stringFromCharCode = String.fromCharCode;
 
-	// Taken from http://mths.be/punycode
+	// Taken from https://mths.be/punycode
 	function ucs2decode(string) {
 		var output = [];
 		var counter = 0;
@@ -4978,7 +4958,7 @@ module.exports = Array.isArray || function (arr) {
 		return output;
 	}
 
-	// Taken from http://mths.be/punycode
+	// Taken from https://mths.be/punycode
 	function ucs2encode(array) {
 		var length = array.length;
 		var index = -1;
@@ -4996,6 +4976,14 @@ module.exports = Array.isArray || function (arr) {
 		return output;
 	}
 
+	function checkScalarValue(codePoint) {
+		if (codePoint >= 0xD800 && codePoint <= 0xDFFF) {
+			throw Error(
+				'Lone surrogate U+' + codePoint.toString(16).toUpperCase() +
+				' is not a scalar value'
+			);
+		}
+	}
 	/*--------------------------------------------------------------------------*/
 
 	function createByte(codePoint, shift) {
@@ -5011,6 +4999,7 @@ module.exports = Array.isArray || function (arr) {
 			symbol = stringFromCharCode(((codePoint >> 6) & 0x1F) | 0xC0);
 		}
 		else if ((codePoint & 0xFFFF0000) == 0) { // 3-byte sequence
+			checkScalarValue(codePoint);
 			symbol = stringFromCharCode(((codePoint >> 12) & 0x0F) | 0xE0);
 			symbol += createByte(codePoint, 6);
 		}
@@ -5025,11 +5014,6 @@ module.exports = Array.isArray || function (arr) {
 
 	function utf8encode(string) {
 		var codePoints = ucs2decode(string);
-
-		// console.log(JSON.stringify(codePoints.map(function(x) {
-		// 	return 'U+' + x.toString(16).toUpperCase();
-		// })));
-
 		var length = codePoints.length;
 		var index = -1;
 		var codePoint;
@@ -5100,6 +5084,7 @@ module.exports = Array.isArray || function (arr) {
 			byte3 = readContinuationByte();
 			codePoint = ((byte1 & 0x0F) << 12) | (byte2 << 6) | byte3;
 			if (codePoint >= 0x0800) {
+				checkScalarValue(codePoint);
 				return codePoint;
 			} else {
 				throw Error('Invalid continuation byte');
@@ -5171,7 +5156,7 @@ module.exports = Array.isArray || function (arr) {
 }(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],34:[function(_dereq_,module,exports){
+},{}],32:[function(_dereq_,module,exports){
 (function (global){
 /**
  * JSON parse.
@@ -5206,7 +5191,7 @@ module.exports = function parsejson(data) {
   }
 };
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],35:[function(_dereq_,module,exports){
+},{}],33:[function(_dereq_,module,exports){
 /**
  * Compiles a querystring
  * Returns string representation of the object
@@ -5245,7 +5230,7 @@ exports.decode = function(qs){
   return qry;
 };
 
-},{}],36:[function(_dereq_,module,exports){
+},{}],34:[function(_dereq_,module,exports){
 /**
  * Parses an URI
  *
@@ -5286,7 +5271,7 @@ module.exports = function parseuri(str) {
     return uri;
 };
 
-},{}],37:[function(_dereq_,module,exports){
+},{}],35:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -5331,7 +5316,7 @@ function ws(uri, protocols, opts) {
 
 if (WebSocket) ws.prototype = WebSocket.prototype;
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],36:[function(_dereq_,module,exports){
 (function (global){
 
 /*
@@ -5393,9 +5378,12 @@ function hasBinary(data) {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"isarray":39}],39:[function(_dereq_,module,exports){
-module.exports=_dereq_(32)
-},{}],40:[function(_dereq_,module,exports){
+},{"isarray":37}],37:[function(_dereq_,module,exports){
+module.exports = Array.isArray || function (arr) {
+  return Object.prototype.toString.call(arr) == '[object Array]';
+};
+
+},{}],38:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -5420,7 +5408,7 @@ try {
   module.exports = false;
 }
 
-},{"global":41}],41:[function(_dereq_,module,exports){
+},{"global":39}],39:[function(_dereq_,module,exports){
 
 /**
  * Returns `this`. Execute this without a "context" (i.e. without it being
@@ -5430,7 +5418,7 @@ try {
 
 module.exports = (function () { return this; })();
 
-},{}],42:[function(_dereq_,module,exports){
+},{}],40:[function(_dereq_,module,exports){
 
 var indexOf = [].indexOf;
 
@@ -5441,7 +5429,7 @@ module.exports = function(arr, obj){
   }
   return -1;
 };
-},{}],43:[function(_dereq_,module,exports){
+},{}],41:[function(_dereq_,module,exports){
 
 /**
  * HOP ref.
@@ -5526,7 +5514,7 @@ exports.length = function(obj){
 exports.isEmpty = function(obj){
   return 0 == exports.length(obj);
 };
-},{}],44:[function(_dereq_,module,exports){
+},{}],42:[function(_dereq_,module,exports){
 /**
  * Parses an URI
  *
@@ -5553,7 +5541,7 @@ module.exports = function parseuri(str) {
   return uri;
 };
 
-},{}],45:[function(_dereq_,module,exports){
+},{}],43:[function(_dereq_,module,exports){
 (function (global){
 /*global Blob,File*/
 
@@ -5698,7 +5686,7 @@ exports.removeBlobs = function(data, callback) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./is-buffer":47,"isarray":48}],46:[function(_dereq_,module,exports){
+},{"./is-buffer":45,"isarray":46}],44:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -6100,7 +6088,7 @@ function error(data){
   };
 }
 
-},{"./binary":45,"./is-buffer":47,"component-emitter":9,"debug":10,"isarray":48,"json3":49}],47:[function(_dereq_,module,exports){
+},{"./binary":43,"./is-buffer":45,"component-emitter":9,"debug":10,"isarray":46,"json3":47}],45:[function(_dereq_,module,exports){
 (function (global){
 
 module.exports = isBuf;
@@ -6117,9 +6105,9 @@ function isBuf(obj) {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],48:[function(_dereq_,module,exports){
-module.exports=_dereq_(32)
-},{}],49:[function(_dereq_,module,exports){
+},{}],46:[function(_dereq_,module,exports){
+module.exports=_dereq_(37)
+},{}],47:[function(_dereq_,module,exports){
 /*! JSON v3.2.6 | http://bestiejs.github.io/json3 | Copyright 2012-2013, Kit Cambridge | http://kit.mit-license.org */
 ;(function (window) {
   // Convenience aliases.
@@ -6982,7 +6970,7 @@ module.exports=_dereq_(32)
   }
 }(this));
 
-},{}],50:[function(_dereq_,module,exports){
+},{}],48:[function(_dereq_,module,exports){
 module.exports = toArray
 
 function toArray(list, index) {
@@ -7001,7 +6989,7 @@ function toArray(list, index) {
 (1)
 });
 
-/*! adapterjs - v0.12.1 - 2015-09-07 */
+/*! adapterjs - v0.11.1 - 2015-07-28 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -7020,7 +7008,7 @@ AdapterJS.options = AdapterJS.options || {};
 // AdapterJS.options.hidePluginInstallPrompt = true;
 
 // AdapterJS version
-AdapterJS.VERSION = '0.12.1';
+AdapterJS.VERSION = '0.11.1';
 
 // This function will be called when the WebRTC API is ready to be used
 // Whether it is the native implementation (Chrome, Firefox, Opera) or
@@ -7074,12 +7062,6 @@ if(!!navigator.platform.match(/^Mac/i)) {
 else if(!!navigator.platform.match(/^Win/i)) {
   AdapterJS.WebRTCPlugin.pluginInfo.downloadLink = 'http://bit.ly/1kkS4FN';
 }
-
-AdapterJS.WebRTCPlugin.TAGS = {
-  NONE  : 'none',
-  AUDIO : 'audio',
-  VIDEO : 'video'
-};
 
 // Unique identifier of each opened page
 AdapterJS.WebRTCPlugin.pageId = Math.random().toString(36).slice(2);
@@ -7334,10 +7316,9 @@ AdapterJS.renderNotificationBar = function (text, buttonText, buttonLink, openNe
     'sans-serif; font-size: .9rem; padding: 4px; vertical-align: ' +
     'middle; cursor: default;">' + text + '</span>');
   if(buttonText && buttonLink) {
-    c.document.write('<button id="okay">' + buttonText + '</button><button id="cancel">Cancel</button>');
+    c.document.write('<button id="okay">' + buttonText + '</button><button>Cancel</button>');
     c.document.close();
 
-    // On click on okay
     AdapterJS.addEvent(c.document.getElementById('okay'), 'click', function(e) {
       if (!!displayRefreshBar) {
         AdapterJS.renderNotificationBar(AdapterJS.TEXT.EXTENSION ?
@@ -7351,30 +7332,25 @@ AdapterJS.renderNotificationBar = function (text, buttonText, buttonLink, openNe
         event.cancelBubble = true;
       } catch(error) { }
 
-      var pluginInstallInterval = setInterval(function(){
-        if(! isIE) {
-          navigator.plugins.refresh(false);
-        }
-        AdapterJS.WebRTCPlugin.isPluginInstalled(
-          AdapterJS.WebRTCPlugin.pluginInfo.prefix,
-          AdapterJS.WebRTCPlugin.pluginInfo.plugName,
-          function() { // plugin now installed
-            clearInterval(pluginInstallInterval);
-            AdapterJS.WebRTCPlugin.defineWebRTCInterface();
-          },
-          function() { 
-            // still no plugin detected, nothing to do
-          });
-      } , 500);
+        var pluginInstallInterval = setInterval(function(){
+            if(! isIE) {
+              navigator.plugins.refresh(false);
+            }
+            AdapterJS.WebRTCPlugin.isPluginInstalled(
+              AdapterJS.WebRTCPlugin.pluginInfo.prefix,
+              AdapterJS.WebRTCPlugin.pluginInfo.plugName,
+              AdapterJS.WebRTCPlugin.defineWebRTCInterface,
+              function() { //Does nothing because not used here
+              });
+          } , 500);
     });   
 
-    // On click on Cancel
-    AdapterJS.addEvent(c.document.getElementById('cancel'), 'click', function(e) {
-      w.document.body.removeChild(i);
-    });
-  } else {
+  }else {
     c.document.close();
   }
+  AdapterJS.addEvent(c.document, 'click', function() {
+    w.document.body.removeChild(i);
+  });
   setTimeout(function() {
     if(typeof i.style.webkitTransform === 'string') {
       i.style.webkitTransform = 'translateY(40px)';
@@ -7739,28 +7715,6 @@ if (navigator.mozGetUserMedia) {
   };
 
   AdapterJS.maybeThroughWebRTCReady();
-} else if (navigator.mediaDevices && navigator.userAgent.match(
-    /Edge\/(\d+).(\d+)$/)) {
-  webrtcDetectedBrowser = 'edge';
-
-  webrtcDetectedVersion =
-    parseInt(navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)[2], 10);
-
-  // the minimum version still supported by adapter.
-  webrtcMinimumVersion = 12;
-
-  window.getUserMedia = navigator.getUserMedia.bind(navigator);
-
-  attachMediaStream = function(element, stream) {
-    element.srcObject = stream;
-    return element;
-  };
-  reattachMediaStream = function(to, from) {
-    to.srcObject = from.srcObject;
-    return to;
-  };
-
-  AdapterJS.maybeThroughWebRTCReady();
 } else { // TRY TO USE PLUGIN
   // IE 9 is not offering an implementation of console.log until you open a console
   if (typeof console !== 'object' || typeof console.log !== 'function') {
@@ -7843,8 +7797,8 @@ if (navigator.mozGetUserMedia) {
         AdapterJS.WebRTCPlugin.pluginInfo.pluginId + '" /> ' +
         '<param name="windowless" value="false" /> ' +
         '<param name="pageId" value="' + AdapterJS.WebRTCPlugin.pageId + '" /> ' +
-        '<param name="onload" value="' + AdapterJS.WebRTCPlugin.pluginInfo.onload + '" />' +
-        '<param name="tag" value="' + AdapterJS.WebRTCPlugin.TAGS.NONE + '" />' +
+        '<param name="onload" value="' + AdapterJS.WebRTCPlugin.pluginInfo.onload +
+        '" />' +
         // uncomment to be able to use virtual cams
         (AdapterJS.options.getAllCams ? '<param name="forceGetAllCams" value="True" />':'') +
 
@@ -7878,8 +7832,7 @@ if (navigator.mozGetUserMedia) {
         AdapterJS.WebRTCPlugin.pluginInfo.pluginId + '">' +
         '<param name="windowless" value="false" /> ' +
         (AdapterJS.options.getAllCams ? '<param name="forceGetAllCams" value="True" />':'') +
-        '<param name="pageId" value="' + AdapterJS.WebRTCPlugin.pageId + '">' +
-        '<param name="tag" value="' + AdapterJS.WebRTCPlugin.TAGS.NONE + '" />';
+        '<param name="pageId" value="' + AdapterJS.WebRTCPlugin.pageId + '">';
       document.body.appendChild(AdapterJS.WebRTCPlugin.plugin);
     }
 
@@ -7910,12 +7863,6 @@ if (navigator.mozGetUserMedia) {
   };
 
   AdapterJS.WebRTCPlugin.defineWebRTCInterface = function () {
-    if (AdapterJS.WebRTCPlugin.pluginState ===
-        AdapterJS.WebRTCPlugin.PLUGIN_STATES.READY) {
-      console.error("AdapterJS - WebRTC interface has already been defined");
-      return;
-    }
-
     AdapterJS.WebRTCPlugin.pluginState = AdapterJS.WebRTCPlugin.PLUGIN_STATES.INITIALIZING;
 
     AdapterJS.isDefined = function (variable) {
@@ -8007,91 +7954,78 @@ if (navigator.mozGetUserMedia) {
         streamId = '';
       }
       else {
-        stream.enableSoundTracks(true); // TODO: remove on 0.12.0
+        stream.enableSoundTracks(true);
         streamId = stream.id;
       }
 
-      var elementId = element.id.length === 0 ? Math.random().toString(36).slice(2) : element.id;
-      var nodeName = element.nodeName.toLowerCase();
-      if (nodeName !== 'object') { // not a plugin <object> tag yet
-        var tag;
-        switch(nodeName) {
-          case 'audio':
-            tag = AdapterJS.WebRTCPlugin.TAGS.AUDIO;
-            break;
-          case 'video':
-            tag = AdapterJS.WebRTCPlugin.TAGS.VIDEO;
-            break;
-          default:
-            tag = AdapterJS.WebRTCPlugin.TAGS.NONE;
+      if (element.nodeName.toLowerCase() !== 'audio') {
+        var elementId = element.id.length === 0 ? Math.random().toString(36).slice(2) : element.id;
+        if (!element.isWebRTCPlugin || !element.isWebRTCPlugin()) {
+          var frag = document.createDocumentFragment();
+          var temp = document.createElement('div');
+          var classHTML = '';
+          if (element.className) {
+            classHTML = 'class="' + element.className + '" ';
+          } else if (element.attributes && element.attributes['class']) {
+            classHTML = 'class="' + element.attributes['class'].value + '" ';
           }
 
-        var frag = document.createDocumentFragment();
-        var temp = document.createElement('div');
-        var classHTML = '';
-        if (element.className) {
-          classHTML = 'class="' + element.className + '" ';
-        } else if (element.attributes && element.attributes['class']) {
-          classHTML = 'class="' + element.attributes['class'].value + '" ';
-        }
+          temp.innerHTML = '<object id="' + elementId + '" ' + classHTML +
+            'type="' + AdapterJS.WebRTCPlugin.pluginInfo.type + '">' +
+            '<param name="pluginId" value="' + elementId + '" /> ' +
+            '<param name="pageId" value="' + AdapterJS.WebRTCPlugin.pageId + '" /> ' +
+            '<param name="windowless" value="true" /> ' +
+            '<param name="streamId" value="' + streamId + '" /> ' +
+            '</object>';
+          while (temp.firstChild) {
+            frag.appendChild(temp.firstChild);
+          }
 
-        temp.innerHTML = '<object id="' + elementId + '" ' + classHTML +
-          'type="' + AdapterJS.WebRTCPlugin.pluginInfo.type + '">' +
-          '<param name="pluginId" value="' + elementId + '" /> ' +
-          '<param name="pageId" value="' + AdapterJS.WebRTCPlugin.pageId + '" /> ' +
-          '<param name="windowless" value="true" /> ' +
-          '<param name="streamId" value="' + streamId + '" /> ' +
-          '<param name="tag" value="' + tag + '" /> ' +
-          '</object>';
-        while (temp.firstChild) {
-          frag.appendChild(temp.firstChild);
-        }
+          var height = '';
+          var width = '';
+          if (element.getBoundingClientRect) {
+            var rectObject = element.getBoundingClientRect();
+            width = rectObject.width + 'px';
+            height = rectObject.height + 'px';
+          }
+          else if (element.width) {
+            width = element.width;
+            height = element.height;
+          } else {
+            // TODO: What scenario could bring us here?
+          }
 
-        var height = '';
-        var width = '';
-        if (element.getBoundingClientRect) {
-          var rectObject = element.getBoundingClientRect();
-          width = rectObject.width + 'px';
-          height = rectObject.height + 'px';
-        }
-        else if (element.width) {
-          width = element.width;
-          height = element.height;
+          element.parentNode.insertBefore(frag, element);
+          frag = document.getElementById(elementId);
+          frag.width = width;
+          frag.height = height;
+          element.parentNode.removeChild(element);
         } else {
-          // TODO: What scenario could bring us here?
-        }
-
-        element.parentNode.insertBefore(frag, element);
-        frag = document.getElementById(elementId);
-        frag.width = width;
-        frag.height = height;
-        element.parentNode.removeChild(element);
-      } else { // already an <object> tag, just change the stream id
-        var children = element.children;
-        for (var i = 0; i !== children.length; ++i) {
-          if (children[i].name === 'streamId') {
-            children[i].value = streamId;
-            break;
+          var children = element.children;
+          for (var i = 0; i !== children.length; ++i) {
+            if (children[i].name === 'streamId') {
+              children[i].value = streamId;
+              break;
+            }
           }
+          element.setStreamId(streamId);
         }
-        element.setStreamId(streamId);
-      }
-      var newElement = document.getElementById(elementId);
-      newElement.onplaying = (element.onplaying) ? element.onplaying : function (arg) {};
-      newElement.onplay    = (element.onplay)    ? element.onplay    : function (arg) {};
-      newElement.onclick   = (element.onclick)   ? element.onclick   : function (arg) {};
-      if (isIE) { // on IE the event needs to be plugged manually
-        newElement.attachEvent('onplaying', newElement.onplaying);
-        newElement.attachEvent('onplay', newElement.onplay);
-        newElement._TemOnClick = function (id) {
-          var arg = {
-            srcElement : document.getElementById(id)
+        var newElement = document.getElementById(elementId);
+        newElement.onplaying = (element.onplaying) ? element.onplaying : function (arg) {};
+        if (isIE) { // on IE the event needs to be plugged manually
+          newElement.attachEvent('onplaying', newElement.onplaying);
+          newElement.onclick = (element.onclick) ? element.onclick : function (arg) {};
+          newElement._TemOnClick = function (id) {
+            var arg = {
+              srcElement : document.getElementById(id)
+            };
+            newElement.onclick(arg);
           };
-          newElement.onclick(arg);
-        };
+        }
+        return newElement;
+      } else {
+        return element;
       }
-      
-      return newElement;
     };
 
     reattachMediaStream = function (to, from) {
@@ -8169,6 +8103,8 @@ if (navigator.mozGetUserMedia) {
     AdapterJS.WebRTCPlugin.defineWebRTCInterface,
     AdapterJS.WebRTCPlugin.pluginNeededButNotInstalledCb);
 }
+
+
 
 (function () {
 
@@ -8313,10 +8249,6 @@ if (navigator.mozGetUserMedia) {
 
     getUserMedia = navigator.getUserMedia;
 
-  } else if (navigator.mediaDevices && navigator.userAgent.match(/Edge\/(\d+).(\d+)$/)) {
-    // nothing here because edge does not support screensharing
-    console.warn('Edge does not support screensharing feature in getUserMedia');
-
   } else {
     baseGetUserMedia = window.navigator.getUserMedia;
 
@@ -8377,11 +8309,9 @@ if (navigator.mozGetUserMedia) {
 
       iframe.contentWindow.postMessage(object, '*');
     };
-  } else if (window.webrtcDetectedBrowser === 'opera') {
-    console.warn('Opera does not support screensharing feature in getUserMedia');
   }
 })();
-/*! skylinkjs - v1.0.0 - Thu Oct 15 2015 13:13:10 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 17:51:08 GMT+0800 (SGT) */
 
 var DataChannel = function(channel){
 	'use strict';
@@ -8414,8 +8344,8 @@ var DataChannel = function(channel){
 DataChannel.prototype.disconnect = function(){
 	var self = this;
 	objectRef.close();
-}
-var Event = {
+};
+var SkylinkEvent = {
 
 	on: function(event, callback){
 		this.listeners.on[event] = this.listeners.on[event] || [];
@@ -8468,10 +8398,10 @@ var Event = {
 		}
 
 		if (this.listeners.once[event]){
-			for (var i=0; i<this.listeners.once[event].length; i++){
-		    	this.listeners.once[event][i].apply(this, args);
-		    	this.listeners.once[event].splice(i,1);
-		    	i--;
+			for (var j=0; j<this.listeners.once[event].length; j++){
+		    	this.listeners.once[event][j].apply(this, args);
+		    	this.listeners.once[event].splice(j,1);
+		    	j--;
 		    }
 		}
 
@@ -8490,12 +8420,12 @@ var Event = {
 	_mixin: function(object){
 		var methods = ['on','off','once','_trigger','_removeListener'];
 		for (var i=0; i<methods.length; i++){
-			if (Event.hasOwnProperty(methods[i]) ){
+			if (SkylinkEvent.hasOwnProperty(methods[i]) ){
 				if (typeof object === 'function'){
-					object.prototype[methods[i]]=Event[methods[i]];	
+					object.prototype[methods[i]]=SkylinkEvent[methods[i]];	
 				}
 				else{
-					object[methods[i]]=Event[methods[i]];
+					object[methods[i]]=SkylinkEvent[methods[i]];
 				}
 			}
 		}
@@ -8503,10 +8433,17 @@ var Event = {
 		object.listeners = {
 			on: {},
 			once: {}
-		}
+		};
 
 		return object;
 	}
+};
+var Global = {
+
+	_signalingChannelOpen: false,
+
+	_signalingServer: null,
+
 };
 var log = {};
 
@@ -8653,178 +8590,338 @@ var Debugger = {
   }
 };
 
-Debugger.setLevel(4);
-var Peer = function (config) {
+Debugger.setLevel(1);
+var Peer = function (socketRef, config) {
 
+  'use strict';
+
+  // Reference object
+  var self = this;
+
+  log.debug('Passed configuration for constructing new Peer object', config);
+
+  if ((!config && typeof config !== 'object') || config === null) {
+    throw new Error('Configuration passed in for constructing new Peer object is invalid');
+  }
+
+  if (typeof config.id !== 'string') {
+    throw new Error('Configuration ID passed in for constructing new Peer object is invalid', config.id);
+  }
+
+  if ((!config.agent && typeof config.agent !== 'object') || config.agent === null) {
+    throw new Error('Configuration agent passed in for constructing new Peer object is invalid', config.agent);
+  }
+
+  if (typeof config.room !== 'string') {
+    throw new Error('Configuration room passed in for constructing new Peer object is invalid', config.room);
+  }
+
+  if (!Array.isArray(config.iceServers)) {
+    throw new Error('Configuration ICE servers passed in for constructing new Peer object is invalid', config.iceServers);
+  }
+
+/***************************************************
+ = ATTRIBUTES (The ones that requires declaration from config) [use @attribute for attributes]
+ ***************************************************/
   /**
    * The Peer ID.
    * @attribute id
    * @type String
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.id = null;
+  self.id = config.id;
 
   /**
-   * The Peer custom user data information.
+   * The Peer custom data.
    * @attribute userData
-   * @type JSON|String
-   * @default null
+   * @type Object
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.userData = null;
+  self.userData = config.userData || null;
 
   /**
-   * The Peer privileged status.
-   * @attribute privileged
-   * @type Boolean
-   * @default false
-   * @readOnly
-   * @for Peer
-   * @since 1.0.0
-   */
-  this.privileged = false;
-
-  /**
-   * The Peer agent information.
-   * @attribute agent
-   * @param agent.name The Peer agent name.
-   * @param agent.version The Peer agent version.
-   * @param agent.os The Peer agent platform.
+   * The Peer connecting agent platform.
+   * @attribute userData
    * @type JSON
+   * @param {String} [name="unknown"] The platform agent name that Peer is connecting from.
+   * @param {Number} [version=0] The version of the platform agent.
+   * @param {String} [os="unknown"] The platform operating system the agent is running from.
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.agent = {
-    name: window.webrtcDetectedBrowser,
-    version: window.webrtcDetectedVersion,
-    os: window.navigator.platform
+  self.agent = {
+    // Define the objects to prevent undefined errors
+    name: config.agent.name || 'unknown',
+    version: config.agent.version || 0,
+    os: config.agent.os || 'unknown'
   };
 
   /**
-   * The Peer RTCPeerConnection object reference.
-   * @attribute _connection
-   * @type RTCPeerConnection
-   * @default null
-   * @private
-   * @for Peer
-   * @since 1.0.0
+   * The room that the Peer is connected to.
+   * @attribute room
+   * @type String
+   * @readOnly
    */
-  this._connection = null;
+  self.room = config.room;
 
   /**
-   * The list of ICE servers that the RTCPeerConnection should use.
+   * The list of ICE servers that the RTCPeerConnection would attempt to use for successful ICE connection.
    * @attribute _iceServers
    * @type Array
-   * @default null
    * @private
-   * @for Peer
-   * @since 1.0.0
    */
-  this._iceServers = [];
+  self._iceServers = config.iceServers;
 
-
-  // Check the passed configuration if they are valid
-  if (typeof config !== 'object') {
-    throw new Error('Passed Peer configuration is not an object');
-  }
-
-  if (typeof config.id !== 'string') {
-    throw new Error('Passed Peer ID is not a valid ID (string)');
-  }
-
-  // Define object based on passed configuration data
-  // The Peer ID - Peer.id
-  this.id = config.id;
-
-  // The Peer custom userData - Peer.userData
-  this.userData = config.userData || this.userData;
-
-  // The Peer privileged status - Peer.privileged
-  if (config.isPrivileged) {
-    this.privileged = config.isPrivileged;
-  }
-
-  // The Peer ICE servers to use and connect with
-  if (config.iceServers) {
-    this._iceServers = config.iceServers;
-  }
-
-  Event._mixin(this);
+  /**
+   * The Peer RTCPeerConnection object reference
+   * @attribute _ref
+   * @type RTCPeerConnection
+   * @private
+   */
+  //self._ref = new RTCPeerConnection()
 };
 
-Peer.prototype._doOffer = function () {
-  var self = this;
-  self._connection.createOffer(function (offer) {
-
-  }, function (error) {
-    throw error;
-  });
-};
-
-Peer.prototype._doAnswer = function () {
-
-};
-
-
-Peer.prototype.addStream = function (stream) {
-
-};
-
-Peer.prototype.removeStream = function (streamId) {
-
-};
-
-/**
- * Connects with the Peer and begins and
- * @method _onIceCandidate
- * @param {String} targetMid The Peer ID associated with the ICE
- *   candidate object received.
- * @param {Event} event The event object received in the <code>RTCPeerConnection.
- *   onicecandidate</code> to parse the ICE candidate and determine
- *   if gathering has completed.
- * @trigger candidateGenerationState
- * @private
- * @since 0.1.0
- * @component ICE
- * @for Skylink
- */
-Peer.prototype.connect = function () {
-  var self = this;
-  var peer = new RTCPeerConnection({
-    iceServers: self._iceServers
-  });
-
-
-};
-var Socket = function () {
+var Socket = function (options) {
 
   'use strict';
 
   var self = this;
 
-  // This stream constraints
-  self._constraints = null;
+  if (!options){
+    options = {};
+  }
 
-  // This stream readyState
-  self.readyState = 'constructed';
+  self._signalingServer = options.server || 'signaling.temasys.com.sg';
 
-  // This stream native MediaStream reference
-  self._objectRef = null;
+  self._socketPorts = {
+    'http': options.httpPorts || [80, 3000],
+    'https': options.httpsPorts || [443, 3443]
+  };
 
-  // This stream audio tracks list
-  self._audioTracks = [];
+  self._type = options.type || 'WebSocket'; // Default
 
-  // This stream video tracks list
-  self._videoTracks = [];
+  self._socketTimeout = options.socketTimeout || 20000;
+
+  self._isSecure = options.secure || false;
+
+  self._readyState = 'constructed';
+
+  self._isXDR = false;
+
+  self._signalingServerProtocol = window.location.protocol.substring(0,window.location.protocol.length-1);
+
+  self._socketMessageTimeout = null;
+
+  self._socketMessageQueue = [];
+
+  self.SOCKET_ERROR = {
+    CONNECTION_FAILED: 0,
+    RECONNECTION_FAILED: -1,
+    CONNECTION_ABORTED: -2,
+    RECONNECTION_ABORTED: -3,
+    RECONNECTION_ATTEMPT: -4
+  };
+
+  self.SOCKET_FALLBACK = {
+    NON_FALLBACK: 'nonfallback',
+    FALLBACK_PORT: 'fallbackPortNonSSL',
+    FALLBACK_SSL_PORT: 'fallbackPortSSL',
+    LONG_POLLING: 'fallbackLongPollingNonSSL',
+    LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+  };
+
+  self._currentSignalingServerPort = null;
+
+  self._channelOpen = false;
+
+  self._objectRef = null; // The native socket.io client object
+
+  self._firstConnect = false;
+
+  self._socketOptions = {
+    reconnection: true,
+    reconnectionAttempts: 2,
+    forceNew: true
+  };
 
   // Append events settings in here
-  Event.mixin(self);
+  SkylinkEvent._mixin(self);
 };
+
+Socket.prototype._assignPort = function(){
+
+  var self = this;
+
+  var ports = self._socketPorts[self._signalingServerProtocol];
+
+  var currentPortIndex = ports.indexOf(self._currentSignalingServerPort);
+
+  // First time connecting. Trying first port
+  if (currentPortIndex === -1){
+    console.log('first try',currentPortIndex);
+    self._currentSignalingServerPort = ports[0];
+  }
+  // Trying next port
+  else if (currentPortIndex > -1 && currentPortIndex < ports.length-1){
+    console.log('second try',currentPortIndex);
+    self._currentSignalingServerPort = ports[currentPortIndex+1];
+  }
+  // Reached the last port. Try polling next time
+  else{
+    console.log('last try',currentPortIndex);
+    // Fallback to long polling and restart port index
+    if (self._type === 'WebSocket'){
+      console.log('falling back',currentPortIndex);
+      self._type = 'Polling';
+      self._currentSignalingServerPort = ports[0];
+    }
+    // Long polling already. Keep retrying
+    else if (self._type === 'Polling'){
+      console.log('desperate',currentPortIndex);
+      self._socketOptions.reconnectionAttempts = 4;
+      self._socketOptions.reconectionDelayMax = 1000;
+    }
+
+  }
+
+};
+
+Socket.prototype.connect = function(){
+  var self = this;
+
+  self.disconnect();
+
+  self._assignPort();
+
+  var url = self._signalingServerProtocol + '://' + self._signalingServer + ':' + self._currentSignalingServerPort;
+
+  if (self._type === 'WebSocket') {
+    console.log('setting WebSocket');
+    self._socketOptions.transports = ['websocket'];
+  } else if (self._type === 'Polling') {
+    console.log('setting Polling');
+    self._socketOptions.transports = ['xhr-polling', 'jsonp-polling', 'polling'];
+    // self._socketOptions.transports = ['polling'];
+  }
+
+  console.log(url,self._socketOptions);
+
+  self._objectRef = io.connect(url, self._socketOptions);
+
+  if (!self._firstConnect){
+    self._bindHandlers();
+  }
+
+};
+
+Socket.prototype.disconnect = function(){
+  var self = this;
+
+  if (!self._channelOpen){
+    return;
+  }
+
+  if (self._objectRef){
+    self._objectRef.removeAllListeners('connect');
+    self._objectRef.removeAllListeners('disconnect');
+    self._objectRef.removeAllListeners('reconnect');
+    self._objectRef.removeAllListeners('reconnect_attempt');
+    self._objectRef.removeAllListeners('reconnecting');
+    self._objectRef.removeAllListeners('reconnect_error');
+    self._objectRef.removeAllListeners('reconnect_failed');
+    self._objectRef.removeAllListeners('connect_error');
+    self._objectRef.removeAllListeners('connect_timeout');
+    self._objectRef.removeAllListeners('message');
+    self._channelOpen = false;
+    self._objectRef.disconnect();
+  }
+
+  self._trigger('channelClose');
+
+};
+
+Socket.prototype._bindHandlers = function(){
+
+  var self = this;
+
+  self._firstConnect = false; // No need to bind handlers next time
+
+  // Fired upon connecting
+  self._objectRef.on('connect', function(){
+    self._channelOpen = true;
+    self._readyState = 'connected';
+    self._trigger('connected');
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'error';
+    self._trigger('error',error);
+  });
+
+  // Fired upon a disconnection
+  self._objectRef.on('disconnect', function(){
+    self._channelOpen = false;
+    self._readyState = 'disconnected';
+    self._trigger('disconnected');
+  });
+
+  // Fired upon a successful reconnection
+  self._objectRef.on('reconnect', function(attempt){
+    self._channelOpen = true;
+    self._readyState = 'reconnect';
+    self._trigger('reconnect',attempt);
+  });  
+
+  // Fired upon an attempt to reconnect
+  self._objectRef.on('reconnect_attempt', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_attempt';
+    self._trigger('reconnect_attempt');
+  });  
+
+  // Fired upon an attempt to reconnect
+  // attempt: reconnection attempt count
+  self._objectRef.on('reconnecting', function(attempt){
+    self._readyState = 'reconnecting';
+    self._trigger('reconnecting', attempt);
+  });
+
+  // Fired upon a reconnection attempt error
+  self._objectRef.on('reconnect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_error';
+    self._trigger('reconnect_error', error);
+  });  
+
+  // Fired when couldn't reconnect within reconnectionAttempts
+  self._objectRef.on('reconnect_failed', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_failed';
+    self._trigger('reconnect_failed');
+    self.connect();
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('connect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_error';
+    self._trigger('connect_error', error);
+  });
+
+  // Fired upon a connection timeout
+  self._objectRef.on('connect_timeout', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_timeout';
+    self._trigger('connect_timeout', error);
+  });
+
+  self._objectRef.on('message', function(){
+
+  });  
+
+};
+
 var Stream = function () {
 
   'use strict';
@@ -9060,13 +9157,17 @@ Util.generateUUID = function () {
   /* jshint ignore:end */
 };
 
-// Helps to polyfill IE's unsupported throw.
-// If supported throw, if not console error
-Util.throwError = function (error) {
-  if (window.webrtcDetectedBrowser === 'IE') {
-    console.error(error);
-    return;
+Util.cloneObject = function (obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
   }
-  throw error;
+
+  var copy = obj.constructor();
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) {
+      copy[attr] = obj[attr];
+    }
+  }
+  return copy;
 };
 

@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Thu Oct 15 2015 13:13:10 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 17:51:08 GMT+0800 (SGT) */
 
 var DataChannel = function(channel){
 	'use strict';
@@ -31,8 +31,8 @@ var DataChannel = function(channel){
 DataChannel.prototype.disconnect = function(){
 	var self = this;
 	objectRef.close();
-}
-var Event = {
+};
+var SkylinkEvent = {
 
 	on: function(event, callback){
 		this.listeners.on[event] = this.listeners.on[event] || [];
@@ -85,10 +85,10 @@ var Event = {
 		}
 
 		if (this.listeners.once[event]){
-			for (var i=0; i<this.listeners.once[event].length; i++){
-		    	this.listeners.once[event][i].apply(this, args);
-		    	this.listeners.once[event].splice(i,1);
-		    	i--;
+			for (var j=0; j<this.listeners.once[event].length; j++){
+		    	this.listeners.once[event][j].apply(this, args);
+		    	this.listeners.once[event].splice(j,1);
+		    	j--;
 		    }
 		}
 
@@ -107,12 +107,12 @@ var Event = {
 	_mixin: function(object){
 		var methods = ['on','off','once','_trigger','_removeListener'];
 		for (var i=0; i<methods.length; i++){
-			if (Event.hasOwnProperty(methods[i]) ){
+			if (SkylinkEvent.hasOwnProperty(methods[i]) ){
 				if (typeof object === 'function'){
-					object.prototype[methods[i]]=Event[methods[i]];	
+					object.prototype[methods[i]]=SkylinkEvent[methods[i]];	
 				}
 				else{
-					object[methods[i]]=Event[methods[i]];
+					object[methods[i]]=SkylinkEvent[methods[i]];
 				}
 			}
 		}
@@ -120,10 +120,17 @@ var Event = {
 		object.listeners = {
 			on: {},
 			once: {}
-		}
+		};
 
 		return object;
 	}
+};
+var Global = {
+
+	_signalingChannelOpen: false,
+
+	_signalingServer: null,
+
 };
 var log = {};
 
@@ -270,178 +277,338 @@ var Debugger = {
   }
 };
 
-Debugger.setLevel(4);
-var Peer = function (config) {
+Debugger.setLevel(1);
+var Peer = function (socketRef, config) {
 
+  'use strict';
+
+  // Reference object
+  var self = this;
+
+  log.debug('Passed configuration for constructing new Peer object', config);
+
+  if ((!config && typeof config !== 'object') || config === null) {
+    throw new Error('Configuration passed in for constructing new Peer object is invalid');
+  }
+
+  if (typeof config.id !== 'string') {
+    throw new Error('Configuration ID passed in for constructing new Peer object is invalid', config.id);
+  }
+
+  if ((!config.agent && typeof config.agent !== 'object') || config.agent === null) {
+    throw new Error('Configuration agent passed in for constructing new Peer object is invalid', config.agent);
+  }
+
+  if (typeof config.room !== 'string') {
+    throw new Error('Configuration room passed in for constructing new Peer object is invalid', config.room);
+  }
+
+  if (!Array.isArray(config.iceServers)) {
+    throw new Error('Configuration ICE servers passed in for constructing new Peer object is invalid', config.iceServers);
+  }
+
+/***************************************************
+ = ATTRIBUTES (The ones that requires declaration from config) [use @attribute for attributes]
+ ***************************************************/
   /**
    * The Peer ID.
    * @attribute id
    * @type String
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.id = null;
+  self.id = config.id;
 
   /**
-   * The Peer custom user data information.
+   * The Peer custom data.
    * @attribute userData
-   * @type JSON|String
-   * @default null
+   * @type Object
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.userData = null;
+  self.userData = config.userData || null;
 
   /**
-   * The Peer privileged status.
-   * @attribute privileged
-   * @type Boolean
-   * @default false
-   * @readOnly
-   * @for Peer
-   * @since 1.0.0
-   */
-  this.privileged = false;
-
-  /**
-   * The Peer agent information.
-   * @attribute agent
-   * @param agent.name The Peer agent name.
-   * @param agent.version The Peer agent version.
-   * @param agent.os The Peer agent platform.
+   * The Peer connecting agent platform.
+   * @attribute userData
    * @type JSON
+   * @param {String} [name="unknown"] The platform agent name that Peer is connecting from.
+   * @param {Number} [version=0] The version of the platform agent.
+   * @param {String} [os="unknown"] The platform operating system the agent is running from.
    * @readOnly
-   * @for Peer
-   * @since 1.0.0
    */
-  this.agent = {
-    name: window.webrtcDetectedBrowser,
-    version: window.webrtcDetectedVersion,
-    os: window.navigator.platform
+  self.agent = {
+    // Define the objects to prevent undefined errors
+    name: config.agent.name || 'unknown',
+    version: config.agent.version || 0,
+    os: config.agent.os || 'unknown'
   };
 
   /**
-   * The Peer RTCPeerConnection object reference.
-   * @attribute _connection
-   * @type RTCPeerConnection
-   * @default null
-   * @private
-   * @for Peer
-   * @since 1.0.0
+   * The room that the Peer is connected to.
+   * @attribute room
+   * @type String
+   * @readOnly
    */
-  this._connection = null;
+  self.room = config.room;
 
   /**
-   * The list of ICE servers that the RTCPeerConnection should use.
+   * The list of ICE servers that the RTCPeerConnection would attempt to use for successful ICE connection.
    * @attribute _iceServers
    * @type Array
-   * @default null
    * @private
-   * @for Peer
-   * @since 1.0.0
    */
-  this._iceServers = [];
+  self._iceServers = config.iceServers;
 
-
-  // Check the passed configuration if they are valid
-  if (typeof config !== 'object') {
-    throw new Error('Passed Peer configuration is not an object');
-  }
-
-  if (typeof config.id !== 'string') {
-    throw new Error('Passed Peer ID is not a valid ID (string)');
-  }
-
-  // Define object based on passed configuration data
-  // The Peer ID - Peer.id
-  this.id = config.id;
-
-  // The Peer custom userData - Peer.userData
-  this.userData = config.userData || this.userData;
-
-  // The Peer privileged status - Peer.privileged
-  if (config.isPrivileged) {
-    this.privileged = config.isPrivileged;
-  }
-
-  // The Peer ICE servers to use and connect with
-  if (config.iceServers) {
-    this._iceServers = config.iceServers;
-  }
-
-  Event._mixin(this);
+  /**
+   * The Peer RTCPeerConnection object reference
+   * @attribute _ref
+   * @type RTCPeerConnection
+   * @private
+   */
+  //self._ref = new RTCPeerConnection()
 };
 
-Peer.prototype._doOffer = function () {
-  var self = this;
-  self._connection.createOffer(function (offer) {
-
-  }, function (error) {
-    throw error;
-  });
-};
-
-Peer.prototype._doAnswer = function () {
-
-};
-
-
-Peer.prototype.addStream = function (stream) {
-
-};
-
-Peer.prototype.removeStream = function (streamId) {
-
-};
-
-/**
- * Connects with the Peer and begins and
- * @method _onIceCandidate
- * @param {String} targetMid The Peer ID associated with the ICE
- *   candidate object received.
- * @param {Event} event The event object received in the <code>RTCPeerConnection.
- *   onicecandidate</code> to parse the ICE candidate and determine
- *   if gathering has completed.
- * @trigger candidateGenerationState
- * @private
- * @since 0.1.0
- * @component ICE
- * @for Skylink
- */
-Peer.prototype.connect = function () {
-  var self = this;
-  var peer = new RTCPeerConnection({
-    iceServers: self._iceServers
-  });
-
-
-};
-var Socket = function () {
+var Socket = function (options) {
 
   'use strict';
 
   var self = this;
 
-  // This stream constraints
-  self._constraints = null;
+  if (!options){
+    options = {};
+  }
 
-  // This stream readyState
-  self.readyState = 'constructed';
+  self._signalingServer = options.server || 'signaling.temasys.com.sg';
 
-  // This stream native MediaStream reference
-  self._objectRef = null;
+  self._socketPorts = {
+    'http': options.httpPorts || [80, 3000],
+    'https': options.httpsPorts || [443, 3443]
+  };
 
-  // This stream audio tracks list
-  self._audioTracks = [];
+  self._type = options.type || 'WebSocket'; // Default
 
-  // This stream video tracks list
-  self._videoTracks = [];
+  self._socketTimeout = options.socketTimeout || 20000;
+
+  self._isSecure = options.secure || false;
+
+  self._readyState = 'constructed';
+
+  self._isXDR = false;
+
+  self._signalingServerProtocol = window.location.protocol.substring(0,window.location.protocol.length-1);
+
+  self._socketMessageTimeout = null;
+
+  self._socketMessageQueue = [];
+
+  self.SOCKET_ERROR = {
+    CONNECTION_FAILED: 0,
+    RECONNECTION_FAILED: -1,
+    CONNECTION_ABORTED: -2,
+    RECONNECTION_ABORTED: -3,
+    RECONNECTION_ATTEMPT: -4
+  };
+
+  self.SOCKET_FALLBACK = {
+    NON_FALLBACK: 'nonfallback',
+    FALLBACK_PORT: 'fallbackPortNonSSL',
+    FALLBACK_SSL_PORT: 'fallbackPortSSL',
+    LONG_POLLING: 'fallbackLongPollingNonSSL',
+    LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+  };
+
+  self._currentSignalingServerPort = null;
+
+  self._channelOpen = false;
+
+  self._objectRef = null; // The native socket.io client object
+
+  self._firstConnect = false;
+
+  self._socketOptions = {
+    reconnection: true,
+    reconnectionAttempts: 2,
+    forceNew: true
+  };
 
   // Append events settings in here
-  Event.mixin(self);
+  SkylinkEvent._mixin(self);
 };
+
+Socket.prototype._assignPort = function(){
+
+  var self = this;
+
+  var ports = self._socketPorts[self._signalingServerProtocol];
+
+  var currentPortIndex = ports.indexOf(self._currentSignalingServerPort);
+
+  // First time connecting. Trying first port
+  if (currentPortIndex === -1){
+    console.log('first try',currentPortIndex);
+    self._currentSignalingServerPort = ports[0];
+  }
+  // Trying next port
+  else if (currentPortIndex > -1 && currentPortIndex < ports.length-1){
+    console.log('second try',currentPortIndex);
+    self._currentSignalingServerPort = ports[currentPortIndex+1];
+  }
+  // Reached the last port. Try polling next time
+  else{
+    console.log('last try',currentPortIndex);
+    // Fallback to long polling and restart port index
+    if (self._type === 'WebSocket'){
+      console.log('falling back',currentPortIndex);
+      self._type = 'Polling';
+      self._currentSignalingServerPort = ports[0];
+    }
+    // Long polling already. Keep retrying
+    else if (self._type === 'Polling'){
+      console.log('desperate',currentPortIndex);
+      self._socketOptions.reconnectionAttempts = 4;
+      self._socketOptions.reconectionDelayMax = 1000;
+    }
+
+  }
+
+};
+
+Socket.prototype.connect = function(){
+  var self = this;
+
+  self.disconnect();
+
+  self._assignPort();
+
+  var url = self._signalingServerProtocol + '://' + self._signalingServer + ':' + self._currentSignalingServerPort;
+
+  if (self._type === 'WebSocket') {
+    console.log('setting WebSocket');
+    self._socketOptions.transports = ['websocket'];
+  } else if (self._type === 'Polling') {
+    console.log('setting Polling');
+    self._socketOptions.transports = ['xhr-polling', 'jsonp-polling', 'polling'];
+    // self._socketOptions.transports = ['polling'];
+  }
+
+  console.log(url,self._socketOptions);
+
+  self._objectRef = io.connect(url, self._socketOptions);
+
+  if (!self._firstConnect){
+    self._bindHandlers();
+  }
+
+};
+
+Socket.prototype.disconnect = function(){
+  var self = this;
+
+  if (!self._channelOpen){
+    return;
+  }
+
+  if (self._objectRef){
+    self._objectRef.removeAllListeners('connect');
+    self._objectRef.removeAllListeners('disconnect');
+    self._objectRef.removeAllListeners('reconnect');
+    self._objectRef.removeAllListeners('reconnect_attempt');
+    self._objectRef.removeAllListeners('reconnecting');
+    self._objectRef.removeAllListeners('reconnect_error');
+    self._objectRef.removeAllListeners('reconnect_failed');
+    self._objectRef.removeAllListeners('connect_error');
+    self._objectRef.removeAllListeners('connect_timeout');
+    self._objectRef.removeAllListeners('message');
+    self._channelOpen = false;
+    self._objectRef.disconnect();
+  }
+
+  self._trigger('channelClose');
+
+};
+
+Socket.prototype._bindHandlers = function(){
+
+  var self = this;
+
+  self._firstConnect = false; // No need to bind handlers next time
+
+  // Fired upon connecting
+  self._objectRef.on('connect', function(){
+    self._channelOpen = true;
+    self._readyState = 'connected';
+    self._trigger('connected');
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'error';
+    self._trigger('error',error);
+  });
+
+  // Fired upon a disconnection
+  self._objectRef.on('disconnect', function(){
+    self._channelOpen = false;
+    self._readyState = 'disconnected';
+    self._trigger('disconnected');
+  });
+
+  // Fired upon a successful reconnection
+  self._objectRef.on('reconnect', function(attempt){
+    self._channelOpen = true;
+    self._readyState = 'reconnect';
+    self._trigger('reconnect',attempt);
+  });  
+
+  // Fired upon an attempt to reconnect
+  self._objectRef.on('reconnect_attempt', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_attempt';
+    self._trigger('reconnect_attempt');
+  });  
+
+  // Fired upon an attempt to reconnect
+  // attempt: reconnection attempt count
+  self._objectRef.on('reconnecting', function(attempt){
+    self._readyState = 'reconnecting';
+    self._trigger('reconnecting', attempt);
+  });
+
+  // Fired upon a reconnection attempt error
+  self._objectRef.on('reconnect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_error';
+    self._trigger('reconnect_error', error);
+  });  
+
+  // Fired when couldn't reconnect within reconnectionAttempts
+  self._objectRef.on('reconnect_failed', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_failed';
+    self._trigger('reconnect_failed');
+    self.connect();
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('connect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_error';
+    self._trigger('connect_error', error);
+  });
+
+  // Fired upon a connection timeout
+  self._objectRef.on('connect_timeout', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_timeout';
+    self._trigger('connect_timeout', error);
+  });
+
+  self._objectRef.on('message', function(){
+
+  });  
+
+};
+
 var Stream = function () {
 
   'use strict';
@@ -677,13 +844,17 @@ Util.generateUUID = function () {
   /* jshint ignore:end */
 };
 
-// Helps to polyfill IE's unsupported throw.
-// If supported throw, if not console error
-Util.throwError = function (error) {
-  if (window.webrtcDetectedBrowser === 'IE') {
-    console.error(error);
-    return;
+Util.cloneObject = function (obj) {
+  if (obj === null || typeof obj !== 'object') {
+    return obj;
   }
-  throw error;
+
+  var copy = obj.constructor();
+  for (var attr in obj) {
+    if (obj.hasOwnProperty(attr)) {
+      copy[attr] = obj[attr];
+    }
+  }
+  return copy;
 };
 

@@ -143,4 +143,4 @@ var Debugger = {
   }
 };
 
-Debugger.setLevel(4);
+Debugger.setLevel(1);
