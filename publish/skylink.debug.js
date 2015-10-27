@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 20:00:05 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 20:09:22 GMT+0800 (SGT) */
 
 var DataChannel = function(channel){
 	'use strict';
@@ -423,17 +423,40 @@ Peer.prototype.HANDSHAKE_PROGRESS = {
   ERROR: 'error'
 };
 
+/**
+ * @property READY_STATE
+ * @type JSON
+ * @readOnly
+ * @final
+ */
+Peer.prototype.READY_STATE = {
+  CONSTRUCT: 'construct', // usually never happens
+  CONSTRUCTED: 'constructed',
+  CONNECTING: 'connecting',
+  CONNECTION_ERROR: 'connection-error',
+  CONNECTED: 'connected',
+  DISCONNECTED: 'disconnected'
+};
+
 
 /***************************************************
  = ATTRIBUTES [use @attribute for attributes]
  ***************************************************/
 /**
- * The Peer RTCPeerConnection object reference
+ * The Peer RTCPeerConnection object reference.
  * @attribute _ref
  * @type RTCPeerConnection
  * @private
  */
 Peer.prototype._ref = null;
+
+/**
+ * The Peer connection readyState.
+ * @attribute readyState
+ * @type String
+ * @private
+ */
+Peer.prototype.readyState = 'construct';
 
 /**
  * The Peer RTCPeerConnection connection settings.
@@ -446,6 +469,8 @@ Peer.prototype._ref = null;
  *   passed into RTCPeerConnection <code>.createOffer()</code> and <code>.createAnswer()</code> methods.
  * @param {JSON} RTCConfiguration The RTCConfiguration to be
  *   passed when constructing a new RTCPeerConnection object.
+ * @param {JSON} ICESettings The configuration to configure the list of ICE servers to be
+ *   passed into the RTCPeerConnection RTCConfiguration <code>.iceServers</code>.
  * @type JSON
  * @private
  */
@@ -465,6 +490,17 @@ Peer.prototype._connectionSettings = {
     //peerIdentity: null,
     //certificates: [],
     //iceCandidatePoolSize: 0
+  },
+  ICESettings: {
+    turn: {
+      enabled: true,
+      useSSLProtocol: false,
+      useSSLPort: false
+    },
+    stun: {
+      enabled: true,
+      usePublic: true
+    },
   }
 };
 
@@ -496,9 +532,66 @@ Peer.prototype._remoteStreams = {};
 Peer.prototype._dataChannels = {};
 
 
-/*Peer.prototype._construct = function () {
+/**
+ * Constructs the RTCPeerConnection object and listens the RTCPeerConnection events.
+ * @method _construct
+ * @private
+ */
+Peer.prototype._construct = function () {
+  var self = this;
+  // ICEParser.configure(ICE, self._connectionSettings.ICESettings);
+  self._ref = new RTCPeerConnection(self._connectionSettings.RTCConfiguration);
 
-};*/
+  //self._ref.onnegotiationneeded = function () {};
+
+  self._ref.ondatachannel = function(event) {
+    var channel = event.channel || event;
+    log.debug('Received datachannel', channel);
+
+    self._dataChannels[channel.label] = channel;
+  };
+
+  self._ref.onaddstream = function(event) {
+    var stream = event.stream || event;
+    log.debug('Received remote stream', stream);
+
+    self._remoteStreams[stream.id || stream.label] = stream;
+  };
+
+  self._ref.onicecandidate = function(event) {
+    var candidate = event.candidate || event;
+    log.debug('Generated ICE candidate', candidate);
+
+    if (candidate.candidate === null || !candidate.candidate) {
+      log.debug('Generation of ICE candidate has been completed');
+      return;
+    }
+
+    /*send({
+      target: self.id,
+      type: 'candidate',
+      label: candidate.sdpMLineIndex,
+      candidate: candidate.candidate,
+      id: candidate.sdpMid
+    });*/
+  };
+
+  self._ref.oniceconnectionstatechange = function(event) {
+    log.debug('ICE connection state change', self._ref.iceConnectionState);
+  };
+
+  self._ref.onremovestream = function (event) {
+    log.debug('Remote stream removed', event);
+  };
+
+  self._ref.onsignalingstatechange = function() {
+    log.debug('Signaling state change', self._ref.signalingState);
+  };
+
+  self._ref.onicegatheringstatechange = function() {
+    log.debug('ICE gathering state change', self._ref.iceGatheringState);
+  };
+};
 var Socket = function (options) {
 
   'use strict';
