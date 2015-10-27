@@ -92,11 +92,86 @@ var Peer = function (socketRef, config) {
    */
   self._iceServers = config.iceServers;
 
-  /**
-   * The Peer RTCPeerConnection object reference
-   * @attribute _ref
-   * @type RTCPeerConnection
-   * @private
-   */
-  //self._ref = new RTCPeerConnection()
+  // Initialise the RTCPeerConnection object to wait for ready connection
 };
+
+/***************************************************
+ = CONSTANTS [use @property for constants]
+ ***************************************************/
+/**
+ * @property ICE_CONNECTION_STATE
+ * @type JSON
+ * @readOnly
+ * @final
+ */
+Peer.prototype.ICE_CONNECTION_STATE = {
+  STARTING: 'starting',
+  CHECKING: 'checking',
+  CONNECTED: 'connected',
+  COMPLETED: 'completed',
+  CLOSED: 'closed',
+  FAILED: 'failed',
+  TRICKLE_FAILED: 'trickleFailed',
+  DISCONNECTED: 'disconnected'
+};
+
+/**
+ * @property CANDIDATE_GENERATION_STATE
+ * @type JSON
+ * @readOnly
+ * @final
+ */
+Peer.prototype.CANDIDATE_GENERATION_STATE = {
+  NEW: 'new',
+  GATHERING: 'gathering',
+  COMPLETED: 'completed'
+};
+
+/**
+ * @property PEER_CONNECTION_STATE
+ * @type JSON
+ * @readOnly
+ * @final
+ */
+Peer.prototype.PEER_CONNECTION_STATE = {
+  STABLE: 'stable',
+  HAVE_LOCAL_OFFER: 'have-local-offer',
+  HAVE_REMOTE_OFFER: 'have-remote-offer',
+  CLOSED: 'closed'
+};
+
+/**
+ * @property HANDSHAKE_PROGRESS
+ * @type JSON
+ * @readOnly
+ * @final
+ */
+Peer.prototype.HANDSHAKE_PROGRESS = {
+  ENTER: 'enter',
+  WELCOME: 'welcome',
+  OFFER: 'offer',
+  ANSWER: 'answer',
+  ERROR: 'error'
+};
+
+
+/**
+ * The Peer RTCPeerConnection object reference
+ * @attribute _ref
+ * @type RTCPeerConnection
+ * @private
+ */
+/*Peer.prototype._ref = null;
+
+/**
+ * The Peer RTCPeerConnection object reference
+ * @attribute _ref
+ * @type RTCPeerConnection
+ * @private
+ */
+//Peer.prototype._connectionSettings = null;
+
+
+/*Peer.prototype._construct = function () {
+
+};*/

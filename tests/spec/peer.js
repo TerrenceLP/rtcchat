@@ -1,3 +1,12 @@
+before(function (done) {
+  var checker = setInterval(function () {
+    if (typeof window.Peer === 'function') {
+      clearInterval(checker);
+      done();
+    }
+  }, 1);
+});
+
 /**
  * Constructor test
  */
@@ -50,6 +59,114 @@ describe('- constructor', function () {
 
   });
 
+});
+
+/**
+ * Constants test
+ */
+describe('- constants', function () {
+  // globals used by test
+  var peer = null;
+
+  before(function (done) {
+    peer = new Peer(null, {
+      id: generateUUID(),
+      iceServers: [],
+      agent: {},
+      room: 'test-room'
+    });
+    console.info(peer);
+    done();
+  });
+
+  describe('#ICE_CONNECTION_STATE', function () {
+    var properties = ['STARTING', 'CHECKING', 'CONNECTED', 'COMPLETED', 'CLOSED', 'FAILED', 'TRICKLE_FAILED', 'DISCONNECTED'];
+
+    it('is typeof "object"', function(done) {
+      expect(typeof peer.ICE_CONNECTION_STATE).to.equal('object');
+      done();
+    });
+
+    for (var i = 0; i < properties.length; i++) {
+      var prop = properties[i];
+      describe('#' + prop, function () {
+        it('is an existing property', function(done) {
+          expect(peer.ICE_CONNECTION_STATE).to.have.ownProperty(prop);
+          done();
+        });
+        it('is typeof "string"', function (done) {
+          assert.typeOf(peer.ICE_CONNECTION_STATE[prop], 'string');
+          done();
+        });
+      });
+    }
+  });
+
+  describe('#CANDIDATE_GENERATION_STATE', function () {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer.CANDIDATE_GENERATION_STATE).to.equal('object');
+      done();
+    });
+
+    var properties = ['NEW', 'GATHERING', 'COMPLETED'];
+    for (var i = 0; i < properties.length; i++) {
+      var prop = properties[i];
+      describe('#' + prop, function () {
+        it('is an existing property', function(done) {
+          expect(peer.CANDIDATE_GENERATION_STATE).to.have.ownProperty(prop);
+          done();
+        });
+        it('is typeof "string"', function (done) {
+          assert.typeOf(peer.CANDIDATE_GENERATION_STATE[prop], 'string');
+          done();
+        });
+      });
+    }
+  });
+
+  describe('#PEER_CONNECTION_STATE', function () {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer.PEER_CONNECTION_STATE).to.equal('object');
+      done();
+    });
+
+    var properties = ['STABLE', 'HAVE_LOCAL_OFFER', 'HAVE_REMOTE_OFFER', 'CLOSED'];
+    for (var i = 0; i < properties.length; i++) {
+      var prop = properties[i];
+      describe('#' + prop, function () {
+        it('is an existing property', function(done) {
+          expect(peer.PEER_CONNECTION_STATE).to.have.ownProperty(prop);
+          done();
+        });
+        it('is typeof "string"', function (done) {
+          assert.typeOf(peer.PEER_CONNECTION_STATE[prop], 'string');
+          done();
+        });
+      });
+    }
+  });
+
+  describe('#HANDSHAKE_PROGRESS', function () {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer.HANDSHAKE_PROGRESS).to.equal('object');
+      done();
+    });
+
+    var properties = ['ENTER', 'WELCOME', 'OFFER', 'ANSWER', 'ERROR'];
+    for (var i = 0; i < properties.length; i++) {
+      var prop = properties[i];
+      describe('#' + prop, function () {
+        it('is an existing property', function(done) {
+          expect(peer.HANDSHAKE_PROGRESS).to.have.ownProperty(prop);
+          done();
+        });
+        it('is typeof "string"', function (done) {
+          assert.typeOf(peer.HANDSHAKE_PROGRESS[prop], 'string');
+          done();
+        });
+      });
+    }
+  });
 });
 
 /**
