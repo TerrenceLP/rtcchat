@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 19:42:28 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 20:00:05 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -8311,7 +8311,7 @@ if (navigator.mozGetUserMedia) {
     };
   }
 })();
-/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 19:42:28 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Tue Oct 27 2015 20:00:05 GMT+0800 (SGT) */
 
 var DataChannel = function(channel){
 	'use strict';
@@ -8671,6 +8671,9 @@ var Peer = function (socketRef, config) {
    */
   self._iceServers = config.iceServers;
 
+  // Event hook to object for triggering
+  SkylinkEvent._mixin(self);
+
   // Initialise the RTCPeerConnection object to wait for ready connection
 };
 
@@ -8734,21 +8737,76 @@ Peer.prototype.HANDSHAKE_PROGRESS = {
 };
 
 
+/***************************************************
+ = ATTRIBUTES [use @attribute for attributes]
+ ***************************************************/
 /**
  * The Peer RTCPeerConnection object reference
  * @attribute _ref
  * @type RTCPeerConnection
  * @private
  */
-/*Peer.prototype._ref = null;
+Peer.prototype._ref = null;
 
 /**
- * The Peer RTCPeerConnection object reference
- * @attribute _ref
- * @type RTCPeerConnection
+ * The Peer RTCPeerConnection connection settings.
+ * @attribute _connectionSettings
+ * @param {Boolean} [trickleICE=true] The flag that indicates if RTCPeerConnection
+ *   should trickle ICE.
+ * @parma {Boolean} [dataChannel=true] The flag that indicates if RTCPeerConnection
+ *   should have any DataChannel connections.
+ * @param {JSON} RTCOfferOptions The RTCOfferOptions / RTCAnswerOptions to be
+ *   passed into RTCPeerConnection <code>.createOffer()</code> and <code>.createAnswer()</code> methods.
+ * @param {JSON} RTCConfiguration The RTCConfiguration to be
+ *   passed when constructing a new RTCPeerConnection object.
+ * @type JSON
  * @private
  */
-//Peer.prototype._connectionSettings = null;
+Peer.prototype._connectionSettings = {
+  trickleICE: true,
+  dataChannel: true,
+  RTCOfferOptions: {
+    iceRestart: true,
+    offerToReceiveAudio: true,
+    offerToReceiveVideo: true,
+    voiceActivityDetection: true
+  },
+  RTCConfiguration: {
+    iceServers: []
+    //bundlePolicy: 'balanced',
+    //iceTransportPolicy: 'all',
+    //peerIdentity: null,
+    //certificates: [],
+    //iceCandidatePoolSize: 0
+  }
+};
+
+/**
+ * The list of streams that the Peer is receiving.
+ * @attribute _localStreams
+ * @param {Stream} (#streamId) The Stream object sent to Peer.
+ * @type JSON
+ * @private
+ */
+Peer.prototype._localStreams = {};
+
+/**
+ * The list of streams that the Peer is sending.
+ * @attribute _remoteStreams
+ * @param {Stream} (#streamId) The Stream object received from Peer.
+ * @type JSON
+ * @private
+ */
+Peer.prototype._remoteStreams = {};
+
+/**
+ * The list of DataChannel connections with the Peer.
+ * @attribute _remoteStreams
+ * @param {DataChannek} (#channelId) The DataChannel connection object.
+ * @type JSON
+ * @private
+ */
+Peer.prototype._dataChannels = {};
 
 
 /*Peer.prototype._construct = function () {

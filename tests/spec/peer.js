@@ -167,6 +167,13 @@ describe('- constants', function () {
       });
     }
   });
+
+  describe('#READY_STATE', function () {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer.READY_STATE).to.equal('object');
+      done();
+    });
+  });
 });
 
 /**
@@ -270,6 +277,139 @@ describe('- attributes', function () {
     });
     it('matches given iceServers', function(done) {
       expect(peer._iceServers).to.equal(config.iceServers)
+      done();
+    });
+  });
+
+  describe.skip('#_ref', function () {});
+
+  describe('#_connectionSettings', function () {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer._connectionSettings).to.equal('object');
+      done();
+    });
+
+    describe('#trickleICE', function() {
+      it('is typeof "boolean"', function(done) {
+        assert.typeOf(peer._connectionSettings.trickleICE, 'boolean');
+        done();
+      });
+      it('defaults to true', function(done) {
+        expect(peer._connectionSettings.trickleICE).to.equal(true);
+        done();
+      });
+    });
+
+    describe('#trickleICE', function() {
+      it('is typeof "boolean"', function(done) {
+        assert.typeOf(peer._connectionSettings.trickleICE, 'boolean');
+        done();
+      });
+      it('defaults to true', function(done) {
+        expect(peer._connectionSettings.trickleICE).to.equal(true);
+        done();
+      });
+    });
+
+    describe('#dataChannel', function() {
+      it('is typeof "boolean"', function(done) {
+        assert.typeOf(peer._connectionSettings.dataChannel, 'boolean');
+        done();
+      });
+      it('defaults to true', function(done) {
+        expect(peer._connectionSettings.dataChannel).to.equal(true);
+        done();
+      });
+    });
+
+    describe('#RTCOfferOptions', function() {
+      it('is typeof "object"', function(done) {
+        expect(typeof peer._connectionSettings.RTCOfferOptions).to.equal('object');
+        done();
+      });
+
+      describe('#iceRestart', function() {
+        it('is typeof "boolean"', function(done) {
+          assert.typeOf(peer._connectionSettings.RTCOfferOptions.iceRestart, 'boolean');
+          done();
+        });
+        it('defaults to true', function(done) {
+          expect(peer._connectionSettings.RTCOfferOptions.iceRestart).to.equal(true);
+          done();
+        });
+      });
+
+      describe('#offerToReceiveAudio', function() {
+        it('is typeof "boolean"', function(done) {
+          assert.typeOf(peer._connectionSettings.RTCOfferOptions.offerToReceiveAudio, 'boolean');
+          done();
+        });
+        it('defaults to true', function(done) {
+          expect(peer._connectionSettings.RTCOfferOptions.offerToReceiveAudio).to.equal(true);
+          done();
+        });
+      });
+
+      describe('#offerToReceiveVideo', function() {
+        it('is typeof "boolean"', function(done) {
+          assert.typeOf(peer._connectionSettings.RTCOfferOptions.offerToReceiveVideo, 'boolean');
+          done();
+        });
+        it('defaults to true', function(done) {
+          expect(peer._connectionSettings.RTCOfferOptions.offerToReceiveVideo).to.equal(true);
+          done();
+        });
+      });
+
+      describe('#voiceActivityDetection', function() {
+        it('is typeof "boolean"', function(done) {
+          assert.typeOf(peer._connectionSettings.RTCOfferOptions.voiceActivityDetection, 'boolean');
+          done();
+        });
+        it('defaults to true', function(done) {
+          expect(peer._connectionSettings.RTCOfferOptions.voiceActivityDetection).to.equal(true);
+          done();
+        });
+      });
+
+    });
+
+    describe('#RTCConfiguration', function() {
+      it('is typeof "object"', function(done) {
+        expect(typeof peer._connectionSettings.RTCConfiguration).to.equal('object');
+        done();
+      });
+
+      describe('#iceServers', function() {
+        it('is typeof "object"', function(done) {
+          expect(typeof peer._connectionSettings.RTCConfiguration.iceServers).to.equal('object');
+          done();
+        });
+        it('is Array', function(done) {
+          assert.isArray(peer._connectionSettings.RTCConfiguration.iceServers);
+          done();
+        });
+      });
+    });
+  });
+
+  describe('#_localStreams', function() {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer._localStreams).to.equal('object');
+      done();
+    });
+  });
+
+  describe('#_remoteStreams', function() {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer._remoteStreams).to.equal('object');
+      done();
+    });
+  });
+
+  describe('#_dataChannels', function() {
+    it('is typeof "object"', function(done) {
+      expect(typeof peer._dataChannels).to.equal('object');
       done();
     });
   });
