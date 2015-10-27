@@ -1,0 +1,30 @@
+<h1>DataChannel Demo</h1>
+<p>Classes: <code>DataChannel</code>
+</p>
+
+<div class="col-md-8">
+  <div class="panel panel-default">
+    <div class="panel-body">
+      <h4>Example 1:</h4>
+      <p>Send a message through P2P channel</p>
+      <pre>
+          var msg = 'testing';
+          var dc = new DataChannel(pc.createDataChannel('test'));
+          dc.send(msg);
+      </pre>
+
+      <div class="input-group">
+        <span class="input-group-addon">PeerID</span>
+        <input id="type" type="text" class="form-control">
+      </div>
+
+      <div class="input-group">
+        <span class="input-group-addon">Message</span>
+        <input id="type" type="text" class="form-control" value="testing">
+      </div>
+
+      <button onclick="send()">Send</button>
+
+    </div>
+  </div>
+</div>

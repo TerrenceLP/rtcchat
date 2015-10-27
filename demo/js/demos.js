@@ -14,5 +14,9 @@ var demos = [
   {
     text: 'Peer',
     dir: 'demo/templates/Classes/Peer/'
+  },
+  {
+    text: 'DataChannel',
+    dir: 'demo/templates/Classes/DataChannel/'
   }
 ];

@@ -24,7 +24,7 @@ DataChannel.prototype.disconnect = function(){
 DataChannel.prototype.send = function(file){
 	var self = this;
 	self._objectRef.send(file);
-}
+};
 
 DataChannel.prototype._bindHandlers = function(){
 	var self = this;
@@ -60,4 +60,4 @@ DataChannel.prototype._bindHandlers = function(){
 		throw 'The WebRTC DataChannel is not open. Can not bind handlers';
 	}
 
-}
+};
