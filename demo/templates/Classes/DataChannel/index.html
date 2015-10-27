@@ -5,7 +5,7 @@
 <div class="col-md-8">
   <div class="panel panel-default">
     <div class="panel-body">
-      <h4>Example 1:</h4>
+      <h4>This ad-hoc demo creates a very basic data channel between two elements on the same page</h4>
       <p>Send a message through P2P channel</p>
       <pre>
           var msg = 'testing';
@@ -13,17 +13,27 @@
           dc.send(msg);
       </pre>
 
-      <div class="input-group">
-        <span class="input-group-addon">PeerID</span>
-        <input id="type" type="text" class="form-control">
+      <div class="controlbox">
+        <button id="connectButton" name="connectButton" class="buttonleft">
+          Connect
+        </button>
+        <button id="disconnectButton" name="disconnectButton" class="buttonright" disabled>
+          Disconnect
+        </button>
       </div>
-
-      <div class="input-group">
-        <span class="input-group-addon">Message</span>
-        <input id="type" type="text" class="form-control" value="testing">
+      
+      <div class="messagebox">
+        <label for="message">Enter a message:
+          <input type="text" name="message" id="message" placeholder="Message text" 
+                  inputmode="latin" size=60 maxlength=120 disabled>
+        </label>
+        <button id="sendButton" name="sendButton" class="buttonright" disabled>
+          Send
+        </button>
       </div>
-
-      <button onclick="send()">Send</button>
+      <div class="messagebox" id="receivebox">
+        <p>Messages received:</p>
+      </div>
 
     </div>
   </div>
