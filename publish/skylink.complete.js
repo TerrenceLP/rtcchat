@@ -1,4 +1,4 @@
-/*! skylinkjs - v1.0.0 - Fri Oct 09 2015 17:21:54 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Wed Oct 28 2015 18:16:20 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -93,7 +93,7 @@ exports.connect = lookup;
 exports.Manager = _dereq_('./manager');
 exports.Socket = _dereq_('./socket');
 
-},{"./manager":3,"./socket":5,"./url":6,"debug":10,"socket.io-parser":46}],3:[function(_dereq_,module,exports){
+},{"./manager":3,"./socket":5,"./url":6,"debug":10,"socket.io-parser":44}],3:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -598,7 +598,7 @@ Manager.prototype.onreconnect = function(){
   this.emitAll('reconnect', attempt);
 };
 
-},{"./on":4,"./socket":5,"./url":6,"backo2":7,"component-bind":8,"component-emitter":9,"debug":10,"engine.io-client":11,"indexof":42,"object-component":43,"socket.io-parser":46}],4:[function(_dereq_,module,exports){
+},{"./on":4,"./socket":5,"./url":6,"backo2":7,"component-bind":8,"component-emitter":9,"debug":10,"engine.io-client":11,"indexof":40,"object-component":41,"socket.io-parser":44}],4:[function(_dereq_,module,exports){
 
 /**
  * Module exports.
@@ -1011,7 +1011,7 @@ Socket.prototype.disconnect = function(){
   return this;
 };
 
-},{"./on":4,"component-bind":8,"component-emitter":9,"debug":10,"has-binary":38,"socket.io-parser":46,"to-array":50}],6:[function(_dereq_,module,exports){
+},{"./on":4,"component-bind":8,"component-emitter":9,"debug":10,"has-binary":36,"socket.io-parser":44,"to-array":48}],6:[function(_dereq_,module,exports){
 (function (global){
 
 /**
@@ -1088,7 +1088,7 @@ function url(uri, loc){
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"debug":10,"parseuri":44}],7:[function(_dereq_,module,exports){
+},{"debug":10,"parseuri":42}],7:[function(_dereq_,module,exports){
 
 /**
  * Expose `Backoff`.
@@ -2230,7 +2230,7 @@ Socket.prototype.filterUpgrades = function (upgrades) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./transport":14,"./transports":15,"component-emitter":9,"debug":22,"engine.io-parser":25,"indexof":42,"parsejson":34,"parseqs":35,"parseuri":36}],14:[function(_dereq_,module,exports){
+},{"./transport":14,"./transports":15,"component-emitter":9,"debug":22,"engine.io-parser":25,"indexof":40,"parsejson":32,"parseqs":33,"parseuri":34}],14:[function(_dereq_,module,exports){
 /**
  * Module dependencies.
  */
@@ -3320,7 +3320,7 @@ Polling.prototype.uri = function(){
   return schema + '://' + this.hostname + port + this.path + query;
 };
 
-},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":35,"xmlhttprequest":20}],19:[function(_dereq_,module,exports){
+},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":33,"xmlhttprequest":20}],19:[function(_dereq_,module,exports){
 /**
  * Module dependencies.
  */
@@ -3560,7 +3560,7 @@ WS.prototype.check = function(){
   return !!WebSocket && !('__initialize' in WebSocket && this.name === WS.prototype.name);
 };
 
-},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":35,"ws":37}],20:[function(_dereq_,module,exports){
+},{"../transport":14,"component-inherit":21,"debug":22,"engine.io-parser":25,"parseqs":33,"ws":35}],20:[function(_dereq_,module,exports){
 // browser shim for xmlhttprequest module
 var hasCORS = _dereq_('has-cors');
 
@@ -3598,7 +3598,7 @@ module.exports = function(opts) {
   }
 }
 
-},{"has-cors":40}],21:[function(_dereq_,module,exports){
+},{"has-cors":38}],21:[function(_dereq_,module,exports){
 
 module.exports = function(a, b){
   var fn = function(){};
@@ -3689,7 +3689,7 @@ function formatArgs() {
   var index = 0;
   var lastC = 0;
   args[0].replace(/%[a-z%]/g, function(match) {
-    if ('%' === match) return;
+    if ('%%' === match) return;
     index++;
     if ('%c' === match) {
       // we only are interested in the *last* %c
@@ -3854,7 +3854,7 @@ function debug(namespace) {
     var index = 0;
     args[0] = args[0].replace(/%([a-z%])/g, function(match, format) {
       // if we encounter an escaped % then don't increase the array index
-      if (match === '%') return match;
+      if (match === '%%') return match;
       index++;
       var formatter = exports.formatters[format];
       if ('function' === typeof formatter) {
@@ -4665,7 +4665,7 @@ exports.decodePayloadAsBinary = function (data, binaryType, callback) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./keys":26,"after":27,"arraybuffer.slice":28,"base64-arraybuffer":29,"blob":30,"has-binary":31,"utf8":33}],26:[function(_dereq_,module,exports){
+},{"./keys":26,"after":27,"arraybuffer.slice":28,"base64-arraybuffer":29,"blob":30,"has-binary":36,"utf8":31}],26:[function(_dereq_,module,exports){
 
 /**
  * Gets the keys for an object.
@@ -4825,8 +4825,22 @@ var BlobBuilder = global.BlobBuilder
 
 var blobSupported = (function() {
   try {
-    var b = new Blob(['hi']);
-    return b.size == 2;
+    var a = new Blob(['hi']);
+    return a.size === 2;
+  } catch(e) {
+    return false;
+  }
+})();
+
+/**
+ * Check if Blob constructor supports ArrayBufferViews
+ * Fails in Safari 6, so we need to map to ArrayBuffers there.
+ */
+
+var blobSupportsArrayBufferView = blobSupported && (function() {
+  try {
+    var b = new Blob([new Uint8Array([1,2])]);
+    return b.size === 2;
   } catch(e) {
     return false;
   }
@@ -4840,19 +4854,52 @@ var blobBuilderSupported = BlobBuilder
   && BlobBuilder.prototype.append
   && BlobBuilder.prototype.getBlob;
 
+/**
+ * Helper function that maps ArrayBufferViews to ArrayBuffers
+ * Used by BlobBuilder constructor and old browsers that didn't
+ * support it in the Blob constructor.
+ */
+
+function mapArrayBufferViews(ary) {
+  for (var i = 0; i < ary.length; i++) {
+    var chunk = ary[i];
+    if (chunk.buffer instanceof ArrayBuffer) {
+      var buf = chunk.buffer;
+
+      // if this is a subarray, make a copy so we only
+      // include the subarray region from the underlying buffer
+      if (chunk.byteLength !== buf.byteLength) {
+        var copy = new Uint8Array(chunk.byteLength);
+        copy.set(new Uint8Array(buf, chunk.byteOffset, chunk.byteLength));
+        buf = copy.buffer;
+      }
+
+      ary[i] = buf;
+    }
+  }
+}
+
 function BlobBuilderConstructor(ary, options) {
   options = options || {};
 
   var bb = new BlobBuilder();
+  mapArrayBufferViews(ary);
+
   for (var i = 0; i < ary.length; i++) {
     bb.append(ary[i]);
   }
+
   return (options.type) ? bb.getBlob(options.type) : bb.getBlob();
+};
+
+function BlobConstructor(ary, options) {
+  mapArrayBufferViews(ary);
+  return new Blob(ary, options || {});
 };
 
 module.exports = (function() {
   if (blobSupported) {
-    return global.Blob;
+    return blobSupportsArrayBufferView ? global.Blob : BlobConstructor;
   } else if (blobBuilderSupported) {
     return BlobBuilderConstructor;
   } else {
@@ -4863,74 +4910,7 @@ module.exports = (function() {
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],31:[function(_dereq_,module,exports){
 (function (global){
-
-/*
- * Module requirements.
- */
-
-var isArray = _dereq_('isarray');
-
-/**
- * Module exports.
- */
-
-module.exports = hasBinary;
-
-/**
- * Checks for binary data.
- *
- * Right now only Buffer and ArrayBuffer are supported..
- *
- * @param {Object} anything
- * @api public
- */
-
-function hasBinary(data) {
-
-  function _hasBinary(obj) {
-    if (!obj) return false;
-
-    if ( (global.Buffer && global.Buffer.isBuffer(obj)) ||
-         (global.ArrayBuffer && obj instanceof ArrayBuffer) ||
-         (global.Blob && obj instanceof Blob) ||
-         (global.File && obj instanceof File)
-        ) {
-      return true;
-    }
-
-    if (isArray(obj)) {
-      for (var i = 0; i < obj.length; i++) {
-          if (_hasBinary(obj[i])) {
-              return true;
-          }
-      }
-    } else if (obj && 'object' == typeof obj) {
-      if (obj.toJSON) {
-        obj = obj.toJSON();
-      }
-
-      for (var key in obj) {
-        if (obj.hasOwnProperty(key) && _hasBinary(obj[key])) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  return _hasBinary(data);
-}
-
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"isarray":32}],32:[function(_dereq_,module,exports){
-module.exports = Array.isArray || function (arr) {
-  return Object.prototype.toString.call(arr) == '[object Array]';
-};
-
-},{}],33:[function(_dereq_,module,exports){
-(function (global){
-/*! http://mths.be/utf8js v2.0.0 by @mathias */
+/*! https://mths.be/utf8js v2.0.0 by @mathias */
 ;(function(root) {
 
 	// Detect free variables `exports`
@@ -4951,7 +4931,7 @@ module.exports = Array.isArray || function (arr) {
 
 	var stringFromCharCode = String.fromCharCode;
 
-	// Taken from http://mths.be/punycode
+	// Taken from https://mths.be/punycode
 	function ucs2decode(string) {
 		var output = [];
 		var counter = 0;
@@ -4978,7 +4958,7 @@ module.exports = Array.isArray || function (arr) {
 		return output;
 	}
 
-	// Taken from http://mths.be/punycode
+	// Taken from https://mths.be/punycode
 	function ucs2encode(array) {
 		var length = array.length;
 		var index = -1;
@@ -4996,6 +4976,14 @@ module.exports = Array.isArray || function (arr) {
 		return output;
 	}
 
+	function checkScalarValue(codePoint) {
+		if (codePoint >= 0xD800 && codePoint <= 0xDFFF) {
+			throw Error(
+				'Lone surrogate U+' + codePoint.toString(16).toUpperCase() +
+				' is not a scalar value'
+			);
+		}
+	}
 	/*--------------------------------------------------------------------------*/
 
 	function createByte(codePoint, shift) {
@@ -5011,6 +4999,7 @@ module.exports = Array.isArray || function (arr) {
 			symbol = stringFromCharCode(((codePoint >> 6) & 0x1F) | 0xC0);
 		}
 		else if ((codePoint & 0xFFFF0000) == 0) { // 3-byte sequence
+			checkScalarValue(codePoint);
 			symbol = stringFromCharCode(((codePoint >> 12) & 0x0F) | 0xE0);
 			symbol += createByte(codePoint, 6);
 		}
@@ -5025,11 +5014,6 @@ module.exports = Array.isArray || function (arr) {
 
 	function utf8encode(string) {
 		var codePoints = ucs2decode(string);
-
-		// console.log(JSON.stringify(codePoints.map(function(x) {
-		// 	return 'U+' + x.toString(16).toUpperCase();
-		// })));
-
 		var length = codePoints.length;
 		var index = -1;
 		var codePoint;
@@ -5100,6 +5084,7 @@ module.exports = Array.isArray || function (arr) {
 			byte3 = readContinuationByte();
 			codePoint = ((byte1 & 0x0F) << 12) | (byte2 << 6) | byte3;
 			if (codePoint >= 0x0800) {
+				checkScalarValue(codePoint);
 				return codePoint;
 			} else {
 				throw Error('Invalid continuation byte');
@@ -5171,7 +5156,7 @@ module.exports = Array.isArray || function (arr) {
 }(this));
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],34:[function(_dereq_,module,exports){
+},{}],32:[function(_dereq_,module,exports){
 (function (global){
 /**
  * JSON parse.
@@ -5206,7 +5191,7 @@ module.exports = function parsejson(data) {
   }
 };
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],35:[function(_dereq_,module,exports){
+},{}],33:[function(_dereq_,module,exports){
 /**
  * Compiles a querystring
  * Returns string representation of the object
@@ -5245,7 +5230,7 @@ exports.decode = function(qs){
   return qry;
 };
 
-},{}],36:[function(_dereq_,module,exports){
+},{}],34:[function(_dereq_,module,exports){
 /**
  * Parses an URI
  *
@@ -5286,7 +5271,7 @@ module.exports = function parseuri(str) {
     return uri;
 };
 
-},{}],37:[function(_dereq_,module,exports){
+},{}],35:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -5331,7 +5316,7 @@ function ws(uri, protocols, opts) {
 
 if (WebSocket) ws.prototype = WebSocket.prototype;
 
-},{}],38:[function(_dereq_,module,exports){
+},{}],36:[function(_dereq_,module,exports){
 (function (global){
 
 /*
@@ -5393,9 +5378,12 @@ function hasBinary(data) {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"isarray":39}],39:[function(_dereq_,module,exports){
-module.exports=_dereq_(32)
-},{}],40:[function(_dereq_,module,exports){
+},{"isarray":37}],37:[function(_dereq_,module,exports){
+module.exports = Array.isArray || function (arr) {
+  return Object.prototype.toString.call(arr) == '[object Array]';
+};
+
+},{}],38:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -5420,7 +5408,7 @@ try {
   module.exports = false;
 }
 
-},{"global":41}],41:[function(_dereq_,module,exports){
+},{"global":39}],39:[function(_dereq_,module,exports){
 
 /**
  * Returns `this`. Execute this without a "context" (i.e. without it being
@@ -5430,7 +5418,7 @@ try {
 
 module.exports = (function () { return this; })();
 
-},{}],42:[function(_dereq_,module,exports){
+},{}],40:[function(_dereq_,module,exports){
 
 var indexOf = [].indexOf;
 
@@ -5441,7 +5429,7 @@ module.exports = function(arr, obj){
   }
   return -1;
 };
-},{}],43:[function(_dereq_,module,exports){
+},{}],41:[function(_dereq_,module,exports){
 
 /**
  * HOP ref.
@@ -5526,7 +5514,7 @@ exports.length = function(obj){
 exports.isEmpty = function(obj){
   return 0 == exports.length(obj);
 };
-},{}],44:[function(_dereq_,module,exports){
+},{}],42:[function(_dereq_,module,exports){
 /**
  * Parses an URI
  *
@@ -5553,7 +5541,7 @@ module.exports = function parseuri(str) {
   return uri;
 };
 
-},{}],45:[function(_dereq_,module,exports){
+},{}],43:[function(_dereq_,module,exports){
 (function (global){
 /*global Blob,File*/
 
@@ -5698,7 +5686,7 @@ exports.removeBlobs = function(data, callback) {
 };
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./is-buffer":47,"isarray":48}],46:[function(_dereq_,module,exports){
+},{"./is-buffer":45,"isarray":46}],44:[function(_dereq_,module,exports){
 
 /**
  * Module dependencies.
@@ -6100,7 +6088,7 @@ function error(data){
   };
 }
 
-},{"./binary":45,"./is-buffer":47,"component-emitter":9,"debug":10,"isarray":48,"json3":49}],47:[function(_dereq_,module,exports){
+},{"./binary":43,"./is-buffer":45,"component-emitter":9,"debug":10,"isarray":46,"json3":47}],45:[function(_dereq_,module,exports){
 (function (global){
 
 module.exports = isBuf;
@@ -6117,9 +6105,9 @@ function isBuf(obj) {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],48:[function(_dereq_,module,exports){
-module.exports=_dereq_(32)
-},{}],49:[function(_dereq_,module,exports){
+},{}],46:[function(_dereq_,module,exports){
+module.exports=_dereq_(37)
+},{}],47:[function(_dereq_,module,exports){
 /*! JSON v3.2.6 | http://bestiejs.github.io/json3 | Copyright 2012-2013, Kit Cambridge | http://kit.mit-license.org */
 ;(function (window) {
   // Convenience aliases.
@@ -6982,7 +6970,7 @@ module.exports=_dereq_(32)
   }
 }(this));
 
-},{}],50:[function(_dereq_,module,exports){
+},{}],48:[function(_dereq_,module,exports){
 module.exports = toArray
 
 function toArray(list, index) {
@@ -7001,7 +6989,7 @@ function toArray(list, index) {
 (1)
 });
 
-/*! adapterjs - v0.11.0 - 2015-06-08 */
+/*! adapterjs - v0.11.1 - 2015-07-28 */
 
 // Adapter's interface.
 var AdapterJS = AdapterJS || {};
@@ -7020,7 +7008,7 @@ AdapterJS.options = AdapterJS.options || {};
 // AdapterJS.options.hidePluginInstallPrompt = true;
 
 // AdapterJS version
-AdapterJS.VERSION = '0.11.0';
+AdapterJS.VERSION = '0.11.1';
 
 // This function will be called when the WebRTC API is ready to be used
 // Whether it is the native implementation (Chrome, Firefox, Opera) or
@@ -7343,9 +7331,21 @@ AdapterJS.renderNotificationBar = function (text, buttonText, buttonLink, openNe
       try {
         event.cancelBubble = true;
       } catch(error) { }
-    });
-  }
-  else {
+
+        var pluginInstallInterval = setInterval(function(){
+            if(! isIE) {
+              navigator.plugins.refresh(false);
+            }
+            AdapterJS.WebRTCPlugin.isPluginInstalled(
+              AdapterJS.WebRTCPlugin.pluginInfo.prefix,
+              AdapterJS.WebRTCPlugin.pluginInfo.plugName,
+              AdapterJS.WebRTCPlugin.defineWebRTCInterface,
+              function() { //Does nothing because not used here
+              });
+          } , 500);
+    });   
+
+  }else {
     c.document.close();
   }
   AdapterJS.addEvent(c.document, 'click', function() {
@@ -8311,7 +8311,7 @@ if (navigator.mozGetUserMedia) {
     };
   }
 })();
-/*! skylinkjs - v1.0.0 - Fri Oct 09 2015 17:21:54 GMT+0800 (SGT) */
+/*! skylinkjs - v1.0.0 - Wed Oct 28 2015 18:16:20 GMT+0800 (SGT) */
 
 var DataChannel = function(channel){
 	'use strict';
@@ -8344,8 +8344,8 @@ var DataChannel = function(channel){
 DataChannel.prototype.disconnect = function(){
 	var self = this;
 	objectRef.close();
-}
-var Event = {
+};
+var SkylinkEvent = {
 
 	on: function(event, callback){
 		this.listeners.on[event] = this.listeners.on[event] || [];
@@ -8398,10 +8398,10 @@ var Event = {
 		}
 
 		if (this.listeners.once[event]){
-			for (var i=0; i<this.listeners.once[event].length; i++){
-		    	this.listeners.once[event][i].apply(this, args);
-		    	this.listeners.once[event].splice(i,1);
-		    	i--;
+			for (var j=0; j<this.listeners.once[event].length; j++){
+		    	this.listeners.once[event][j].apply(this, args);
+		    	this.listeners.once[event].splice(j,1);
+		    	j--;
 		    }
 		}
 
@@ -8420,12 +8420,12 @@ var Event = {
 	_mixin: function(object){
 		var methods = ['on','off','once','_trigger','_removeListener'];
 		for (var i=0; i<methods.length; i++){
-			if (Event.hasOwnProperty(methods[i]) ){
+			if (SkylinkEvent.hasOwnProperty(methods[i]) ){
 				if (typeof object === 'function'){
-					object.prototype[methods[i]]=Event[methods[i]];	
+					object.prototype[methods[i]]=SkylinkEvent[methods[i]];	
 				}
 				else{
-					object[methods[i]]=Event[methods[i]];
+					object[methods[i]]=SkylinkEvent[methods[i]];
 				}
 			}
 		}
@@ -8433,10 +8433,17 @@ var Event = {
 		object.listeners = {
 			on: {},
 			once: {}
-		}
+		};
 
 		return object;
 	}
+};
+var Global = {
+
+	_signalingChannelOpen: false,
+
+	_signalingServer: null,
+
 };
 var log = {};
 
@@ -8584,56 +8591,449 @@ var Debugger = {
 };
 
 Debugger.setLevel(4);
-var Socket = function () {
+var Socket = function (options) {
 
   'use strict';
 
   var self = this;
 
-  // This stream constraints
-  self._constraints = null;
+  if (!options){
+    options = {};
+  }
 
-  // This stream readyState
-  self.readyState = 'constructed';
+  self._signalingServer = options.server || 'signaling.temasys.com.sg';
 
-  // This stream native MediaStream reference
-  self._objectRef = null;
+  self._socketPorts = {
+    'http': options.httpPorts || [80, 3000],
+    'https': options.httpsPorts || [443, 3443]
+  };
 
-  // This stream audio tracks list
-  self._audioTracks = [];
+  self._type = options.type || 'WebSocket'; // Default
 
-  // This stream video tracks list
-  self._videoTracks = [];
+  self._socketTimeout = options.socketTimeout || 20000;
+
+  self._isSecure = options.secure || false;
+
+  self._readyState = 'constructed';
+
+  self._isXDR = false;
+
+  self._signalingServerProtocol = window.location.protocol.substring(0,window.location.protocol.length-1);
+
+  self._socketMessageTimeout = null;
+
+  self._socketMessageQueue = [];
+
+  self.SOCKET_ERROR = {
+    CONNECTION_FAILED: 0,
+    RECONNECTION_FAILED: -1,
+    CONNECTION_ABORTED: -2,
+    RECONNECTION_ABORTED: -3,
+    RECONNECTION_ATTEMPT: -4
+  };
+
+  self.SOCKET_FALLBACK = {
+    NON_FALLBACK: 'nonfallback',
+    FALLBACK_PORT: 'fallbackPortNonSSL',
+    FALLBACK_SSL_PORT: 'fallbackPortSSL',
+    LONG_POLLING: 'fallbackLongPollingNonSSL',
+    LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+  };
+
+  self._currentSignalingServerPort = null;
+
+  self._channelOpen = false;
+
+  self._objectRef = null; // The native socket.io client object
+
+  self._firstConnect = false;
+
+  self._socketOptions = {
+    reconnection: true,
+    reconnectionAttempts: 2,
+    forceNew: true
+  };
 
   // Append events settings in here
-  Event.mixin(self);
+  SkylinkEvent._mixin(self);
 };
-var Stream = function () {
+
+Socket.prototype._assignPort = function(){
+
+  var self = this;
+
+  var ports = self._socketPorts[self._signalingServerProtocol];
+
+  var currentPortIndex = ports.indexOf(self._currentSignalingServerPort);
+
+  // First time connecting. Trying first port
+  if (currentPortIndex === -1){
+    console.log('first try',currentPortIndex);
+    self._currentSignalingServerPort = ports[0];
+  }
+  // Trying next port
+  else if (currentPortIndex > -1 && currentPortIndex < ports.length-1){
+    console.log('second try',currentPortIndex);
+    self._currentSignalingServerPort = ports[currentPortIndex+1];
+  }
+  // Reached the last port. Try polling next time
+  else{
+    console.log('last try',currentPortIndex);
+    // Fallback to long polling and restart port index
+    if (self._type === 'WebSocket'){
+      console.log('falling back',currentPortIndex);
+      self._type = 'Polling';
+      self._currentSignalingServerPort = ports[0];
+    }
+    // Long polling already. Keep retrying
+    else if (self._type === 'Polling'){
+      console.log('desperate',currentPortIndex);
+      self._socketOptions.reconnectionAttempts = 4;
+      self._socketOptions.reconectionDelayMax = 1000;
+    }
+
+  }
+
+};
+
+Socket.prototype.connect = function(){
+  var self = this;
+
+  self.disconnect();
+
+  self._assignPort();
+
+  var url = self._signalingServerProtocol + '://' + self._signalingServer + ':' + self._currentSignalingServerPort;
+
+  if (self._type === 'WebSocket') {
+    console.log('setting WebSocket');
+    self._socketOptions.transports = ['websocket'];
+  } else if (self._type === 'Polling') {
+    console.log('setting Polling');
+    self._socketOptions.transports = ['xhr-polling', 'jsonp-polling', 'polling'];
+    // self._socketOptions.transports = ['polling'];
+  }
+
+  console.log(url,self._socketOptions);
+
+  self._objectRef = io.connect(url, self._socketOptions);
+
+  if (!self._firstConnect){
+    self._bindHandlers();
+  }
+
+};
+
+Socket.prototype.disconnect = function(){
+  var self = this;
+
+  if (!self._channelOpen){
+    return;
+  }
+
+  if (self._objectRef){
+    self._objectRef.removeAllListeners('connect');
+    self._objectRef.removeAllListeners('disconnect');
+    self._objectRef.removeAllListeners('reconnect');
+    self._objectRef.removeAllListeners('reconnect_attempt');
+    self._objectRef.removeAllListeners('reconnecting');
+    self._objectRef.removeAllListeners('reconnect_error');
+    self._objectRef.removeAllListeners('reconnect_failed');
+    self._objectRef.removeAllListeners('connect_error');
+    self._objectRef.removeAllListeners('connect_timeout');
+    self._objectRef.removeAllListeners('message');
+    self._channelOpen = false;
+    self._objectRef.disconnect();
+  }
+
+  self._trigger('channelClose');
+
+};
+
+Socket.prototype._bindHandlers = function(){
+
+  var self = this;
+
+  self._firstConnect = false; // No need to bind handlers next time
+
+  // Fired upon connecting
+  self._objectRef.on('connect', function(){
+    self._channelOpen = true;
+    self._readyState = 'connected';
+    self._trigger('connected');
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'error';
+    self._trigger('error',error);
+  });
+
+  // Fired upon a disconnection
+  self._objectRef.on('disconnect', function(){
+    self._channelOpen = false;
+    self._readyState = 'disconnected';
+    self._trigger('disconnected');
+  });
+
+  // Fired upon a successful reconnection
+  self._objectRef.on('reconnect', function(attempt){
+    self._channelOpen = true;
+    self._readyState = 'reconnect';
+    self._trigger('reconnect',attempt);
+  });  
+
+  // Fired upon an attempt to reconnect
+  self._objectRef.on('reconnect_attempt', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_attempt';
+    self._trigger('reconnect_attempt');
+  });  
+
+  // Fired upon an attempt to reconnect
+  // attempt: reconnection attempt count
+  self._objectRef.on('reconnecting', function(attempt){
+    self._readyState = 'reconnecting';
+    self._trigger('reconnecting', attempt);
+  });
+
+  // Fired upon a reconnection attempt error
+  self._objectRef.on('reconnect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_error';
+    self._trigger('reconnect_error', error);
+  });  
+
+  // Fired when couldn't reconnect within reconnectionAttempts
+  self._objectRef.on('reconnect_failed', function(){
+    self._channelOpen = false;
+    self._readyState = 'reconnect_failed';
+    self._trigger('reconnect_failed');
+    self.connect();
+  });
+
+  // Fired upon a connection error
+  self._objectRef.on('connect_error', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_error';
+    self._trigger('connect_error', error);
+  });
+
+  // Fired upon a connection timeout
+  self._objectRef.on('connect_timeout', function(error){
+    self._channelOpen = false;
+    self._readyState = 'connect_timeout';
+    self._trigger('connect_timeout', error);
+  });
+
+  self._objectRef.on('message', function(){
+
+  });  
+
+};
+
+var Stream = function (stream) {
 
   'use strict';
 
   var self = this;
 
-  // This stream constraints
-  self._constraints = null;
+  log.debug('Passed object for constructing new Stream object', stream);
 
-  // This stream readyState
-  self.readyState = 'constructed';
+  if (typeof stream !== 'object' || stream === null) {
+    throw new Error('Object passed in for constructing a new Stream object is invalid');
+  }
 
-  // This stream native MediaStream reference
-  self._objectRef = null;
+  /**
+   * The Stream class stream settings.
+   * @attribute _streamSettings
+   * @param {JSON} MediaStreamConstraints The MediaStreamConstraints to be passed into the
+   *   <code>getUserMedia()</code> for a new MediaStream.
+   * @param {JSON} [audio=false] The audio setting of the Stream class object passed into
+   *   the constructor to get a new MediaStream object.
+   * @param {JSON} [video=false] The video setting of the Stream class object passed into
+   *   the constructor to get a new MediaStream object.
+   * @type JSON
+   * @private
+   */
+  self._streamSettings = {
+    audio: false,
+    video: false,
+    MediaStreamConstraints: {}
+  };
 
-  // This stream audio tracks list
+  //self.readyState = 'constructed';
+
+  /**
+   * The Stream MediaStream object reference.
+   * @attribute _ref
+   * @type MediaStream
+   * @private
+   */
+  self._ref = null;
+
+  /**
+   * The list of audio StreamTrack objects in the Stream.
+   * @attribute _audioTracks
+   * @type JSON
+   * @private
+   */
   self._audioTracks = [];
 
-  // This stream video tracks list
+  /**
+   * The list of video StreamTrack objects in the Stream.
+   * @attribute _videoTracks
+   * @type JSON
+   * @private
+   */
   self._videoTracks = [];
 
-  // Append events settings in here
+  // Event hook to object for triggering
   Event.mixin(self);
+
+  // Initialise the MediaStream object to handle events
+  // Or get a new MediaStream object with getUserMedia
+  if (typeof stream.getAudioTracks === 'function' && typeof stream.getVideoTracks === 'function') {
+    self._construct(stream);
+  } else {
+    if (typeof stream.audio === 'object' || typeof stream.audio === 'boolean') {
+      self._streamSettings.audio = stream.audio;
+    }
+    if (typeof stream.video === 'object' || typeof stream.video === 'boolean') {
+      self._streamSettings.video = stream.video;
+    }
+
+    self._streamSettings.MediaStreamConstraints = self._parseConstraints(self._streamSettings);
+
+    window.navigator.getUserMedia(self._streamSettings.MediaStreamConstraints, function (streamObj) {
+      self._construct(streamObj);
+    }, function (error) {
+      throw error;
+    });
+  }
 };
 
+/**
+ * Parses and inteprets the constraints to be passed into <code>getUserMedia()</code>
+ * @method _parseConstraints
+ * @param {JSON} constraints The constraints passed into the constructor to get a
+ *   new MediaStream object.
+ * @return {JSON} The output MediaStreamConstraints.
+ */
+Stream.prototype._parseConstraints = function (constaints) {
+  var mediaStreamConstraints = {
+    audio: false,
+    video: false
+  };
 
+  if (constraints.audio) {
+    if (typeof constraints.audio === 'object') {
+      mediaStreamConstraints.audio = {};
+
+      if (Array.isArray(constraints.audio.optional)) {
+        mediaStreamConstraints.audio.optional = constraints.audio.optional;
+      }
+    } else {
+      mediaStreamConstraints.audio = true;
+    }
+  }
+
+  if (constraints.video) {
+    if (typeof constraints.video === 'object') {
+      mediaStreamConstraints.video = {};
+
+      if (Array.isArray(constraints.video.optional)) {
+        mediaStreamConstraints.video.optional = constraints.video.optional;
+      }
+
+      var useOlderSpecsWHA = true;
+
+      // Chrome / Opera uses older specs still even though it's deprecated.
+      // Safari still uses the older specs
+      // Only Firefox 38+ uses the new one
+      // Correct specs
+      /*
+        {
+          height: { min: 123, max: 1234 },
+          width: { min:23, max: 234 },
+          aspectRatio: { min: '1:3', max: '3:4' }
+        }
+      */
+      // NOTE: Could be updated
+      if (window.webrtcDetectedBrowser === 'firefox' || window.webrtcDetectedVersion > 38) {
+        useOlderSpecsWHA = false;
+      }
+
+      // Check the values passed into specs
+      var checkSpecsWHAVal = function (key, type, value) {
+        var error = null;
+        var setVal = false;
+
+        if (key === 'aspectRatio') {
+          if (typeof value === 'string') {
+            try {
+              var ratio = value.split(':');
+              var w = parseInt(ratio[0], 10);
+              var h = parseInt(ratio[1], 10);
+
+              if (typeof w === 'number' && w > 0 && typeof h === 'number' && h > 0) {
+                setVal = true;
+              }
+            } catch (errorObj) {
+              error = errorObj;
+            }
+          }
+        } else if (typeof value === 'number' && value > -1) {
+          setVal = true;
+        }
+
+        if (setVal) {
+          if (!useOlderSpecsWHA) {
+            mediaStreamConstraints.video[key][type] = value;
+          } else {
+            var newKey = key[0].toUpperCase() + key.substring(1, key.length);
+            if (typeof mediaStreamConstraints.video.mandatory !== 'object') {
+              mediaStreamConstraints.video.mandatory = {};
+            }
+            mediaStreamConstraints.video.mandatory[type + newKey] = value;
+          }
+        } else {
+          log.debug('Not setting string for video.' + key + '.' + type + ' as invalid or not found', value, error);
+        }
+      };
+
+      // Since we have not moved to the latest adapterjs in https://github.com/webrtc/adapter/blob/master/adapter.js
+      // as of October 28 (latest checked)
+      // Move to minHeight / minWidth manually
+      var convertToOlderSpecsWHA = function (key, specs) {
+        if (typeof specs === 'object') {
+          checkSpecsWHAVal(key, 'min', key.min);
+          checkSpecsWHAVal(key, 'max', key.max);
+        }
+      };
+
+      convertToOlderSpecsWHA('height', constraints.video.height);
+      convertToOlderSpecsWHA('width', constraints.video.width);
+      convertToOlderSpecsWHA('aspectRatio', constraints.video.aspectRatio);
+    }
+  }
+
+  return mediaStreamConstraints;
+};
+
+/**
+ * Listens the MediaStream events after being constructed.
+ * @method _construct
+ * @param {JSON} constraints The constraints passed into the constructor to get a
+ *   new MediaStream object.
+ * @return {JSON} The output MediaStreamConstraints.
+ */
+Stream.prototype._construct = function (stream) {
+
+};
+
+/*
 // getAudioTracks function. Returns AudioStreamTrack objects.
 Stream.prototype.getAudioTracks = function () {
   var self = this;
@@ -8752,7 +9152,7 @@ Stream.prototype.start = function (constraints, mstream) {
       return Util.throw(error);
     });
   }
-};
+};*/
 var StreamTrack = function (mstrack) {
 
   'use strict';
