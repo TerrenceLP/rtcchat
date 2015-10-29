@@ -1,4 +1,34 @@
-//-------------------CONSTRUCTOR-------------------
+/**
+ * Constructor test
+ */
+describe('- constructor', function () {
+
+});
+
+/**
+ * Attributes test
+ */
+describe('- constants', function () {
+
+});
+
+/**
+ * Attributes test
+ */
+describe('- attributes', function () {
+
+  describe('')
+
+});
+
+/**
+ * Methods test
+ */
+describe('- methods', function () {
+
+});
+
+/*//-------------------CONSTRUCTOR-------------------
 
 var successCase = function (options) {
   describe('new Stream()', function () {
@@ -187,7 +217,6 @@ describe('#on("stopped"', function () {
 
 //-------------------METHODS-------------------
 
-/* Beginning of #start() */
 describe('#start()', function () {
 
   it('is typeof "function"', function (done) {
@@ -198,7 +227,6 @@ describe('#start()', function () {
     done();
   });
 
-  /* Beginning of parameters (JSON options) */
   describe('When parameters is (JSON options)', function () {
 
     var constraints = {
@@ -277,10 +305,8 @@ describe('#start()', function () {
     });
 
   });
-  /* End of parameters (JSON options) */
 
-  /* Beginning of parameters (null, MediaStream object) */
-  describe('When parameters is (null, MediaStream object)', function () {
+   describe('When parameters is (null, MediaStream object)', function () {
 
     var constraints = {
       audio: true,
@@ -357,9 +383,7 @@ describe('#start()', function () {
     });
 
   });
-  /* End of parameters (null, MediaStream object) */
 
-  /* Beginning of parameters (JSON options, MediaStream object) */
   describe('When parameters is (JSON options, MediaStream object)', function () {
 
     var constraints = {
@@ -457,12 +481,9 @@ describe('#start()', function () {
     });
 
   });
-  /* End of parameters (JSON options, MediaStream object) */
 
 });
-/* End of #start() */
 
-/* Beginning of #attachStream() */
 describe('#attachStream()', function () {
 
   var video = document.createElement('video');
@@ -520,9 +541,7 @@ describe('#attachStream()', function () {
   });
 
 });
-/* End of #attachStream() */
 
-/* Beginning of #getVideoTracks() */
 describe('#getAudioTracks()', function () {
 
   it('is typeof "function"', function (done) {
@@ -545,9 +564,7 @@ describe('#getAudioTracks()', function () {
   });
 
 });
-/* End of #getAudioTracks() */
 
-/* Beginning of #getAudioTracks() */
 describe('#getVideoTracks()', function () {
 
   it('is typeof "function"', function (done) {
@@ -570,9 +587,7 @@ describe('#getVideoTracks()', function () {
   });
 
 });
-/* End of #getVideoTracks() */
 
-/* Beginning of #stop() */
 describe('#stop()', function () {
 
   it('is typeof "function"', function (done) {
@@ -602,6 +617,6 @@ describe('#stop()', function () {
   });
 
 });
-/* End of #stop() */
 
 //-------------------METHODS-------------------
+*/

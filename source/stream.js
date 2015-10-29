@@ -42,6 +42,14 @@ var Stream = function (stream) {
   }
 
   /**
+   * The Stream ID.
+   * @attribute id
+   * @type String
+   * @readOnly
+   */
+  self.id = null;
+
+  /**
    * The Stream class stream settings.
    * @attribute _streamSettings
    * @param {JSON} MediaStreamConstraints The MediaStreamConstraints to be passed into the
@@ -227,33 +235,39 @@ Stream.prototype._parseConstraints = function (constaints) {
  */
 Stream.prototype._construct = function (stream) {
   var self = this;
+
   // Chrome M47 and above deprecations
   if (window.webrtcDetectedBrowser === 'chrome') {
     if (window.webrtcDetectedVersion > 36) {
+      self.id = stream.id;
       stream.oninactive = function () {
         // trigger ended here
       };
     } else {
+      self.id = stream.label;
       stream.onended = function () {
         // trigger ended here
       };
     }
   // firefox no trigger so it's okay
-  //} else if (window.webrtcDetectedBrowser === 'firefox') {
-
+  } else if (window.webrtcDetectedBrowser === 'firefox') {
+    self.id = stream.id;
   // opera 32 (do the other way. follows chrome)
   } else if (window.webrtcDetectedBrowser === 'opera') {
     if (window.webrtcDetectedVersion > 31) {
+      self.id = stream.id;
       stream.oninactive = function () {
         // trigger ended here
       };
     } else {
+      self.id = stream.label;
       stream.onended = function () {
         // trigger ended here
       };
     }
   // safari / IE uses .stop() only no deprecation
   } else {
+    self.id = stream.id;
     stream.onended = function () {
       // trigger ended here
     };
@@ -271,6 +285,8 @@ Stream.prototype._construct = function (stream) {
   for (j = 0; j < videoTracks.length; j++) {
     // construct new StreamTrack object
   }
+
+  self._ref = stream;
 };
 
 /*
