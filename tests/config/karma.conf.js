@@ -66,7 +66,10 @@ module.exports = function(config) {
 
       FirefoxUM: {
         base: 'Firefox',
-        flags: []
+        prefs: {
+          'media.navigator.permission.disabled': true,
+          'media.getusermedia.screensharing.enabled': true
+        }
       },
 
       SafariUM: {
