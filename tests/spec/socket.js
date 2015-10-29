@@ -1,7 +1,7 @@
 //-------------------CONSTRUCTOR-------------------
 var successCase = function (options) {
 
-  describe('new Socket(' + printJSON(options) + ')', function () {
+  describe('new Socket(' + TestUtil.printJSON(options) + ')', function () {
 
     var socket = null;
 
@@ -101,7 +101,7 @@ var successCase = function (options) {
 };
 
 var failureCase = function (options) {
-  describe('new Socket(' + printJSON(options) + ')', function () {
+  describe('new Socket(' + TestUtil.printJSON(options) + ')', function () {
 
     var socket = null;
 

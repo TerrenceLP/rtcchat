@@ -482,7 +482,7 @@ describe('#attachStream()', function () {
 
     // only supported from IE 9.0 and above
     video.onplaying = function () {
-      util.drawCanvas(video, function (hasStream) {
+      TestUtil.drawCanvas(video, function (hasStream) {
         expect(hasStream).to.equal(true);
         done();
       });
