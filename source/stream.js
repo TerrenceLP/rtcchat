@@ -226,7 +226,51 @@ Stream.prototype._parseConstraints = function (constaints) {
  * @return {JSON} The output MediaStreamConstraints.
  */
 Stream.prototype._construct = function (stream) {
+  var self = this;
+  // Chrome M47 and above deprecations
+  if (window.webrtcDetectedBrowser === 'chrome') {
+    if (window.webrtcDetectedVersion > 36) {
+      stream.oninactive = function () {
+        // trigger ended here
+      };
+    } else {
+      stream.onended = function () {
+        // trigger ended here
+      };
+    }
+  // firefox no trigger so it's okay
+  //} else if (window.webrtcDetectedBrowser === 'firefox') {
 
+  // opera 32 (do the other way. follows chrome)
+  } else if (window.webrtcDetectedBrowser === 'opera') {
+    if (window.webrtcDetectedVersion > 31) {
+      stream.oninactive = function () {
+        // trigger ended here
+      };
+    } else {
+      stream.onended = function () {
+        // trigger ended here
+      };
+    }
+  // safari / IE uses .stop() only no deprecation
+  } else {
+    stream.onended = function () {
+      // trigger ended here
+    };
+  }
+
+  var audioTracks = stream.getAudioTracks();
+  var videoTracks = stream.getVideoTracks();
+
+  var i, j;
+
+  for (i = 0; i < audioTracks.length; i++) {
+    // construct new StreamTrack object
+  }
+
+  for (j = 0; j < videoTracks.length; j++) {
+    // construct new StreamTrack object
+  }
 };
 
 /*
