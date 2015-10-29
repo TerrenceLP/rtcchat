@@ -3,6 +3,7 @@
  * Peers A and B initiate a very basic RTCPeerConnection
  * Each peer then initiate a RTCDataChannel for its connection with the other peer
  * Reference: https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Simple_RTCDataChannel_sample
+ * TODO: Data channel readyState is not set to closing/closed when invoking close(). What happened ?
  */
 
 (function() {
@@ -14,6 +15,7 @@
   var sendButton = null;
   var messageInputBox = null;
   var receiveBox = null;
+  var statusBox = null;
   
   var localConnection = null;   // RTCPeerConnection for our "local" connection
   var remoteConnection = null;  // RTCPeerConnection for the "remote"
@@ -31,6 +33,7 @@
     sendButton = document.getElementById('sendButton');
     messageInputBox = document.getElementById('message');
     receiveBox = document.getElementById('receivebox');
+    statusBox = document.getElementById('statusbox');
 
     // Set event listeners for user interface widgets
 
@@ -49,23 +52,20 @@
     
     // Create the data channel and establish its event listeners
     sendChannel = localConnection.createDataChannel("sendChannel");
-    sendChannel.onopen = handleSendChannelStatusChange;
-    sendChannel.onclose = handleSendChannelStatusChange;
+
+    bindHandlers(sendChannel);
     
     // Create the remote connection and its event listeners
-    
     remoteConnection = new RTCPeerConnection();
     remoteConnection.ondatachannel = receiveChannelCallback;
     
     // Set up the ICE candidates for the two peers
     
     localConnection.onicecandidate = e => !e.candidate
-        || remoteConnection.addIceCandidate(e.candidate)
-        .catch(handleAddCandidateError);
+        || remoteConnection.addIceCandidate(e.candidate);
 
     remoteConnection.onicecandidate = e => !e.candidate
-        || localConnection.addIceCandidate(e.candidate)
-        .catch(handleAddCandidateError);
+        || localConnection.addIceCandidate(e.candidate);
     
     // Now create an offer to connect; this starts the process
     
@@ -79,6 +79,11 @@
 
     localConnection.createOffer(gotLocalDescription);
     
+  }
+
+  function bindHandlers(channel){
+    channel.onopen = handleSendChannelStatusChange;
+    channel.onclose = handleSendChannelStatusChange;
   }
     
   // Callback executed when the createAnswer() request for
@@ -97,12 +102,12 @@
   
   // Handle ICE callback for the remote connection.
   
-  function remoteICECallback(event) {
+  /*function remoteICECallback(event) {
     if (event.candidate) {
       localConnection.addIceCandidate(event.candidate,
               handleLocalAddCandidateSuccess, handleRemoteAddCandidateError);
     }
-  }
+  }*/
   
   // Handle errors attempting to create a description;
   // this can happen both when creating an offer and when
@@ -110,27 +115,32 @@
   // both the same way.
   
   function handleCreateDescriptionError(error) {
-    console.log("Unable to create an offer: " + error.toString());
+    //console.log("Unable to create an offer: " + error.toString());
+    updateStatusBox('CreateDescriptionError')
   }
   
   // Handle successful addition of the ICE candidate
   // on the "local" end of the connection.
   
   function handleLocalAddCandidateSuccess() {
-    connectButton.disabled = true;
+    updateStatusBox('LocalAddCandidateSuccess')
+  }
+
+  function updateStatusBox(status){
+    statusBox.value += '\n'+status;
   }
 
   // Handle successful addition of the ICE candidate
   // on the "remote" end of the connection.
   
   function handleRemoteAddCandidateSuccess() {
-    disconnectButton.disabled = false;
+    updateStatusBox('RemoteAddCandidateSuccess')
   }
 
   // Handle an error that occurs during addition of ICE candidate.
   
   function handleAddCandidateError() {
-    console.log("Oh noes! addICECandidate failed!");
+    updateStatusBox('AddCandidateError');
   }
 
   // Handles clicks on the "Send" button by transmitting
@@ -151,20 +161,7 @@
   
   function handleSendChannelStatusChange() {
     if (sendChannel) {
-      var state = sendChannel.readyState;
-    
-      if (sendChannel.readyState === "open") {
-        messageInputBox.disabled = false;
-        messageInputBox.focus();
-        sendButton.disabled = false;
-        disconnectButton.disabled = false;
-        connectButton.disabled = true;
-      } else {
-        messageInputBox.disabled = true;
-        sendButton.disabled = true;
-        connectButton.disabled = false;
-        disconnectButton.disabled = true;
-      }
+      updateStatusBox('SendChannelStatusChange: '+sendChannel.readyState);
     }
   }
   
@@ -172,9 +169,8 @@
   
   function receiveChannelCallback(event) {
     receiveChannel = event.channel;
+    bindHandlers(receiveChannel);
     receiveChannel.onmessage = handleReceiveMessage;
-    receiveChannel.onopen = handleReceiveChannelStatusChange;
-    receiveChannel.onclose = handleReceiveChannelStatusChange;
   }
   
   // Handle onmessage events for the receiving channel.
@@ -192,8 +188,7 @@
   
   function handleReceiveChannelStatusChange() {
     if (receiveChannel) {
-      console.log("Receive channel's status has changed to " +
-                  receiveChannel.readyState);
+      updateStatusBox('ReceiveChannelStatusChange: '+receiveChannel.readyState);
     }
     
     // Here you would do stuff that needs to be done
@@ -204,11 +199,16 @@
   // Also update the UI to reflect the disconnected status.
   
   function disconnectPeers() {
+
+    updateStatusBox('Closing channel');
   
     // Close the RTCDataChannels if they're open.
     
     sendChannel.close();
     receiveChannel.close();
+
+    updateStatusBox(sendChannel.readyState);
+    updateStatusBox(receiveChannel.readyState);
     
     // Close the RTCPeerConnections
     
@@ -219,15 +219,9 @@
     receiveChannel = null;
     localConnection = null;
     remoteConnection = null;
-    
-    // Update user interface elements
-    
-    connectButton.disabled = false;
-    disconnectButton.disabled = true;
-    sendButton.disabled = true;
-    
+
     messageInputBox.value = "";
-    messageInputBox.disabled = true;
+    
   }
   
   // Set up an event listener which will run the startup

@@ -2,6 +2,10 @@
 <p>Classes: <code>DataChannel</code>
 </p>
 
+<div class="status">
+  <textarea id="statusbox" style="height:50px;width:100px;overflow-y:scroll">Waiting</textarea>
+</div>
+
 <div class="col-md-8">
   <div class="panel panel-default">
     <div class="panel-body">
@@ -17,7 +21,7 @@
         <button id="connectButton" name="connectButton" class="buttonleft">
           Connect
         </button>
-        <button id="disconnectButton" name="disconnectButton" class="buttonright" disabled>
+        <button id="disconnectButton" name="disconnectButton" class="buttonright">
           Disconnect
         </button>
       </div>
@@ -25,9 +29,9 @@
       <div class="messagebox">
         <label for="message">Enter a message:
           <input type="text" name="message" id="message" placeholder="Message text" 
-                  inputmode="latin" size=60 maxlength=120 disabled>
+                  inputmode="latin" size=60 maxlength=120>
         </label>
-        <button id="sendButton" name="sendButton" class="buttonright" disabled>
+        <button id="sendButton" name="sendButton" class="buttonright">
           Send
         </button>
       </div>
