@@ -51,7 +51,7 @@
     localConnection = new RTCPeerConnection();
     
     // Create the data channel and establish its event listeners
-    sendChannel = localConnection.createDataChannel("sendChannel");
+    sendChannel = new DataChannel(localConnection.createDataChannel("sendChannel"));
 
     bindHandlers(sendChannel);
     
@@ -68,22 +68,14 @@
         || localConnection.addIceCandidate(e.candidate);
     
     // Now create an offer to connect; this starts the process
-    
-    /*localConnection.createOffer()
-    .then(offer => localConnection.setLocalDescription(offer))
-    .then(() => remoteConnection.setRemoteDescription(localConnection.localDescription))
-    .then(() => remoteConnection.createAnswer())
-    .then(answer => remoteConnection.setLocalDescription(answer))
-    .then(() => localConnection.setRemoteDescription(remoteConnection.localDescription))
-    .catch(handleCreateDescriptionError);*/
-
     localConnection.createOffer(gotLocalDescription);
     
   }
 
   function bindHandlers(channel){
-    channel.onopen = handleSendChannelStatusChange;
-    channel.onclose = handleSendChannelStatusChange;
+    channel.on('connected',handleChannelStatusChange);
+    channel.on('disconnected',handleChannelStatusChange);
+    channel.on('error',handleChannelStatusChange);
   }
     
   // Callback executed when the createAnswer() request for
@@ -159,18 +151,16 @@
   
   // Handle status changes on the send channel.
   
-  function handleSendChannelStatusChange() {
-    if (sendChannel) {
-      updateStatusBox('SendChannelStatusChange: '+sendChannel.readyState);
-    }
+  function handleChannelStatusChange(event) {
+    updateStatusBox('ChannelStatusChange: '+event.type);
   }
   
   // Handle events that occur on the receiver's channel.
   
   function receiveChannelCallback(event) {
-    receiveChannel = event.channel;
+    receiveChannel = new DataChannel(event.channel);
     bindHandlers(receiveChannel);
-    receiveChannel.onmessage = handleReceiveMessage;
+    receiveChannel.on('message',handleReceiveMessage);
   }
   
   // Handle onmessage events for the receiving channel.
@@ -183,29 +173,18 @@
     el.appendChild(txtNode);
     receiveBox.appendChild(el);
   }
-  
-  // Handle status changes on the receiver's channel.
-  
-  function handleReceiveChannelStatusChange() {
-    if (receiveChannel) {
-      updateStatusBox('ReceiveChannelStatusChange: '+receiveChannel.readyState);
-    }
-    
-    // Here you would do stuff that needs to be done
-    // when the channel's status changes.
-  }
+
   
   // Close the connection, including data channels if they're open.
-  // Also update the UI to reflect the disconnected status.
-  
+  // Also update the UI to reflect the disconnected status.  
   function disconnectPeers() {
 
     updateStatusBox('Closing channel');
   
     // Close the RTCDataChannels if they're open.
     
-    sendChannel.close();
-    receiveChannel.close();
+    sendChannel.disconnect();
+    receiveChannel.disconnect();
 
     updateStatusBox(sendChannel.readyState);
     updateStatusBox(receiveChannel.readyState);
