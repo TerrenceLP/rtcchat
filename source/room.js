@@ -53,4 +53,4 @@ Room.prototype.lock = function(){
 
 Room.prototype.unlock = function(){
 	self._trigger('unlock');
-}
+};
