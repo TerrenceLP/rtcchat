@@ -6,11 +6,10 @@ var statusBox;
 
 var response = null;
 
-var key = config.apiKey;
+var endpoint = '//api.temasys.com.sg/api/';
 
 function constructPath(){
-  var path = null;
-  return path; // path to API GET request
+  return endpoint + config.apiKey + '/' + config.defaultRoom + '?rand=' + (new Date()).toISOString() ;
 }
 
 function init(){
@@ -22,6 +21,7 @@ function init(){
 
   xhr.onload = function(){
     response = xhr.responseText || xhr.response;
+    console.log(response);
   }
 
   xhr.onerror = function(error){
