@@ -9,6 +9,9 @@ Demo.Streams = [];
 Demo.Methods = {};
 Demo.Skylink = new Skylink();
 
+var startTime = null;
+var endTime = null;
+
 var _peerId = null;
 
 var selectedPeers = [];
@@ -329,8 +332,15 @@ Demo.Skylink.on('iceConnectionState', function (state, peerId) {
       color = 'orange';
       break;
     case Demo.Skylink.ICE_CONNECTION_STATE.CONNECTED:
+      color = 'green';
+      break;
     case Demo.Skylink.ICE_CONNECTION_STATE.COMPLETED:
       color = 'green';
+      endTime = Date.now();
+      console.log('->startTime',startTime);
+      console.log('->endTime',endTime);
+      console.log('->length: ',endTime-startTime);
+      Demo.Methods.displayChatMessage('System', 'length:'+(endTime-startTime)+' || startTime:'+startTime+' || endTime:'+endTime);
       break;
     default:
       console.error('ICE State:', state, peerId);
@@ -466,6 +476,8 @@ Demo.Skylink.on('serverPeerRestart', function (serverPeerId, serverPeerType) {
 
 //------------- join room ---------------------------
 var displayName = 'name_' + 'user_' + Math.floor((Math.random() * 1000) + 1);
+
+startTime = Date.now();
 
 Demo.Skylink.init(config, function (error, success) {
   if (success) {
@@ -610,6 +622,7 @@ $(document).ready(function () {
     Demo.Skylink.leaveRoom();
   });
   $('#restart_btn').click(function () {
+    startTime = Date.now();
     Demo.Skylink.refreshConnection();
   });
   $('#message_btn').click(function () {
@@ -618,12 +631,16 @@ $(document).ready(function () {
     }
   });
   $('#share_screen_btn').click(function () {
+    startTime = Date.now();
     Demo.Skylink.shareScreen(function (data, error) {
       console.info(data, error);
     });
   });
   $('#stop_screen_btn').click(function () {
     Demo.Skylink.stopScreen();
+  });
+  $('#getstat_btn').click(function () {
+    Demo.Skylink._getStat(_peerId);
   });
 
   window.selectTargetPeer = function(dom) {
@@ -661,7 +678,10 @@ $(document).ready(function () {
 });
 
 
-/*(function(){
+/*
+ * Restart immediately when peer connection is made
+ */
+(function(){
 
   var data = {};
   //window.candidatesCounter = {};
@@ -672,18 +692,38 @@ $(document).ready(function () {
 
   Demo.Skylink.on('channelMessage', function (message, isSelf) {
     //console.log('messaging', message, isSelf);
+
+    /*if (isSelf && message.type === 'candidate') {
+      candidatesCounter[message.target][candidatesCounter[message.target].length - 1]++;
+    }*/
+
   });
 
   Demo.Skylink.on('peerJoined', function (peerId) {
     //candidatesCounter[peerId] = [];
   });
 
+  /*Demo.Skylink.on('peerRestart', function (peerId) {
+    console.info('candidates counter for ' + peerId + ' is ' + candidatesCounter[peerId][candidatesCounter[peerId].length - 1]);
+    candidatesCounter[peerId].push(0);
+  });*/
+
   Demo.Skylink.on('iceConnectionState', function (state, peerId) {
     if (state === 'completed') {
-      //setTimeout(function () {
-        Demo.Skylink._restartPeerConnection(peerId, true, false, null, true);
-      //}, 500);
+      /*if (Demo.Skylink._mediaScreen && Demo.Skylink._mediaScreen !== null) {
+        Demo.Skylink.stopScreen();
+      } else {
+        Demo.Skylink.shareScreen();
+      }*/
+      startTime = Date.now();
+      //Demo.Skylink._restartPeerConnection(peerId, true, false, null, true);
+      //Demo.Skylink.refreshConnection(peerId, null);
+      //Demo.Skylink.shareScreen();
     }
   });
 
-})();*/
+  Demo.Skylink.on('peerConnectionState', function(state){
+    
+  });
+
+})();

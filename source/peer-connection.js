@@ -818,3 +818,31 @@ Skylink.prototype._restartMCUConnection = function(callback) {
     }
   });
 };
+
+/*
+ * RTCPeerConnection.getStats()
+ */
+Skylink.prototype._getStat = function(peerId){
+  var self = this;
+  var pc = self._peerConnections[peerId];
+  if (pc){
+    if (window.webrtcDetectedBrowser === 'firefox'){
+      pc.getStats(null, function(report){
+        console.log('getStat',report);
+      }, function(error){
+        console.log('GetStat error',error);
+      });
+    }
+    else if (window.webrtcDetectedBrowser === 'chrome'){
+      pc.getStats(function(report){
+        console.log('getStat',report);
+      }, null, function(error){
+        console.log('GetStat error',error);
+      });
+    }
+  }
+  else{
+    throw ('Peer connection with',peerId,'does not exist');
+  }
+};
+
