@@ -8,6 +8,8 @@ var sw      = new Skylink();
 
 console.log('BOT Stream intiailized');
 
+//sw.setLogLevel(4);
+
 sw.init(apikey, function(){
   sw.joinRoom();
 });
@@ -66,7 +68,10 @@ sw.on('incomingMessage', function (message, peerId, peerInfo, isSelf) {
       sw.sendStream({
         audio: false,
         video: false
+      }, function () {
+        console.info('settings', sw._streamSettings);
       });
+
       console.log('Sending { audio: false, video: false }');
     }
   }

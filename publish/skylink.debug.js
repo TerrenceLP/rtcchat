@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.3 - Mon Nov 16 2015 17:55:42 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.3 - Tue Nov 17 2015 01:56:30 GMT+0800 (SGT) */
 
 (function() {
 
@@ -12995,6 +12995,7 @@ Skylink.prototype._waitForLocalMediaStream = function(callback, options) {
   if (!requireAudio && !requireVideo && !options.manualGetUserMedia) {
     // set to default
     if (options.audio === false && options.video === false) {
+      self.stopStream();
       self._parseMediaStreamSettings(options);
     }
 
@@ -13477,21 +13478,24 @@ Skylink.prototype.sendStream = function(stream, callback) {
     }
 
     if (self._inRoom) {
-      self.once('mediaAccessSuccess', function (stream) {
-        if (self._hasMCU) {
-          self._restartMCUConnection();
-        } else {
-          self._trigger('incomingStream', self._user.sid, self._mediaStream,
-            true, self.getPeerInfo(), false);
-          for (var peer in self._peerConnections) {
-            if (self._peerConnections.hasOwnProperty(peer)) {
-              self._restartPeerConnection(peer, true, false, null, true);
+      if (!!stream.audio || !!stream.video) {
+        self.once('mediaAccessSuccess', function (stream) {
+          if (self._hasMCU) {
+            self._restartMCUConnection();
+          } else {
+            self._trigger('incomingStream', self._user.sid, self._mediaStream,
+              true, self.getPeerInfo(), false);
+            // NOTE: looks dubious
+            for (var peer in self._peerConnections) {
+              if (self._peerConnections.hasOwnProperty(peer)) {
+                self._restartPeerConnection(peer, true, false, null, true);
+              }
             }
           }
-        }
 
-        self._trigger('peerUpdated', self._user.sid, self.getPeerInfo(), true);
-      });
+          self._trigger('peerUpdated', self._user.sid, self.getPeerInfo(), true);
+        });
+      }
     }
 
     // get the mediastream and then wait for it to be retrieved before sending
@@ -13500,6 +13504,21 @@ Skylink.prototype.sendStream = function(stream, callback) {
         // The callback is provided but there is not peers, so automatically invoke the callback
         if (typeof callback === 'function' && hasNoPeers) {
           callback(null, self._mediaStream);
+        }
+
+        if (self._inRoom && !!stream.audio && !!stream.video) {
+          if (self._hasMCU) {
+            self._restartMCUConnection();
+          } else {
+            // NOTE: looks dubious
+            for (var peer in self._peerConnections) {
+              if (self._peerConnections.hasOwnProperty(peer)) {
+                self._restartPeerConnection(peer, true, false, null, true);
+              }
+            }
+          }
+
+          self._trigger('peerUpdated', self._user.sid, self.getPeerInfo(), true);
         }
       } else {
         callback(error, null);

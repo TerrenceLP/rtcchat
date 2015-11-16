@@ -128,6 +128,7 @@ test('muteStream(): Testing mute stream settings', function(t) {
 
     setTimeout(function () {
       sw._onceEvents.incomingStream = [];
+      sw._onceEvents.peerJoined = [];
       sw._EVENTS.peerUpdated = [];
 
       t.deepEqual(receivedMutes, expectedSettings.mutes,
@@ -194,7 +195,7 @@ test('muteStream(): Testing mute stream settings', function(t) {
 
 });
 
-test('Media access stopped', function(t) {
+test.skip('Media access stopped', function(t) {
   t.plan(1);
 
   sw.on('incomingStream', function () {
@@ -233,7 +234,7 @@ test('Media access stopped', function(t) {
       audio: true,
       video: true
     }, function (jRError, jRSuccess) {
-      if (initError) {
+      if (jRError) {
         console.log('ERROR - Failed joining room for "Media access stopped"', jRError);
         t.end();
       }
@@ -328,20 +329,22 @@ test('sendStream(): Test parsed video resolutions', function (t) {
 test('sendStream(): Test getUserMedia should not be called if all settings is false', function (t) {
   t.plan(1);
 
-  sw.on('peerRestart', function (peerId, peerInfo) {
-    // check the set stream settings
-    t.deepEqual([
-      peerInfo.settings.audio,
-      peerInfo.settings.video
-    ], [false, false], 'Set audio and video settings correct (settings=false)');
+  sw.on('peerRestart', function (peerId, peerInfo, isSelf) {
+    console.info('peerRestart', peerId, peerInfo, isSelf);
+    if (!isSelf) {
+      // check the set stream settings
+      t.deepEqual([
+        peerInfo.settings.audio,
+        peerInfo.settings.video
+      ], [false, false], 'Set audio and video settings correct (settings=false)');
 
-    // turn off all events
-    sw.off('peerRestart');
-    sw.off('peerRestart');
+      // turn off all events
+      sw.off('peerRestart');
+    }
   });
 
   sw.init(apikey, function(){
-    sw.joinRoom(function(){
+    sw.joinRoom({ audio: true, video: true }, function(){
       console.log('Sending "RESTART-PEER-FALSE"');
       sw.sendMessage('RESTART-PEER-FALSE');
     });
