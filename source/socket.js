@@ -4,7 +4,7 @@ var Socket = (function (options) {
 
   var self = null;
 
-  var returnSingleton = function(){
+  var SocketSingleton = function(){
     if (self){
       return self;
     }
@@ -73,7 +73,7 @@ var Socket = (function (options) {
 
   };
 
-  return returnSingleton;
+  return SocketSingleton;
 
 })();
 
