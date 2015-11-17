@@ -374,7 +374,8 @@ Skylink.prototype._createSocket = function (type) {
   var options = {
     forceNew: true,
     //'sync disconnect on unload' : true,
-    reconnection: false
+    reconnection: true,
+    reconnectionAttempts: 2
   };
 
   var ports = self._socketPorts[self._signalingServerProtocol];
