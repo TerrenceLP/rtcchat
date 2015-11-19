@@ -229,6 +229,8 @@ Skylink.prototype._socketTimeout = 0;
  */
 Skylink.prototype._socketUseXDR = false;
 
+Skylink.prototype._currentSocketType = 'WebSocket';
+
 /**
  * Sends socket message over the platform signaling socket connection.
  * @method _sendChannelMessage
@@ -353,6 +355,35 @@ Skylink.prototype._sendChannelMessage = function(message) {
 
 };
 
+Skylink.prototype._assignPort = function(options){
+  var self = this;
+
+  var ports = self._socketPorts[self._signalingServerProtocol];
+
+  var currentPortIndex = ports.indexOf(self._signalingServerPort);
+
+  // First time connecting. Trying first port
+  if (currentPortIndex === -1){
+    self._signalingServerPort = ports[0];
+  }
+  else if (currentPortIndex > -1 && currentPortIndex < ports.length-1){
+    self._signalingServerPort = ports[currentPortIndex+1];
+  }
+  else{
+    if (self._currentSocketType === 'WebSocket'){
+      // Fallback to long polling and restart port index
+      self._currentSocketType = 'Polling';
+      self._signalingServerPort = ports[0];
+    }
+    else if (self._currentSocketType === 'Polling'){
+      // Long polling already. Keep retrying
+      options.reconnectionAttempts = 4;
+      options.reconectionDelayMax = 1000;
+    }
+  }
+
+};
+
 /**
  * Starts a socket.io connection with the platform signaling.
  * @method _createSocket
@@ -375,7 +406,7 @@ Skylink.prototype._createSocket = function (type) {
     forceNew: true,
     //'sync disconnect on unload' : true,
     reconnection: true,
-    reconnectionAttempts: 2
+    reconnectionAttempts: 3
   };
 
   var ports = self._socketPorts[self._signalingServerProtocol];
@@ -408,8 +439,9 @@ Skylink.prototype._createSocket = function (type) {
     self._signalingServerPort = ports[ ports.indexOf(self._signalingServerPort) + 1 ];
   }
 
-  var url = self._signalingServerProtocol + '//' + self._signalingServer + ':' + self._signalingServerPort;
-    //'http://ec2-52-8-93-170.us-west-1.compute.amazonaws.com:6001';
+  // var url = self._signalingServerProtocol + '//' + self._signalingServer + ':' + self._signalingServerPort;
+  
+  var url = 'http://localhost:6001';
 
   if (type === 'WebSocket') {
     options.transports = ['websocket'];
@@ -450,48 +482,7 @@ Skylink.prototype._createSocket = function (type) {
         self.SOCKET_FALLBACK.FALLBACK_SSL_PORT);
   }
 
-  self._socket.on('connect_error', function (error) {
-    self._channelOpen = false;
-
-    self._trigger('socketError', self.SOCKET_ERROR.CONNECTION_FAILED,
-      error, connectionType);
-
-    self._trigger('channelRetry', connectionType, 1);
-
-    if (options.reconnection === false) {
-      self._createSocket(type);
-    }
-  });
-
-  self._socket.on('reconnect_attempt', function (attempt) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ATTEMPT,
-      attempt, connectionType);
-
-    self._trigger('channelRetry', connectionType, attempt);
-  });
-
-  self._socket.on('reconnect_error', function (error) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_FAILED,
-      error, connectionType);
-  });
-
-  self._socket.on('reconnect_failed', function (error) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ABORTED,
-      error, connectionType);
-  });
-
   self._socket.on('connect', function () {
-    if (!self._channelOpen) {
-      self._channelOpen = true;
-      self._trigger('channelOpen');
-      log.log([null, 'Socket', null, 'Channel opened']);
-    }
-  });
-
-  self._socket.on('reconnect', function () {
     if (!self._channelOpen) {
       self._channelOpen = true;
       self._trigger('channelOpen');
@@ -509,6 +500,54 @@ Skylink.prototype._createSocket = function (type) {
     self._channelOpen = false;
     self._trigger('channelClose');
     log.log([null, 'Socket', null, 'Channel closed']);
+  });
+
+  self._socket.on('reconnect', function () {
+    if (!self._channelOpen) {
+      self._channelOpen = true;
+      self._trigger('channelOpen');
+      log.log([null, 'Socket', null, 'Channel opened']);
+    }
+  });
+
+  self._socket.on('reconnect_attempt', function () {
+    self._channelOpen = false;
+    self._trigger('channelRetry', connectionType, null);
+  });
+
+  self._socket.on('reconnecting', function (attempt) {
+    self._channelOpen = false;
+    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ATTEMPT,
+      attempt, connectionType);
+
+    self._trigger('channelRetry', connectionType, attempt);
+  });
+
+  self._socket.on('connect_error', function (error) {
+    self._channelOpen = false;
+
+    self._trigger('socketError', self.SOCKET_ERROR.CONNECTION_FAILED,
+      error, connectionType);
+
+    self._trigger('channelRetry', connectionType, 1);
+
+    /*if (options.reconnection === false) {
+      self._createSocket(type);
+    }*/
+    console.log('connect_error',error);
+  });
+
+  self._socket.on('reconnect_error', function (error) {
+    self._channelOpen = false;
+    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_FAILED,
+      error, connectionType);
+  });
+
+  self._socket.on('reconnect_failed', function (error) {
+    self._channelOpen = false;
+    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ABORTED,
+      error, connectionType);
+    console.log('reconnect_failed',error);
   });
 
   self._socket.on('message', function(message) {
@@ -553,15 +592,13 @@ Skylink.prototype._openChannel = function() {
     self._signalingServerProtocol = window.location.protocol;
   }
 
-  var socketType = 'WebSocket';
-
   // For IE < 9 that doesn't support WebSocket
   if (!window.WebSocket) {
-    socketType = 'Polling';
+    self._currentSocketType = 'Polling';
   }
 
   // Begin with a websocket connection
-  self._createSocket(socketType);
+  self._createSocket(self._currentSocketType);
 };
 
 /**

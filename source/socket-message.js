@@ -143,7 +143,8 @@ Skylink.prototype._groupMessageList = [
   Skylink.prototype._SIG_MESSAGE_TYPE.ROOM_LOCK,
   Skylink.prototype._SIG_MESSAGE_TYPE.MUTE_AUDIO,
   Skylink.prototype._SIG_MESSAGE_TYPE.MUTE_VIDEO,
-  Skylink.prototype._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
+  Skylink.prototype._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE,
+  Skylink.prototype._SIG_MESSAGE_TYPE.GROUP
 ];
 
 /**
