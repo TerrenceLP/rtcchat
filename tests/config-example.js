@@ -1,14 +1,6 @@
-module.exports = {
-  key: {
-    id: '<%= YOUR APP KEY HERE %>',
-    secret: '<%= YOUR APP KEY SECRET HERE %>'
-  },
-  browsers: {
-
-  }
-  IEWebDriverHost: '<%= SELENIUM WEB HOST IP HERE %>',
-};
-
+/**
+ * Running test configuration
+ */
 module.exports = {
   key: {
     id: '<%= YOUR APP KEY HERE %>',
