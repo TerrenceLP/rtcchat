@@ -1,5 +1,27 @@
-window.io = require('../node_modules/socket.io-client/socket.io.js');
-window.AdapterJS = require('../node_modules/adapterjs/publish/adapter.screenshare.js');
-window.Skylink = require('../publish/skylink.debug.js').Skylink;
-window.apikey = '<% YOUR APP KEY HERE %>';
-window.apisecret = '<% YOUR APP KEY SECRET HERE %>';
+module.exports = {
+  key: {
+    id: '<%= YOUR APP KEY HERE %>',
+    secret: '<%= YOUR APP KEY SECRET HERE %>'
+  },
+  browsers: {
+
+  }
+  IEWebDriverHost: '<%= SELENIUM WEB HOST IP HERE %>',
+};
+
+module.exports = {
+  key: {
+    id: '<%= YOUR APP KEY HERE %>',
+    secret: '<%= YOUR APP KEY SECRET HERE %>'
+  },
+  run: {
+    // available: IE / safari / chrome / firefox / opera / webdriver (For IE and configure webDriver)
+    // remove or add based on availability
+    browsers: ['IE', 'safari', 'chrome', 'firefox', 'opera', 'webdriver'],
+    // uses selenium IEDriver with Selenium java
+    webDriver: {
+      host: '<%= SELENIUM WEB HOST IP HERE %>',
+      port: '<%= SELENIUM WEB HOST PORT HERE %>'
+    }
+  }
+};
