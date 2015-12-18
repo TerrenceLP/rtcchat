@@ -3,7 +3,7 @@
  * @constructor
  * @param {JSON} options The configuration options.
  * @private
- * @since 0.6.5
+ * @since 0.6.7
  */
 var Stream = function (options) {
   // Stream ID
@@ -24,7 +24,8 @@ var Stream = function (options) {
     muted: false,
     supports: {
       newWHA: false,
-      screenshare: false
+      screenshare: false,
+      frameRate: true
     }
   };
 
@@ -41,7 +42,7 @@ var Stream = function (options) {
 
   var isStreamObject = false;
 
-  if (typeof options === 'object') {
+  if (typeof options === 'object' && options !== null) {
     if (typeof options.getAudioTracks === 'function' && typeof options.getVideoTracks === 'function') {
       var stream = options;
       options = {
@@ -79,8 +80,8 @@ var Stream = function (options) {
   parseOptions = parseOptions || {};
 
   this._parseVideoSupports();
-  this._parseAudioOptions(parseOptions);
-  this._parseVideoOptions(parseOptions);
+  this._parseAudioOptions(parseOptions.audio);
+  this._parseVideoOptions(parseOptions.video);
 };
 
 Stream.prototype._parseVideoWHAConstraint = function (key, type, value) {
@@ -100,7 +101,11 @@ Stream.prototype._parseVideoWHAConstraint = function (key, type, value) {
   }
 
   if (this.video.supports.newWHA) {
-    this.video.constraints[key][type] = value;
+    // Redefine it first
+    if (!this.video.constraints.mandatory[key]) {
+      this.video.constraints.mandatory[key] = {};
+    }
+    this.video.constraints.mandatory[key][type] = value;
   } else {
     var newKey = key[0].toUpperCase() + key.substring(1, key.length);
     this.video.constraints.mandatory[type + newKey] = value;
@@ -127,6 +132,11 @@ Stream.prototype._parseVideoSupports = function () {
   } else {
     log.warn('This browser does not support screensharing');
   }
+
+  // setting maxFrameRate causes issue in plugin browsers
+  if (window.webrtcDetectedBrowser !== 'safari' && window.webrtcDetectedBrowser !== 'IE') {
+    this.video.supports.frameRate = true;
+  }
 };
 
 Stream.prototype._parseAudioOptions = function (options) {
@@ -136,15 +146,17 @@ Stream.prototype._parseAudioOptions = function (options) {
 
   } else if (typeof options === 'object') {
     this.audio.options = {};
+    this.audio.options.stereo = this.audio.stereo;
     this.audio.constraints = {};
 
     if (typeof options.stereo === 'boolean') {
       this.audio.options.stereo = options.stereo;
+      this.audio.stereo = options.stereo;
     }
 
     if (Array.isArray(options.optional)) {
-      this.audio.options.optional = this.audio.options.optional;
-      this.audio.constraints.optional = this.audio.options.optional;
+      this.audio.options.optional = options.optional;
+      this.audio.constraints.optional = options.optional;
     }
 
     if (typeof options.mute === 'boolean') {
@@ -153,6 +165,7 @@ Stream.prototype._parseAudioOptions = function (options) {
 
   } else if (typeof options === 'boolean') {
     this.audio.options = options;
+    this.audio.constraints = options;
   }
 };
 
@@ -187,22 +200,24 @@ Stream.prototype._parseVideoOptions = function (options) {
       this._parseVideoWHAConstraint('height', 'max', this.video.options.resolution.height);
 
       // setting minWidth / minHeight causes issue in plugin browsers
-      if (window.webrtcDetectedBrowser !== 'safari' && window.webrtcDetectedBrowser !== 'IE') {
+      // NOTE: uncommenting out as this is causing an issue somehow
+      /*if (window.webrtcDetectedBrowser !== 'safari' && window.webrtcDetectedBrowser !== 'IE') {
         this._parseVideoWHAConstraint('width', 'min', this.video.options.resolution.width);
         this._parseVideoWHAConstraint('height', 'min', this.video.options.resolution.height);
-      }
+      }*/
     }
 
     if (typeof options.frameRate === 'number') {
-      this.video.options.frameRate = 50;
+      // Check if supported first
+      if (this.video.supports.frameRate) {
+        this.video.options.frameRate = 50;
 
-      if (options.frameRate > 0) {
-        this.video.options.frameRate = options.frameRate;
-      }
+        if (options.frameRate > 0) {
+          this.video.options.frameRate = options.frameRate;
+        }
 
-      // setting maxFrameRate causes issue in plugin browsers
-      if (window.webrtcDetectedBrowser !== 'safari' && window.webrtcDetectedBrowser !== 'IE') {
         this.video.constraints.mandatory.maxFrameRate = this.video.options.frameRate;
+        // NOTE: uncommenting out as this is causing an issue somehow
         // this.video.constraints.mandatory.minFrameRate = this.video.options.frameRate;
       }
     }
@@ -225,11 +240,9 @@ Stream.prototype._parseVideoOptions = function (options) {
       this.video.muted = options.mute;
     }
 
-  } else if (typeof options === true) {
-    this.video.options = {
-      screenshare: false
-    };
-    this.video.constraints = true;
+  } else if (typeof options === 'boolean') {
+    this.video.options = options;
+    this.video.constraints = options;
   }
 
   if (window.webrtcDetectedBrowser === 'edge') {
@@ -385,7 +398,7 @@ Stream.prototype.fetch = function () {
       log.debug('Retrieved stream');
       self._hookEvents(stream);
     }, function (error) {
-      log.error('Failed retrieving screensharing stream', error);
+      log.error('Failed retrieving stream', error);
       self._trigger('error', error);
     });
   }
@@ -429,6 +442,11 @@ Stream.prototype.muteAudio = function () {
     return;
   }
 
+  if (this.audio.muted) {
+    log.debug('Ignoring muting of audio tracks as stream object is muted already');
+    return;
+  }
+
   var tracks = this._ref.getAudioTracks();
 
   if (tracks.length === 0) {
@@ -438,8 +456,8 @@ Stream.prototype.muteAudio = function () {
 
   for (var i = 0; i < tracks.length; i++) {
     tracks[i].enabled = false;
-    log.debug(track.id + ':audio has been muted');
-    this._trigger('trackMuted', track.id, 'audio', true);
+    log.debug(tracks[i].id + ':audio has been muted');
+    this._trigger('trackMuted', tracks[i].id, 'audio', true);
   }
 
   this.audio.muted = true;
@@ -448,6 +466,11 @@ Stream.prototype.muteAudio = function () {
 Stream.prototype.muteVideo = function () {
   if (!this._ref || this._ref === null) {
     log.debug('Ignoring muting of video tracks as stream object is not defined');
+    return;
+  }
+
+  if (this.video.muted) {
+    log.debug('Ignoring muting of video tracks as stream object is muted already');
     return;
   }
 
@@ -460,8 +483,8 @@ Stream.prototype.muteVideo = function () {
 
   for (var i = 0; i < tracks.length; i++) {
     tracks[i].enabled = false;
-    log.debug(track.id + ':video has been muted');
-    this._trigger('trackMuted', track.id, 'video', true);
+    log.debug(tracks[i].id + ':video has been muted');
+    this._trigger('trackMuted', tracks[i].id, 'video', true);
   }
 
   this.video.muted = true;
@@ -470,6 +493,11 @@ Stream.prototype.muteVideo = function () {
 Stream.prototype.unmuteAudio = function () {
   if (!this._ref || this._ref === null) {
     log.debug('Ignoring unmuting of audio tracks as stream object is not defined');
+    return;
+  }
+
+  if (!this.audio.muted) {
+    log.debug('Ignoring unmuting of audio tracks as stream object is unmuted already');
     return;
   }
 
@@ -482,16 +510,21 @@ Stream.prototype.unmuteAudio = function () {
 
   for (var i = 0; i < tracks.length; i++) {
     tracks[i].enabled = true;
-    log.debug(track.id + ':audio has been muted');
-    this._trigger('trackMuted', track.id, 'audio', false);
+    log.debug(tracks[i].id + ':audio has been unmuted');
+    this._trigger('trackMuted', tracks[i].id, 'audio', false);
   }
 
-  this.video.muted = false;
+  this.audio.muted = false;
 };
 
 Stream.prototype.unmuteVideo = function () {
   if (!this._ref || this._ref === null) {
     log.debug('Ignoring unmuting of video tracks as stream object is not defined');
+    return;
+  }
+
+  if (!this.video.muted) {
+    log.debug('Ignoring unmuting of video tracks as stream object is unmuted already');
     return;
   }
 
@@ -504,8 +537,8 @@ Stream.prototype.unmuteVideo = function () {
 
   for (var i = 0; i < tracks.length; i++) {
     tracks[i].enabled = true;
-    log.debug(track.id + ':video has been muted');
-    this._trigger('trackMuted', track.id, 'video', false);
+    log.debug(tracks[i].id + ':video has been unmuted');
+    this._trigger('trackMuted', tracks[i].id, 'video', false);
   }
 
   this.video.muted = false;

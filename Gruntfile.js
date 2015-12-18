@@ -196,7 +196,7 @@ module.exports = function(grunt) {
     }
   };
 
-  var testTask = require('./tests/GruntTask.js')(config);
+  var testTask = require('./tests/Grunttask.js')(config);
 
   grunt.initConfig(config);
 

@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.4 - Tue Dec 15 2015 05:04:16 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.4 - Fri Dec 18 2015 12:22:46 GMT+0800 (SGT) */
 
 module.exports = function(config) {
   config.set({
@@ -51,7 +51,7 @@ module.exports = function(config) {
     },
 
 
-    files: [{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/adapterjs/publish/adapter.screenshare.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/socket.io-client/socket.io.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/debugger.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/util.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/stream.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js","included":true}],
+    files: [{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/adapterjs/publish/adapter.screenshare.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/socket.io-client/socket.io.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/debugger.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/event.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/util.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/util.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/stream.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js","included":true}],
 
     preprocessors: {"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js":["browserify"]},
 

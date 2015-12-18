@@ -51,6 +51,12 @@ module.exports = function(gruntConfig) {
       pattern: __dirname + '/../source/debugger.js',
       included: true
     }, {
+      pattern: __dirname + '/../source/event.js',
+      included: true
+    }, {
+      pattern: __dirname + '/../source/util.js',
+      included: true
+    }, {
       pattern: __dirname + '/tests/util.js',
       included: true
   }];
