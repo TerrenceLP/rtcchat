@@ -8,6 +8,7 @@ app.use(connect.static(__dirname));
 
 fs.stat('certificates/server.key', function(err, stat) {
     if(err == null) {
+      http.createServer(app).listen(8081);
       https.createServer({
         key: fs.readFileSync('certificates/server.key'),
         cert: fs.readFileSync('certificates/server.crt')

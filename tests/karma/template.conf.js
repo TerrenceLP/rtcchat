@@ -1,17 +1,23 @@
+var fs = require('fs');
+var UAParser = require('ua-parser-js');
+
 module.exports = function(config) {
   config.set({
+    // the host name
+    hostname: '@@hostname',
+
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
-    frameworks: ['browserify', 'tap'],
+    frameworks: ['mocha', 'chai'],
 
     autoWatch: true,
 
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['coverage', 'html', 'story'],
+    reporters: ['mocha', 'coverage', 'html'],
 
     colors: true,
 
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
-    logLevel: config.LOG_INFO,
+    logLevel: config.LOG_ERROR,
 
     singleRun: true,
 
@@ -32,7 +38,12 @@ module.exports = function(config) {
       },
       ChromeCustom: {
         base: 'Chrome',
-        flags: ['--use-fake-ui-for-media-stream', '--disable-user-media-security']
+        flags: [
+          '--use-fake-ui-for-media-stream',
+          // no longer works. removed
+          //'--disable-user-media-security',
+          '--unsafely-treat-insecure-origin-as-secure="@@hostname"'
+        ]
       },
       FirefoxCustom: {
         base: 'Firefox',
@@ -43,11 +54,22 @@ module.exports = function(config) {
       }
     },
 
-    coverageReporter: {
-      type : 'html',
-      dir : '@@coverage'
+    protocol: 'http:',
+
+    httpsServerOptions: {
+      key: fs.readFileSync('@@certificateKey', 'utf-8'),
+      cert: fs.readFileSync('@@certificateCert', 'utf-8')
     },
 
+    coverageReporter: {
+      type : 'html',
+      dir : '@@coverageDir',
+      file: '@@coverageFile'
+    },
+
+    client: {
+      captureConsole: false
+    },
 
     files: @@files,
 

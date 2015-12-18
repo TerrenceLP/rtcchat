@@ -1,17 +1,15 @@
 'use strict';
 
-var test = require('tape-catch');
+var expect = chai.expect;
+var assert = chai.assert;
+var should = chai.should;
 
-test('Constructor', function (m) {
-  m.plan(2);
+describe('Constructor', function () {
 
-  m.test('new Stream ([JSON] constraints)', function (t) {
-    t.plan(29);
-
+  // Test the input constraints
+  describe('new Stream ([JSON] constraints)', function () {
     var testCase = function (constraints) {
-      t.test('Should pass when\n' + JSON.stringify(constraints), function (tc) {
-        tc.plan(7);
-
+      it('Should pass when\n' + JSON.stringify(constraints), function () {
         var stream = new Stream(constraints);
 
         var expectedConstraints = {
@@ -28,10 +26,13 @@ test('Constructor', function (m) {
           }
         };
 
-        // Stream initial variables state
-        t.deepEqual(stream.id, null, 'Is empty at first');
-        t.deepEqual(stream._ref, null, 'Is empty at first');
-        t.deepEqual(stream._refClone, null, 'Is empty at first');
+        // Stream initial variables state before .fetch()
+        // stream.id
+        expect(stream.id).to.be.null;
+        // stream._ref
+        expect(stream._ref).to.be.null;
+        // stream._refClone
+        expect(stream._refClone).to.be.null;
 
         // Parse the expected constraints
         if (typeof constraints === 'object' && constraints !== null) {
@@ -137,14 +138,21 @@ test('Constructor', function (m) {
         }
 
         // Check audio options
-        t.deepEqual(stream.audio.options, expectedConstraints.audio.options, 'Is correct (audio.options)');
-        t.deepEqual(stream.audio.constraints, expectedConstraints.audio.constraints, 'Is correct (audio.constraints)');
-        t.deepEqual(stream.audio.muted, expectedConstraints.audio.muted, 'Is correct (audio.muted)');
-        t.deepEqual(stream.audio.stereo, expectedConstraints.audio.stereo, 'Is correct (audio.stereo)');
+        // stream.audio.options
+        expect(stream.audio.options).to.deep.equal(expectedConstraints.audio.options);
+        // stream.audio.constraints
+        expect(stream.audio.constraints).to.deep.equal(expectedConstraints.audio.constraints);
+        // stream.audio.muted
+        expect(stream.audio.muted).to.deep.equal(expectedConstraints.audio.muted);
+        // stream.audio.stereo
+        expect(stream.audio.stereo).to.deep.equal(expectedConstraints.audio.stereo);
         // Check video options
-        t.deepEqual(stream.video.options, expectedConstraints.video.options, 'Is correct (video.options)');
-        t.deepEqual(stream.video.constraints, expectedConstraints.video.constraints, 'Is correct (video.constraints)');
-        t.deepEqual(stream.video.muted, expectedConstraints.video.muted, 'Is correct (video.muted)');
+        // stream.video.options
+        expect(stream.video.options).to.deep.equal(expectedConstraints.video.options);
+        // stream.video.constraints
+        expect(stream.video.constraints).to.deep.equal(expectedConstraints.video.constraints);
+        // stream.video.muted
+        expect(stream.video.muted).to.deep.equal(expectedConstraints.video.muted);
       });
     };
 
@@ -179,7 +187,127 @@ test('Constructor', function (m) {
     testCase({ audio: true, video: { resolution: { height: 500 }, frameRate: -1 }, screenshare: true, mute: true });
   });
 
-  m.test('new Stream ([MediaStream] stream)', function (t) {
-    t.end();
+  // Test the input stream object passed in
+  describe('new Stream ([MediaStream] stream)', function () {
+    var testCase = function (constraints, muteConstraints) {
+      it('Should pass when stream object with \n' + JSON.stringify(constraints), function (done) {
+        window.getUserMedia(constraints, function (streamObj) {
+          muteConstraints = muteConstraints || {};
+
+          // Polyfill the mute constraints first
+          if (typeof muteConstraints.audio !== 'boolean') {
+            muteConstraints.audio = false;
+          }
+          if (typeof muteConstraints.video !== 'boolean') {
+            muteConstraints.video = false;
+          }
+
+          var audioTracks = streamObj.getAudioTracks();
+          var videoTracks = streamObj.getVideoTracks();
+
+          for (var i = 0; audioTracks.length; i++) {
+            audioTracks[i].enabled = !muteConstraints.audio;
+          }
+          for (var i = 0; videoTracks.length; i++) {
+            videoTracks[i].enabled = !muteConstraints.video;
+          }
+
+          var stream = new Stream(streamObj);
+
+          // Stream variables to be set
+          // stream.id
+          expect(stream.id).to.be.equal(streamObj.id);
+          // stream._ref
+          expect(stream._ref).to.be.equal(streamObj);
+          // stream._refClone
+          expect(stream._refClone).to.be.null;
+
+          var expectedConstraints = {
+            audio: {
+              options: { stereo: true },
+              constraints: true,
+              muted: false,
+              stereo: true
+            },
+            video: {
+              options: { screenshare: false },
+              constraints: true,
+              muted: false
+            }
+          };
+
+          if (stream.getAudioTracks().length > 0) {
+            var tracks = stream.getAudioTracks();
+            var hasActiveTrack = false;
+
+            for (var i = 0; i < tracks.length; i++) {
+              if (tracks[i].enabled === true) {
+                hasActiveTrack = true;
+                break;
+              }
+            }
+
+            if (!hasActiveTrack) {
+              expectedConstraints.audio.muted = true;
+            }
+          } else {
+            expectedConstraints.audio.options = false;
+            expectedConstraints.audio.constraints = false;
+          }
+
+          if (stream.getVideoTracks().length > 0) {
+            var tracks = stream.getVideoTracks();
+            var hasActiveTrack = false;
+
+            for (var i = 0; i < tracks.length; i++) {
+              if (tracks[i].enabled === true) {
+                hasActiveTrack = true;
+                break;
+              }
+            }
+
+            if (!hasActiveTrack) {
+              expectedConstraints.video.muted = true;
+            }
+          } else {
+            expectedConstraints.video.options = false;
+            expectedConstraints.video.constraints = false;
+          }
+
+          // Check audio options
+          // stream.audio.options
+          expect(stream.audio.options).to.deep.equal(expectedConstraints.audio.options);
+          // stream.audio.constraints
+          expect(stream.audio.constraints).to.deep.equal(expectedConstraints.audio.constraints);
+          // stream.audio.muted
+          expect(stream.audio.muted).to.deep.equal(expectedConstraints.audio.muted);
+          // stream.audio.stereo
+          expect(stream.audio.stereo).to.deep.equal(expectedConstraints.audio.stereo);
+          // Check video options
+          // stream.video.options
+          expect(stream.video.options).to.deep.equal(expectedConstraints.video.options);
+          // stream.video.constraints
+          expect(stream.video.constraints).to.deep.equal(expectedConstraints.video.constraints);
+          // stream.video.muted
+          expect(stream.video.muted).to.deep.equal(expectedConstraints.video.muted);
+
+        }, function (error) {
+          throw error;
+        });
+      });
+    };
+
+    testCase({ audio: true, video: true});
+    testCase({ audio: false, video: true });
+    testCase({ audio: true, video: false });
+    testCase({ audio: true, video: true }, { audio: true, video: true });
+    testCase({ audio: true, video: true }, { audio: false, video: true });
+    testCase({ audio: true, video: true }, { audio: false, video: false });
+    testCase({ audio: true, video: true }, { audio: true, video: false });
+    testCase({ audio: true, video: true }, { audio: true, video: true });
+    testCase({ audio: true, video: false }, { audio: true, video: true });
+    testCase({ audio: false, video: true }, { audio: true, video: true });
+    testCase({ audio: true, video: false }, { audio: true, video: false });
   });
 });
+

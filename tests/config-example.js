@@ -7,13 +7,22 @@ module.exports = {
     secret: '<%= YOUR APP KEY SECRET HERE %>'
   },
   run: {
-    // available: IE / safari / chrome / firefox / opera / webdriver (For IE and configure webDriver)
+    // your host IP
+    host: '<%= YOUR HOST IP HERE %>',
+    // available: IE / safari / chrome / firefox / opera (dropped support) / webdriver (For IE and configure webDriver)
     // remove or add based on availability
-    browsers: ['IE', 'safari', 'chrome', 'firefox', 'opera', 'webdriver'],
+    browsers: ['IE', 'safari', 'chrome', 'firefox', 'webdriver'],
     // uses selenium IEDriver with Selenium java
     webDriver: {
       host: '<%= SELENIUM WEB HOST IP HERE %>',
       port: '<%= SELENIUM WEB HOST PORT HERE %>'
-    }
+    },
+    // certificates in (/certificates) folder
+    // generate at here: http://www.selfsignedcertificate.com/
+    // Dropped support temporarily
+    /*certificates: {
+      key: '<%= CERTIFICATE KEY HERE %>',
+      crt: '<%= CERTIFICATE CRT HERE %>'
+    }*/
   }
 };

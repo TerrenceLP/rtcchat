@@ -52,12 +52,25 @@ var Stream = function (options) {
       var audioTracks = stream.getAudioTracks();
       var videoTracks = stream.getVideoTracks();
       var i;
+
       // check if audio tracks is available and used
       for (i = 0; i < audioTracks.length; i++) {
         // readyState is implemented by chrome/opera
         if (!audioTracks[i].ended && audioTracks[i].readyState !== 'ended') {
           options.audio = true;
-          break;
+        }
+      }
+      // check if audio tracks is muted
+      if (options.audio) {
+        var hasActiveTrack = false;
+        for (i = 0; i < audioTracks.length; i++) {
+          if (audioTracks[i].enabled === true) {
+            hasActiveTrack = true;
+            break;
+          }
+        }
+        if (!hasActiveTrack) {
+          options.audio = { mute: true };
         }
       }
       // check if video tracks is available and used
@@ -68,6 +81,22 @@ var Stream = function (options) {
           break;
         }
       }
+      // check if video tracks is muted
+      if (options.audio) {
+        var hasActiveTrack = false;
+        for (i = 0; i < videoTracks.length; i++) {
+          if (videoTracks[i].enabled === true) {
+            hasActiveTrack = true;
+            break;
+          }
+        }
+        if (!hasActiveTrack) {
+          options.video = { mute: true };
+        }
+      }
+
+      this.id = options.id || options.label;
+      this._ref = options;
     }
   } else {
     options = {
@@ -166,6 +195,11 @@ Stream.prototype._parseAudioOptions = function (options) {
   } else if (typeof options === 'boolean') {
     this.audio.options = options;
     this.audio.constraints = options;
+
+    if (this.audio.options) {
+      this.audio.options = {};
+      this.audio.options.stereo = this.audio.stereo;
+    }
   }
 };
 
@@ -243,6 +277,11 @@ Stream.prototype._parseVideoOptions = function (options) {
   } else if (typeof options === 'boolean') {
     this.video.options = options;
     this.video.constraints = options;
+
+    if (this.video.options) {
+      this.video.options = {};
+      this.video.options.screenshare = false;
+    }
   }
 
   if (window.webrtcDetectedBrowser === 'edge') {

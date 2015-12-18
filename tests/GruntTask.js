@@ -9,6 +9,7 @@ module.exports = function(gruntConfig) {
   config.run = config.run || {};
   config.run.browsers = config.run.browsers || [];
   config.run.webDriver = config.run.webDriver || {};
+  config.run.certificates = config.run.certificates || {};
 
   if (typeof config.run.webDriver.host !== 'string') {
     config.run.webDriver.host = '';
@@ -26,9 +27,22 @@ module.exports = function(gruntConfig) {
       'IE': 'IE',
       'chrome': 'ChromeCustom',
       'firefox': 'FirefoxCustom',
-      'opera': 'Opera',
       'safari': 'Safari',
       'webdriver': 'IEWebDriver'
+    };
+    var array = [];
+    for (var b = 0; b < config.run.browsers.length; b++) {
+      var brows = config.run.browsers[b];
+      if (list.hasOwnProperty(brows)) {
+        array.push(list[brows]);
+      }
+    }
+    return array;
+  })();
+  // The list of browsers that requires https://
+  var secureBrowsers = (function () {
+    var list = {
+      'opera': 'Opera'
     };
     var array = [];
     for (var b = 0; b < config.run.browsers.length; b++) {
@@ -86,12 +100,13 @@ module.exports = function(gruntConfig) {
     }]);
 
     var tPreprocessor = {};
-    tPreprocessor[__dirname + '/tests/units/' + tUnit + '.js'] = ['browserify'];
+    tPreprocessor[__dirname + '/tests/units/' + tUnit + '.js'] = ['coverage'];
 
     // Replace the information and output to a temp folder for this test key
     gruntConfig.replace[tUnit] = {
       options: {
         variables: {
+          hostname: config.run.host || 'localhost',
           port: parseInt('50' + i + /*j*/ '0', 10),
           browser: browsers,
           files: tFiles,
@@ -101,9 +116,12 @@ module.exports = function(gruntConfig) {
             pageTitle: 'Unit tests for ' + tUnit, //+ ' in ' + tBrowser.id,
             subPageTitle: 'Tested browsers: ' + browsers.join(', ')
           },
-          coverage: __dirname + '/coverage/',
+          coverageDir: __dirname + '/coverage/' + tUnit + '/',
+          coverageFile: 'index.html',
           driverhost: config.run.webDriver.host,
-          driverport: config.run.webDriver.port
+          driverport: config.run.webDriver.port,
+          certificateKey: __dirname + '/../certificates/' + config.run.certificates.key,
+          certificateCert: __dirname + '/../certificates/' + config.run.certificates.crt
         },
         prefix: '@@'
       },
@@ -149,10 +167,21 @@ module.exports = function(gruntConfig) {
         },
         async: false
       }
+    },
+    runnerssl: {
+      command: 'sh tests/bash/run-ssl.sh ' + secureBrowsers.join(','),
+      options: {
+        stdin: false,
+        execOptions: {
+          setsid: true
+        },
+        async: false
+      }
     }
   };
 
   gruntTask.push('shell:clicker');
+  gruntTask.push('shell:runnerssl');
   gruntTask.push('shell:runner');
 
   return gruntTask;
