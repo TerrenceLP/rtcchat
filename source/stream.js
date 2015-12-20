@@ -32,85 +32,112 @@ var Stream = function (options) {
   // Stream audioFallback flag
   this.audioFallback = false;
 
+  // Make checks if stream provided is an external stream
+  // Stream is external flag
+  this.externalStream = (function () {
+    // Make checks for Chrome/Firefox/Opera usecase
+    if (typeof options === 'object' && options !== null) {
+      if (options.constructor && ['MediaStream', 'LocalMediaStream'].indexOf(options.constructor.name) > -1) {
+        return true;
+      }
+    } else if (typeof options === 'function' && ['IE', 'safari'].indexOf(window.webrtcDetectedBrowser) > -1) {
+      return true;
+    }
+    return false;
+  })();
+
   // Stream MediaStream object reference
   this._ref = null;
 
   // Stream MediaStream clone object reference
   this._refClone = null;
 
+  // Parse the video supports
+  this._parseVideoSupports();
+
+  // Hook events
   SkylinkEvent._mixin(this);
 
-  var isStreamObject = false;
 
-  if (typeof options === 'object' && options !== null) {
-    if (typeof options.getAudioTracks === 'function' && typeof options.getVideoTracks === 'function') {
-      var stream = options;
-      options = {
-        audio: false,
-        video: false
+  // Parse external stream
+  if (this.externalStream) {
+    this._parseExternalStream(options);
+    log.debug('Stream object has been initialized with provided MediaStream object', options);
+  // Normal usecase
+  } else {
+    var parseOptions = {};
+
+    if (typeof options === 'object' && options !== null) {
+      parseOptions = clone(options);
+    } else {
+      parseOptions = {
+        audio: true,
+        video: true
       };
-      var audioTracks = stream.getAudioTracks();
-      var videoTracks = stream.getVideoTracks();
-      var i;
+    }
 
-      // check if audio tracks is available and used
-      for (i = 0; i < audioTracks.length; i++) {
-        // readyState is implemented by chrome/opera
-        if (!audioTracks[i].ended && audioTracks[i].readyState !== 'ended') {
-          options.audio = true;
+    this._parseAudioOptions(parseOptions.audio);
+    this._parseVideoOptions(parseOptions.video);
+
+    log.debug('Stream settings has been initialized and ready for fetching', options);
+  }
+};
+
+Stream.prototype._parseExternalStream = function (stream) {
+  var self = this;
+
+  if (typeof stream.getAudioTracks !== 'function' && typeof stream.getVideoTracks !== 'function') {
+    var invalidStreamError = 'Failed initializing Stream. Provided MediaStream object is invalid';
+    log.error(invalidStreamError, stream);
+    throw new Error(invalidStreamError);
+  }
+
+  var audioTracks = stream.getAudioTracks();
+  var videoTracks = stream.getVideoTracks();
+
+  var checkTracks = function (type) {
+    var methodName = 'get' + (type[0].toUpperCase() + type.substring(1, type.length)) + 'Tracks';
+    var tracks = stream[methodName]();
+    // check if audio tracks is available and used
+    for (var i = 0; i < tracks.length; i++) {
+      // readyState is implemented by chrome/opera
+      if (!tracks[i].ended && tracks[i].readyState !== 'ended') {
+        if (type === 'audio') {
+          self[type].options = {};
+          self[type].options.stereo = self[type].stereo;
+          self[type].constraints = true;
+        } else {
+          self[type].options = { screenshare: false };
+          self[type].constraints = true;
         }
       }
-      // check if audio tracks is muted
-      if (options.audio) {
-        var hasActiveTrack = false;
-        for (i = 0; i < audioTracks.length; i++) {
-          if (audioTracks[i].enabled === true) {
-            hasActiveTrack = true;
-            break;
-          }
-        }
-        if (!hasActiveTrack) {
-          options.audio = { mute: true };
-        }
-      }
-      // check if video tracks is available and used
-      for (i = 0; i < videoTracks.length; i++) {
-        // readyState is implemented by chrome/opera
-        if (!videoTracks[i].ended && videoTracks[i].readyState !== 'ended') {
-          options.video = true;
+    }
+    // check if audio tracks is muted
+    if (self[type].options) {
+      var hasActiveTrack = false;
+      for (var a = 0; a < tracks.length; a++) {
+        if (tracks[a].enabled === true) {
+          hasActiveTrack = true;
           break;
         }
       }
-      // check if video tracks is muted
-      if (options.audio) {
-        var hasActiveTrack = false;
-        for (i = 0; i < videoTracks.length; i++) {
-          if (videoTracks[i].enabled === true) {
-            hasActiveTrack = true;
-            break;
-          }
-        }
-        if (!hasActiveTrack) {
-          options.video = { mute: true };
-        }
+      if (!hasActiveTrack) {
+        self[type].muted = true;
       }
-
-      this.id = options.id || options.label;
-      this._ref = options;
     }
-  } else {
-    options = {
-      audio: true,
-      video: true
-    };
+  };
+
+  checkTracks('audio');
+  checkTracks('video');
+
+  if (!self.audio.options && !self.video.options) {
+    var inactiveTracksError = 'Failed initializing Stream. Provided MediaStream has no active tracks';
+    log.error(inactiveTracksError, stream);
+    throw new Error(inactiveTracksError);
   }
 
-  var parseOptions = clone(options);
-  parseOptions = parseOptions || {};
-
-  this._parseVideoSupports();
-  this._parseAudioOptions(parseOptions.audio);
-  this._parseVideoOptions(parseOptions.video);
+  self.externalStream = true;
+  self._hookEvents(stream);
 };
 
 Stream.prototype._parseVideoWHAConstraint = function (key, type, value) {
@@ -293,6 +320,8 @@ Stream.prototype._parseVideoOptions = function (options) {
 };
 
 Stream.prototype._hookEvents = function (stream) {
+  var self = this;
+
   // polyfill stream.getTracks just incase it is not available
   if (typeof stream.getTracks !== 'function') {
     stream.getTracks = function () {
@@ -302,9 +331,7 @@ Stream.prototype._hookEvents = function (stream) {
     };
   }
 
-  var self = this;
   var tracks = stream.getTracks();
-  var i;
 
   if (typeof stream.id === 'string') {
     self.id = stream.id;
@@ -316,7 +343,7 @@ Stream.prototype._hookEvents = function (stream) {
 
   var onEnded = function () {
     if (window.webrtcDetectedBrowser !== 'chrome' && window.webrtcDetectedBrowser !== 'opera') {
-      for (i = 0; i < tracks.length; i++) {
+      for (var i = 0; i < tracks.length; i++) {
         var track = tracks[i];
         log.debug(track.id + ':' + track.kind + ' has ended');
         self._trigger('trackEnded', track.id, track.kind);
@@ -345,8 +372,8 @@ Stream.prototype._hookEvents = function (stream) {
     stream.onended = onEnded;
   }
 
-  for (i = 0; i < tracks.length; i++) {
-    self._hookTrackEvents(tracks[i]);
+  for (var j = 0; j < tracks.length; j++) {
+    self._hookTrackEvents(tracks[j]);
   }
 
   self._ref = stream;

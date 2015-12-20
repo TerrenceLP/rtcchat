@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Unit tests for stream - Tested browsers: Safari</title>
+    <style type="text/css">html,body{font-family:Arial,sans-serif;margin:0;padding:0;}body{padding:10px 40px;}h1{margin-bottom:0;}h2{margin-top:0;color:#999;}table{width:100%;margin-top:20px;margin-bottom:20px;table-layout:fixed;}tr.header{background:#ddd;font-weight:bold;border-bottom:none;}td{padding:7px;border-top:none;border-left:1px black solid;border-bottom:1px black solid;border-right:none;word-break:break-all;word-wrap:break-word;}tr.pass td{color:#003b07;background:#86e191;}tr.skip td{color:#7d3a00;background:#ffd24a;}tr.fail td{color:#5e0e00;background:#ff9c8a;}tr:first-child td{border-top:1px black solid;}td:last-child{border-right:1px black solid;}tr.overview{font-weight:bold;color:#777;}tr.overview td{padding-bottom:0px;border-bottom:none;}tr.system-out td{color:#777;}hr{height:2px;margin:30px 0;background:#000;border:none;}</style>
+  </head>
+  <body>
+    <h1>Unit tests for stream</h1>
+    <h2>Tested browsers: Safari</h2>
+    <table cellspacing="0" cellpadding="0" border="0">
+      <tr class="overview">
+        <td colspan="3" title="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/601.2.7 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.7">Browser: Safari 9.0.1 (Mac OS X 10.11.1)</td>
+      </tr>
+      <tr class="overview">
+        <td colspan="3">Timestamp: Mon Dec 21 2015 01:38:24 GMT+0800 (SGT)</td>
+      </tr>
+      <tr>
+        <td colspan="3">
+          40 tests / 
+          0 errors / 
+          0 failures / 
+          0 skipped / 
+          runtime: 10.741s
+        </td>
+      </tr>
+      <tr class="header">
+        <td>Status</td>
+        <td>Spec</td>
+        <td>Suite / Results</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.006s</td>
+        <td>Should pass when
+undefined</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.003s</td>
+        <td>Should pass when
+null</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+1</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+1.5</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+false</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+true</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+"string"</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+{"audio":false,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+{"audio":true,"video":false}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":false,"video":false}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+{"audio":{},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":{"optional":[{"sourceId":"test"}]},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":{"stereo":false,"optional":[{"sourceId":"test"}]},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":{"stereo":true,"optional":[{"sourceId":"test"}]},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":{"stereo":true,"mute":true},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":{"stereo":true,"mute":false},"video":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.003s</td>
+        <td>Should pass when
+{"audio":true,"video":{}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{}}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.003s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"width":1000}}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"width":1800,"height":800}}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500}}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":56}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.001s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":-1}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":0}}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.003s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":-1},"mute":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":-1},"mute":false}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":-1},"screenshare":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.002s</td>
+        <td>Should pass when
+{"audio":true,"video":{"resolution":{"height":500},"frameRate":-1},"screenshare":true,"mute":true}</td>
+        <td>Constructor &raquo; new Stream ([JSON] constraints)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.558s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.963s</td>
+        <td>Should pass when stream object with 
+{"audio":false,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.98s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":false}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.086s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.027s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.014s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.994s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.045s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 0.967s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":false}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.046s</td>
+        <td>Should pass when stream object with 
+{"audio":false,"video":true}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="pass">
+        <td>Passed in 1.002s</td>
+        <td>Should pass when stream object with 
+{"audio":true,"video":false}</td>
+        <td>Constructor &raquo; new Stream ([MediaStream] stream)</td>
+      </tr>
+      <tr class="system-out">
+        <td colspan="3"><strong>System output:</strong><br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', undefined
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', null
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', 1
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', 1.5
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', false
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', true
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', 'string'
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: false, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: false, video: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{optional: [...]}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{stereo: false, optional: [...]}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{stereo: true, optional: [...]}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{stereo: true, mute: true}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: Object{stereo: true, mute: false}, video: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{}}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{width: ...}}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{width: ..., height: ...}}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: 56}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: -1}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: 0}}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: -1}, mute: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: -1}, mute: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: -1}, screenshare: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream settings has been initialized and ready for fetching', Object{audio: true, video: Object{resolution: Object{height: ...}, frameRate: -1}, screenshare: true, mute: true}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+<br />Safari 9.0.1 (Mac OS X 10.11.1) WARN: 'SkylinkJS - ', 'Plugin screensharing supports', Object{feature: true, available: false}
+<br />Safari 9.0.1 (Mac OS X 10.11.1) DEBUG: 'SkylinkJS - ', 'Stream object has been initialized with provided MediaStream object', <JSAPI-Auto Javascript Object>
+</td>
+      </tr>
+    </table>
+    <hr/>
+  </body>
+</html>

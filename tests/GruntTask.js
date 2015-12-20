@@ -21,34 +21,28 @@ module.exports = function(gruntConfig) {
 
   // Get the list of test units
   var units = fs.readdirSync(__dirname + '/tests/units/');
+  // The list of browsers (to kill after opening in karma)
+  var killBrowsers = [];
   // The list of browsers
   var browsers = (function () {
     var list = {
       'IE': 'IE',
       'chrome': 'ChromeCustom',
       'firefox': 'FirefoxCustom',
-      'safari': 'Safari',
-      'webdriver': 'IEWebDriver'
+      'opera': 'Opera',
+      'safari': 'Safari'
+      //'webdriver': 'IEWebDriver'
     };
     var array = [];
     for (var b = 0; b < config.run.browsers.length; b++) {
       var brows = config.run.browsers[b];
       if (list.hasOwnProperty(brows)) {
         array.push(list[brows]);
-      }
-    }
-    return array;
-  })();
-  // The list of browsers that requires https://
-  var secureBrowsers = (function () {
-    var list = {
-      'opera': 'Opera'
-    };
-    var array = [];
-    for (var b = 0; b < config.run.browsers.length; b++) {
-      var brows = config.run.browsers[b];
-      if (list.hasOwnProperty(brows)) {
-        array.push(list[brows]);
+        if (['opera', 'safari'].indexOf(brows) > -1) {
+          var appBrows = brows.charAt(0).toUpperCase() + brows.slice(1);
+          killBrowsers.push('osascript -e \'open app "' + appBrows + '"\'');
+          killBrowsers.push('osascript -e \'quit app "' + appBrows + '"\'');
+        }
       }
     }
     return array;
@@ -168,8 +162,19 @@ module.exports = function(gruntConfig) {
         async: false
       }
     },
-    runnerssl: {
-      command: 'sh tests/bash/run-ssl.sh ' + secureBrowsers.join(','),
+    cleanrunner: {
+      command: (function () {
+        var killBrowsers = ['opera', 'safari'];
+        var array = [];
+        for (var b = 0; b < killBrowsers.length; b++) {
+          if (config.run.browsers.indexOf(killBrowsers[b]) > -1) {
+            var appName = killBrowsers[b].charAt(0).toUpperCase() + killBrowsers[b].slice(1);
+            array.push('osascript tests/bash/kill-run.scpt ' + appName);
+            array.push('pkill ' + appName)
+          }
+        }
+        return array;
+      })().join('&&'),
       options: {
         stdin: false,
         execOptions: {
@@ -181,8 +186,8 @@ module.exports = function(gruntConfig) {
   };
 
   gruntTask.push('shell:clicker');
-  gruntTask.push('shell:runnerssl');
   gruntTask.push('shell:runner');
+  gruntTask.push('shell:cleanrunner');
 
   return gruntTask;
 };

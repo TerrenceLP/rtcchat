@@ -4,7 +4,24 @@ var expect = chai.expect;
 var assert = chai.assert;
 var should = chai.should;
 
+// Custom timeouts for this tests
+var proceedToNextCase = function (waitingTimeout) {
+  if (window.webrtcDetectedBrowser !== 'safari' &&
+    window.webrtcDetectedBrowser !== 'IE') {
+    return waitingTimeout / 1000;
+  }
+  return waitingTimeout;
+};
+
 describe('Constructor', function () {
+
+  before(function (done) {
+    this.timeout(7500);
+    var proceedToNext = 5
+    AdapterJS.webRTCReady(function () {
+      done();
+    });
+  });
 
   // Test the input constraints
   describe('new Stream ([JSON] constraints)', function () {
@@ -189,9 +206,13 @@ describe('Constructor', function () {
 
   // Test the input stream object passed in
   describe('new Stream ([MediaStream] stream)', function () {
+    this.timeout(15000);
+
     var testCase = function (constraints, muteConstraints) {
       it('Should pass when stream object with \n' + JSON.stringify(constraints), function (done) {
-        window.getUserMedia(constraints, function (streamObj) {
+        this.timeout(5000 + proceedToNextCase(5000));
+
+        window.navigator.getUserMedia(constraints, function (streamObj) {
           muteConstraints = muteConstraints || {};
 
           // Polyfill the mute constraints first
@@ -205,10 +226,10 @@ describe('Constructor', function () {
           var audioTracks = streamObj.getAudioTracks();
           var videoTracks = streamObj.getVideoTracks();
 
-          for (var i = 0; audioTracks.length; i++) {
+          for (var i = 0; i < audioTracks.length; i++) {
             audioTracks[i].enabled = !muteConstraints.audio;
           }
-          for (var i = 0; videoTracks.length; i++) {
+          for (var i = 0; i < videoTracks.length; i++) {
             videoTracks[i].enabled = !muteConstraints.video;
           }
 
@@ -236,8 +257,8 @@ describe('Constructor', function () {
             }
           };
 
-          if (stream.getAudioTracks().length > 0) {
-            var tracks = stream.getAudioTracks();
+          if (streamObj.getAudioTracks().length > 0) {
+            var tracks = streamObj.getAudioTracks();
             var hasActiveTrack = false;
 
             for (var i = 0; i < tracks.length; i++) {
@@ -255,8 +276,8 @@ describe('Constructor', function () {
             expectedConstraints.audio.constraints = false;
           }
 
-          if (stream.getVideoTracks().length > 0) {
-            var tracks = stream.getVideoTracks();
+          if (streamObj.getVideoTracks().length > 0) {
+            var tracks = streamObj.getVideoTracks();
             var hasActiveTrack = false;
 
             for (var i = 0; i < tracks.length; i++) {
@@ -290,6 +311,8 @@ describe('Constructor', function () {
           expect(stream.video.constraints).to.deep.equal(expectedConstraints.video.constraints);
           // stream.video.muted
           expect(stream.video.muted).to.deep.equal(expectedConstraints.video.muted);
+
+          done();
 
         }, function (error) {
           throw error;

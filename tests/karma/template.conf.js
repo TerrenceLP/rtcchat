@@ -1,5 +1,5 @@
 var fs = require('fs');
-var UAParser = require('ua-parser-js');
+//var UAParser = require('ua-parser-js');
 
 module.exports = function(config) {
   config.set({
@@ -54,12 +54,12 @@ module.exports = function(config) {
       }
     },
 
-    protocol: 'http:',
+    /*protocol: 'http:',
 
     httpsServerOptions: {
       key: fs.readFileSync('@@certificateKey', 'utf-8'),
       cert: fs.readFileSync('@@certificateCert', 'utf-8')
-    },
+    },*/
 
     coverageReporter: {
       type : 'html',
@@ -67,9 +67,9 @@ module.exports = function(config) {
       file: '@@coverageFile'
     },
 
-    client: {
+    /*client: {
       captureConsole: false
-    },
+    },*/
 
     files: @@files,
 

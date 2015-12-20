@@ -1,12 +1,12 @@
-/*! skylinkjs - v0.6.4 - Fri Dec 18 2015 21:33:26 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.4 - Mon Dec 21 2015 01:38:22 GMT+0800 (SGT) */
 
 var fs = require('fs');
-var UAParser = require('ua-parser-js');
+//var UAParser = require('ua-parser-js');
 
 module.exports = function(config) {
   config.set({
     // the host name
-    hostname: '192.168.1.183',
+    hostname: 'localhost',
 
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
     frameworks: ['mocha', 'chai'],
@@ -34,7 +34,7 @@ module.exports = function(config) {
         base: 'WebDriver',
         config: {
           hostname: '192.168.1.171', // supply with your own IP
-          port: 4444
+          port: 4445
         },
         browserName: 'internet explorer'
       },
@@ -44,7 +44,7 @@ module.exports = function(config) {
           '--use-fake-ui-for-media-stream',
           // no longer works. removed
           //'--disable-user-media-security',
-          '--unsafely-treat-insecure-origin-as-secure="192.168.1.183"'
+          '--unsafely-treat-insecure-origin-as-secure="localhost"'
         ]
       },
       FirefoxCustom: {
@@ -56,12 +56,12 @@ module.exports = function(config) {
       }
     },
 
-    protocol: 'http:',
+    /*protocol: 'http:',
 
     httpsServerOptions: {
-      key: fs.readFileSync('/Users/leticiachoo/Workspace/SkylinkJS/tests/../certificates/5164343-192.168.1.183.key', 'utf-8'),
-      cert: fs.readFileSync('/Users/leticiachoo/Workspace/SkylinkJS/tests/../certificates/5164343-192.168.1.183.crt', 'utf-8')
-    },
+      key: fs.readFileSync('/Users/leticiachoo/Workspace/SkylinkJS/tests/../certificates/undefined', 'utf-8'),
+      cert: fs.readFileSync('/Users/leticiachoo/Workspace/SkylinkJS/tests/../certificates/undefined', 'utf-8')
+    },*/
 
     coverageReporter: {
       type : 'html',
@@ -69,18 +69,18 @@ module.exports = function(config) {
       file: 'index.html'
     },
 
-    client: {
+    /*client: {
       captureConsole: false
-    },
+    },*/
 
     files: [{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/adapterjs/publish/adapter.screenshare.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../node_modules/socket.io-client/socket.io.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/debugger.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/event.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/util.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/util.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/../source/stream.js","included":true},{"pattern":"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js","included":true}],
 
     preprocessors: {"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js":["coverage"]},
 
-    browsers: [],
+    browsers: ["Safari"],
 
     port: 5000,
 
-    htmlReporter: {"outputFile":"/Users/leticiachoo/Workspace/SkylinkJS/tests/reporters/stream.html","pageTitle":"Unit tests for stream","subPageTitle":"Tested browsers: "}
+    htmlReporter: {"outputFile":"/Users/leticiachoo/Workspace/SkylinkJS/tests/reporters/stream.html","pageTitle":"Unit tests for stream","subPageTitle":"Tested browsers: Safari"}
   });
 }
