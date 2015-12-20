@@ -17,14 +17,13 @@ describe('Constructor', function () {
 
   before(function (done) {
     this.timeout(7500);
-    var proceedToNext = 5
     AdapterJS.webRTCReady(function () {
       done();
     });
   });
 
   // Test the input constraints
-  describe('new Stream ([JSON] constraints)', function () {
+  describe('new Stream ([JSON] constraints) -> success', function () {
     var testCase = function (constraints) {
       it('Should pass when\n' + JSON.stringify(constraints), function () {
         var stream = new Stream(constraints);
@@ -205,7 +204,7 @@ describe('Constructor', function () {
   });
 
   // Test the input stream object passed in
-  describe('new Stream ([MediaStream] stream)', function () {
+  describe('new Stream ([MediaStream] stream) -> success', function () {
     this.timeout(15000);
 
     var testCase = function (constraints, muteConstraints) {
@@ -331,6 +330,64 @@ describe('Constructor', function () {
     testCase({ audio: true, video: false }, { audio: true, video: true });
     testCase({ audio: false, video: true }, { audio: true, video: true });
     testCase({ audio: true, video: false }, { audio: true, video: false });
+  });
+
+  // Test the input stream object passed in
+  describe('new Stream ([MediaStream] stream) -> failure', function () {
+    this.timeout(15000);
+
+    it('Should fail when passing in an invalid MediaStream object', function (done) {
+      var testFn = function (streamObj) {
+        streamObj.getAudioTracks = null;
+        streamObj.getVideoTracks = null;
+
+        expect(function () {
+          var stream = new Stream(streamObj);
+        }).to.throw(Error, 'Failed initializing Stream. Provided MediaStream object is invalid');
+
+        done();
+      };
+
+      if (window.webrtcDetectedBrowser === 'IE' || window.webrtcDetectedBrowser === 'safari') {
+        testFn(function () {});
+      } else {
+        window.getUserMedia({ audio: true, video: true }, testFn, function (error) {
+          throw error;
+        });
+      }
+    });
+
+    (function () {
+      if (window.webrtcDetectedBrowser === 'firefox') {
+        it.skip('Ignoring test for as Firefox does not have implementation of .ended status.\r\n' +
+          'Test: Should fail when passing an inactive MediaStream object', function () {});
+      } else {
+        it('Should fail when passing an inactive MediaStream object', function (done) {
+          window.getUserMedia({ audio: true, video: true }, function (streamObj) {
+            // Prevent errors for stopping MediaStream object
+            try {
+              streamObj.stop();
+            } catch (error) {
+              var tracks = (streamObj.getAudioTracks()).concat(streamObj.getVideoTracks());
+              for (var i = 0; i < tracks.length; i++) {
+                tracks[i].stop();
+              }
+            }
+
+            var errorMsg = 'Failed initializing Stream. Provided MediaStream has no active tracks';
+
+            expect(function () {
+              var stream = new Stream(streamObj);
+            }).to.throw(Error, errorMsg);
+
+            done();
+          }, function (error) {
+            throw error;
+          });
+        });
+      }
+    })();
+
   });
 });
 

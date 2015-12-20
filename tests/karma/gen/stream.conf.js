@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.4 - Mon Dec 21 2015 01:38:22 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.4 - Mon Dec 21 2015 02:36:30 GMT+0800 (SGT) */
 
 var fs = require('fs');
 //var UAParser = require('ua-parser-js');
@@ -77,10 +77,10 @@ module.exports = function(config) {
 
     preprocessors: {"/Users/leticiachoo/Workspace/SkylinkJS/tests/tests/units/stream.js":["coverage"]},
 
-    browsers: ["Safari"],
+    browsers: ["FirefoxCustom"],
 
     port: 5000,
 
-    htmlReporter: {"outputFile":"/Users/leticiachoo/Workspace/SkylinkJS/tests/reporters/stream.html","pageTitle":"Unit tests for stream","subPageTitle":"Tested browsers: Safari"}
+    htmlReporter: {"outputFile":"/Users/leticiachoo/Workspace/SkylinkJS/tests/reporters/stream.html","pageTitle":"Unit tests for stream","subPageTitle":"Tested browsers: FirefoxCustom"}
   });
 }
