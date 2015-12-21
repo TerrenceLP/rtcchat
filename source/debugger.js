@@ -6,11 +6,8 @@
  * @for Skylink
  * @since 0.6.7
  */
-// Global variable within skylink
-var log = {};
 // Logger module
 var Logger = {
-
   // Stores the flags
   _flags: {
     // The current log level of Skylink.
@@ -20,157 +17,157 @@ var Logger = {
     trace: false,
 
     // The flag that indicates if Skylink should store the debug logs.
-    store: false
+    store: true
   },
 
+  // The header name that appears before every log
+  _header: 'SkylinkJS',
+
   // Stores all the logs
-  _storage: [],
+  _storage: {
+    debug: [],
+    log: [],
+    info: [],
+    warn: [],
+    error: []
+  },
 
-  // Stores the templates
-  _templates: {},
+  // Stores the console methods
+  _loggers: {},
 
-  // Appends the window console or else ignores based off level
-  append: function (level, trace, store) {
-    var key = 'SkylinkJS - ';
-    var logBinder = {};
+  // Binds
+  _appendLoggers: function () {
+    var self = this;
+    var templates = {
+      debug: { template: '[DEBUG] :: ', fn: function () {} },
+      log: { template: '[LOG  ] :: ', fn: function () {} },
+      info: { template: '[INFO ] :: ', fn: function () {} },
+      warn: { template: '[WARN ] :: ', fn: function () {} },
+      error: { template: '[ERROR] :: ', fn: function () {} }
+    };
 
-    if (typeof level === 'number' && level > -1 && level < 6) {
-      this._flags.level = level;
-    }
+    // Configure available consoles
+    var consoleCopy = {};
+    // Configure console.log copy
+    consoleCopy.log = typeof console.log === 'function' ? window.console.log : function () {};
+    // Point to console.debug function
+    consoleCopy.debug = typeof console.debug === 'function' ? window.console.debug : consoleCopy.log;
+    // Point to console.info function
+    consoleCopy.info = typeof console.info === 'function' ? window.console.info : consoleCopy.log;
+    // Point to console.warn function
+    consoleCopy.warn = typeof console.warn === 'function' ? window.console.warn : consoleCopy.log;
+    // Point to console.error function
+    consoleCopy.error = typeof console.error === 'function' ? window.console.error : consoleCopy.log;
+    // Point to console.trace function
+    consoleCopy.trace = typeof console.trace === 'function' ? window.console.trace : consoleCopy.log;
 
-    if (typeof trace === 'boolean') {
-      this._flags.trace = trace;
-    }
-
-    if (typeof store === 'boolean') {
-      this._flags.store = store;
-    }
-
-    var logTemplate = '';
-
-    if (this._flags.trace) {
-      this._templates = {
-        debug: '[DEBUG]  ' + key,
-        log: '[LOG  ]  ' + key,
-        info: '[INFO ]  ' + key,
-        warn: '[WARN ]  ' + key,
-        error: '[ERROR]  ' + key
+    // Internal binding of console method
+    var bind = function (m, displayConsole) {
+      return function () {
+        // Get the arguments
+        var args = Array.prototype.slice.call(arguments);
+        // Store the data
+        if (self._flags.store) {
+          self._storage[m].push([(new Date()).toISOString(), args]);
+        }
+        if (displayConsole) {
+          var mn = m;
+          var mt = '';
+          // Preset to trace for that method
+          if (self._flags.trace) {
+            mn = 'trace';
+            mt = '[' + m.toUpperCase() + '] :: ';
+          }
+          /*return Function.prototype.apply(
+            consoleCopy[mn].bind(window.console, mt + self._header), this, arguments);*/
+          return consoleCopy[mn].bind(window.console, mt + self._header);
+        }
+        return function () {};
       };
+    };
 
-      logBinder = {
-        // console.debug
-        debug: window.console.newTrace.bind(window.console, this._templates.debug + logTemplate),
-        // console.log
-        log: window.console.newTrace.bind(window.console, this._templates.log + logTemplate),
-        // console.info
-        info: window.console.newTrace.bind(window.console, this._templates.info + logTemplate),
-        // console.warn
-        warn: window.console.newTrace.bind(window.console, this._templates.warn + logTemplate),
-        // console.error
-        error: window.console.newTrace.bind(window.console, this._templates.error + logTemplate),
-      };
-    } else {
-      this._templates = {
-        debug: key,
-        log: key,
-        info: key,
-        warn: key,
-        error: key
-      };
+    // Configure current loggers
+    this._loggers = {};
+    // Configure console.log, console.debug, console.info, console.warn and console.error defaults
+    this._loggers.debug = bind('debug', false);
+    this._loggers.log = bind('log', false);
+    this._loggers.info = bind('info', false);
+    this._loggers.warn = bind('warn', false);
+    this._loggers.error = bind('error', false);
 
-      if (typeof window.console.debug !== 'function') {
-        this._templates.debug = '[DEBUG]  ' + key;
-      }
 
-      if (window.webrtcDetectedBrowser === 'safari') {
-        this._templates.info = '[INFO ]  ' + key;
-      }
 
-      logBinder = {
-        // console.debug
-        debug: window.console.newDebug.bind(window.console, this._templates.debug + logTemplate),
-        // console.log
-        log: window.console.log.bind(window.console, this._templates.log + logTemplate),
-        // console.info
-        info: window.console.info.bind(window.console, this._templates.info + logTemplate),
-        // console.warn
-        warn: window.console.warn.bind(window.console, this._templates.warn + logTemplate),
-        // console.error
-        error: window.console.error.bind(window.console, this._templates.error + logTemplate)
-      };
-    }
-
-    // Store the data
-    var args = Array.prototype.slice.call(arguments);
-    args.shift();
-
-    if (this._flags.store) {
-      this.storage.push(type, args, (new Date()));
-    }
-
+    // Configure the correct loggers based off the method
     switch (this._flags.level) {
       case 5:
-        log.debug = logBinder.debug;
-        log.log = logBinder.log;
-        log.info = logBinder.info;
-        log.warn = logBinder.warn;
-        log.error = logBinder.error;
-        break;
+        this._loggers.debug = bind('debug', true);
+        /* falls through */
       case 4:
-        log.debug = function () {};
-        log.log = logBinder.log;
-        log.info = logBinder.info;
-        log.warn = logBinder.warn;
-        log.error = logBinder.error;
-        break;
+        this._loggers.log = bind('log', true);
+        /* falls through */
       case 3:
-        log.debug = function () {};
-        log.log = function () {};
-        log.info = logBinder.info;
-        log.warn = logBinder.warn;
-        log.error = logBinder.error;
-        break;
+        this._loggers.info = bind('info', true);
+        /* falls through */
       case 2:
-        log.debug = function () {};
-        log.log = function () {};
-        log.info = function () {};
-        log.warn = logBinder.warn;
-        log.error = logBinder.error;
-        break;
+        this._loggers.warn = bind('warn', true);
+        /* falls through */
       case 1:
-        log.debug = function () {};
-        log.log = function () {};
-        log.info = function () {};
-        log.warn = function () {};
-        log.error = logBinder.error;
-        break;
-      default:
-        log.debug = function () {};
-        log.log = function () {};
-        log.info = function () {};
-        log.warn = function () {};
-        log.error = function () {};
+        this._loggers.error = bind('error', true);
     }
+  },
+
+  // Appends the window console or else ignores based off level
+  configure: function (options) {
+    // Configure the flags and settings
+    // [options === number]
+    if (typeof options === 'number' && options > -1 && options < 6) {
+      this._flags.level = options;
+    // [options === {}]
+    } else if (typeof options === 'object' && options !== null) {
+      // Configure the level
+      if (typeof options.level === 'number' && options.level > -1 && options.level < 6) {
+        this._flags.level = options.level;
+      }
+      // Configure the trace
+      if (typeof options.trace === 'boolean') {
+        this._flags.trace = options.trace;
+      }
+      // Configure the store
+      if (typeof options.store === 'boolean') {
+        this._flags.store = options.store;
+      }
+    }
+
+    // Bind the console methods
+    this._appendLoggers();
+  },
+
+  // Mixin method for components to subscribe loggers to
+  mixin: function (d, obj) {
+    var self = this;
+    var fn = function (type) {
+      return function () {
+        // Get logger parameters
+        var args = Array.prototype.slice.call(arguments);
+        // Extra params
+        var data = d();
+        for (var i = data.length; i > 0; i--) {
+          args.splice(0, 0, data[i - 1]);
+        }
+        self._loggers[type].apply(this,args).apply(this,args);
+        /*return function (cb) {
+          return cb(self._loggers[type].apply(this,args), args);
+        };*/
+      };
+    };
+    obj._log = {
+      debug: fn('debug'),
+      log: fn('log'),
+      info: fn('info'),
+      warn: fn('warn'),
+      error: fn('error')
+    };
   }
 };
 
-// Initialise the fallbacks for debug / trace
-(function () {
-  // Parse if debug is not defined
-  if (typeof window.console.debug !== 'function') {
-    window.console.newDebug = window.console.log;
-
-  } else {
-    window.console.newDebug = window.console.debug;
-  }
-
-  // Parse if trace is not defined
-  if (typeof window.console.trace !== 'function') {
-    window.console.newTrace = window.console.log;
-
-  } else {
-    window.console.newTrace = window.console.trace;
-  }
-  // Append object
-  Logger.append();
-})();
+Logger.configure();
