@@ -13,14 +13,14 @@ var proceedToNextCase = function (waitingTimeout) {
   return waitingTimeout;
 };
 
-describe('Constructor', function () {
-
-  before(function (done) {
-    this.timeout(7500);
-    AdapterJS.webRTCReady(function () {
-      done();
-    });
+before(function (done) {
+  this.timeout(7500);
+  AdapterJS.webRTCReady(function () {
+    done();
   });
+});
+
+describe.skip('Constructor', function () {
 
   // Test the input constraints
   describe('new Stream ([JSON] constraints) -> success', function () {
@@ -39,7 +39,8 @@ describe('Constructor', function () {
             options: { screenshare: false },
             constraints: true,
             muted: false
-          }
+          },
+          audioFallback: false
         };
 
         // Stream initial variables state before .fetch()
@@ -151,6 +152,11 @@ describe('Constructor', function () {
             expectedConstraints.video.options = false;
             expectedConstraints.video.constraints =  false;
           }
+
+          // Parse the expected audio fallback
+          if (typeof constraints.audioFallback === 'boolean') {
+            expectedConstraints.audioFallback = constraints.audioFallback;
+          }
         }
 
         // Check audio options
@@ -169,6 +175,8 @@ describe('Constructor', function () {
         expect(stream.video.constraints).to.deep.equal(expectedConstraints.video.constraints);
         // stream.video.muted
         expect(stream.video.muted).to.deep.equal(expectedConstraints.video.muted);
+        // stream.audioFallback
+        expect(stream.audioFallback).to.deep.equal(expectedConstraints.audioFallback);
       });
     };
 
@@ -201,6 +209,8 @@ describe('Constructor', function () {
     testCase({ audio: true, video: { resolution: { height: 500 }, frameRate: -1 }, mute: false });
     testCase({ audio: true, video: { resolution: { height: 500 }, frameRate: -1 }, screenshare: true });
     testCase({ audio: true, video: { resolution: { height: 500 }, frameRate: -1 }, screenshare: true, mute: true });
+    testCase({ audioFallback: true, audio: true });
+    testCase({ audioFallback: false, video: false });
   });
 
   // Test the input stream object passed in
@@ -253,7 +263,8 @@ describe('Constructor', function () {
               options: { screenshare: false },
               constraints: true,
               muted: false
-            }
+            },
+            audioFallback: false
           };
 
           if (streamObj.getAudioTracks().length > 0) {
@@ -310,6 +321,8 @@ describe('Constructor', function () {
           expect(stream.video.constraints).to.deep.equal(expectedConstraints.video.constraints);
           // stream.video.muted
           expect(stream.video.muted).to.deep.equal(expectedConstraints.video.muted);
+          // stream.audioFallback
+          expect(stream.audioFallback).to.deep.equal(expectedConstraints.audioFallback);
 
           done();
 
@@ -387,6 +400,103 @@ describe('Constructor', function () {
         });
       }
     })();
+
+  });
+});
+
+describe('Methods', function () {
+
+  // Test the .fetch() method
+  describe('#fetch', function () {
+
+    var testCase = function (constraints) {
+      var isScreensharingMode = constraints && constraints.video && constraints.video.screenshare;
+
+      // Skips the test for chrome because of loading the extension
+      if (window.webrtcDetectedBrowser === 'chrome' && isScreensharingMode) {
+        it.skip('Chrome screensharing test requires loading of extension.Test: ' +
+          'Should pass when\n' + JSON.stringify(constraints), function () { });
+      } else {
+        it('Should pass when\n' + JSON.stringify(constraints), function (done) {
+          this.timeout(15000);
+
+          var stream = new Stream(constraints);
+
+          stream.once('error', function (error, isAudioFallback) {
+            if (isScreensharingMode && !constraints.video.supports.screenshare) {
+              // Should trigger as it is not supported
+              expect(error).to.equal(new Error('Failed retrieving screensharing MediaStream. ' +
+                'Current browser does not have screensharing support'));
+              // Should be false always
+              expect(isAudioFallback).to.equal(false);
+              done();
+            }
+            // Should not trigger error event
+            assert.notOk(error, 'Triggers error event');
+          });
+
+          stream.once('started', function (id) {
+            if (isScreensharingMode && !constraints.video.supports.screenshare) {
+              // Should not trigger as it is not supported
+              assert.notOk(id, 'Triggers started event');
+              done();
+            }
+            // Triggers the event as expected
+            assert.ok(id, 'Triggers started event');
+            // Check the stream MediaStream object reference
+            expect(stream._ref).to.not.equal(null);
+            assert.typeOf(stream._ref.id, 'string');
+            assert.typeOf(stream._ref.getAudioTracks, 'function');
+            assert.typeOf(stream._ref.getVideoTracks, 'function');
+
+            // Check if there is any audio tracks
+            if (!!stream.audio.options) {
+              expect(stream._ref.getAudioTracks()).to.have.length.above(0);
+            } else {
+              expect(stream._ref.getAudioTracks()).to.have.length(0);
+            }
+
+            // Check if there is any video tracks
+            if (!!stream.video.options) {
+              expect(stream._ref.getVideoTracks()).to.have.length.above(0);
+            } else {
+              expect(stream._ref.getVideoTracks()).to.have.length(0);
+            }
+
+            // Check if there is a required need for MediaStream clone
+            if (isScreensharingMode && !stream.video.supports.screenshareBundleAudio) {
+              expect(stream._refClone).to.not.equal(null);
+              assert.typeOf(stream._refClone.id, 'string');
+              assert.typeOf(stream._refClone.getAudioTracks, 'function');
+              assert.typeOf(stream._refClone.getVideoTracks, 'function');
+            } else {
+              expect(stream._refClone).to.equal(null);
+            }
+          });
+        });
+      }
+    };
+
+    testCase({ audio: true, video: true });
+    testCase({ audio: false, video: true });
+    testCase({ audio: { mute: true }, video: true });
+    testCase({ audio: { mute: false }, video: true });
+    testCase({ audio: { mute: false, stereo: true }, video: true });
+    testCase({ audio: { mute: true, stereo: false }, video: true });
+    testCase({ audio: { mute: true, optional: [{ echo: true }] }, video: true });
+    testCase({ audio: {}, video: {} });
+    testCase({ audio: false, video: {} });
+    testCase({ audio: true, video: {} });
+    testCase({ audio: {}, video: false });
+    testCase({ audio: true, video: {} });
+    testCase({ audio: true, video: { screenshare: true } });
+    testCase({ audio: true, video: { screenshare: false } });
+    testCase({ audio: true, video: { screenshare: false, mute: true } });
+    testCase({ audio: true, video: { screenshare: false, mute: false } });
+    testCase({ audio: true, video: { screenshare: true, optional: [], resolution: {} } });
+    testCase({ audio: true, video: { screenshare: false, resolution: { height: 500, width: 700 } } });
+    testCase({ audio: true, video: { screenshare: false, resolution: { height: 500, width: 700 }, frameRate: -1 } });
+    testCase({ audio: true, video: { screenshare: true, resolution: { height: 500, width: 300 }, frameRate: -1 } });
 
   });
 });

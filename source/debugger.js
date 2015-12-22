@@ -11,7 +11,7 @@ var Logger = {
   // Stores the flags
   _flags: {
     // The current log level of Skylink.
-    level: 5,
+    level: 0,
 
     // If trace is even needed
     trace: false,

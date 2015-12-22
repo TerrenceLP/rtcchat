@@ -67,6 +67,8 @@ module.exports = function(config) {
       file: '@@coverageFile'
     },
 
+    autoWatch: false,
+
     /*client: {
       captureConsole: false
     },*/
