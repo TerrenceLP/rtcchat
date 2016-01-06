@@ -36,6 +36,7 @@ Skylink.prototype._parseStreamConfig = function (options, isScreensharing) {
 
 
 
+
     // - If video option is boolean
     } else if (typeof options.video === 'boolean') {
       settings.video = options.video;

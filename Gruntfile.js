@@ -67,6 +67,8 @@ module.exports = function(grunt) {
                     '<%= production %>/skylink.debug.js': [
                         '<%= template %>/header.js',
                         '<%= source %>/*.js',
+                        '!<%= source %>/peer.js',
+                        '!<%= source %>/stream.js',
                         '<%= template %>/footer.js'
                     ],
                     '<%= production %>/skylink.complete.js': [
@@ -133,7 +135,9 @@ module.exports = function(grunt) {
                     }
                 }, grunt.file.readJSON('.jshintrc')),
                 src: [
-                    '<%= source %>/*.js'
+                    '<%= source %>/*.js',
+                    '!<%= source %>/peer.js',
+                    '!<%= source %>/stream.js'
                 ]
             }
         },

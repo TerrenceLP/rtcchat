@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Tue Dec 29 2015 17:34:29 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Wed Jan 06 2016 17:22:03 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -51,9 +51,15 @@ function lookup(uri, opts) {
   var parsed = url(uri);
   var source = parsed.source;
   var id = parsed.id;
+  var path = parsed.path;
+  var sameNamespace = (cache[id] && cache[id].nsps[path] &&
+                       path == cache[id].nsps[path].nsp);
+  var newConnection = opts.forceNew || opts['force new connection'] ||
+                      false === opts.multiplex || sameNamespace;
+
   var io;
 
-  if (opts.forceNew || opts['force new connection'] || false === opts.multiplex) {
+  if (newConnection) {
     debug('ignoring socket cache for %s', source);
     io = Manager(source, opts);
   } else {
@@ -8387,7 +8393,7 @@ if (navigator.mozGetUserMedia) {
     console.warn('Opera does not support screensharing feature in getUserMedia');
   }
 })();
-/*! skylinkjs - v0.6.7 - Tue Dec 29 2015 17:34:29 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Wed Jan 06 2016 17:22:03 GMT+0800 (SGT) */
 
 (function() {
 
@@ -11603,6 +11609,99 @@ Skylink.prototype.sendURLData = function(data, timeout, targetPeerId, callback) 
   this._startDataTransfer(data, dataInfo, listOfPeers, callback);
 };
 
+var SkylinkEvent = {
+
+  on: function(event, callback){
+    this.listeners.on[event] = this.listeners.on[event] || [];
+      this.listeners.on[event].push(callback);
+    return this;
+  },
+
+  off: function(event, callback){
+
+    //Remove all listeners if event is not provided
+    if (typeof event === 'undefined'){
+      this.listeners.on = {};
+      this.listeners.once = {};
+    }
+
+    //Remove all callbacks of the specified events if callback is not provided
+    if (typeof callback === 'undefined'){
+      this.listeners.on[event]=[];
+      this.listeners.once[event]=[];
+    }
+
+    else{
+
+      //Remove single on callback
+      if (this.listeners.on[event]){
+        this._removeListener(this.listeners.on[event], callback);
+      }
+
+      //Remove single once callback
+      if (this.listeners.once[event]){
+        this._removeListener(this.listeners.once[event], callback);
+      }
+    }
+    return this;
+  },
+
+  once: function(event, callback){
+    this.listeners.once[event] = this.listeners.once[event] || [];
+      this.listeners.once[event].push(callback);
+    return this;
+  },
+
+  _trigger: function(event){
+    var args = Array.prototype.slice.call(arguments,1);
+
+    if (this.listeners.on[event]){
+      for (var i=0; i<this.listeners.on[event].length; i++) {
+          this.listeners.on[event][i].apply(this, args);
+        }
+    }
+
+    if (this.listeners.once[event]){
+      for (var j=0; j<this.listeners.once[event].length; j++){
+          this.listeners.once[event][j].apply(this, args);
+          this.listeners.once[event].splice(j,1);
+          j--;
+        }
+    }
+
+    return this;
+  },
+
+  _removeListener: function(listeners, listener){
+    for (var i=0; i<listeners.length; i++){
+      if (listeners[i]===listener){
+        listeners.splice(i,1);
+        return;
+      }
+    }
+  },
+
+  _mixin: function(object){
+    var methods = ['on','off','once','_trigger','_removeListener'];
+    for (var i=0; i<methods.length; i++){
+      if (SkylinkEvent.hasOwnProperty(methods[i]) ){
+        if (typeof object === 'function'){
+          object.prototype[methods[i]]=SkylinkEvent[methods[i]];
+        }
+        else{
+          object[methods[i]]=SkylinkEvent[methods[i]];
+        }
+      }
+    }
+
+    object.listeners = {
+      on: {},
+      once: {}
+    };
+
+    return object;
+  }
+};
 Skylink.prototype._peerCandidatesQueue = {};
 
 /**
