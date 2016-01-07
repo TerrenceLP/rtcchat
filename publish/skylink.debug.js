@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Thu Jan 07 2016 15:24:05 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Thu Jan 07 2016 18:26:02 GMT+0800 (SGT) */
 
 (function() {
 
@@ -179,356 +179,11 @@ function Skylink() {
   if (!(this instanceof Skylink)) {
     return new Skylink();
   }
-
-  /**
-   * The current version of Skylink Web SDK.
-   * @attribute VERSION
-   * @type String
-   * @readOnly
-   * @for Skylink
-   * @since 0.1.0
-   */
-  this.VERSION = '0.6.7';
-
-  /**
-   * Helper function that generates an Unique ID (UUID) string.
-   * @method generateUUID
-   * @return {String} Generated Unique ID (UUID) string.
-   * @example
-   *    // Get Unique ID (UUID)
-   *    var uuid = SkylinkDemo.generateUUID();
-   * @for Skylink
-   * @since 0.5.9
-   */
-  this.generateUUID = function() {
-    var d = new Date().getTime();
-    var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = (d + Math.random() * 16) % 16 | 0;
-      d = Math.floor(d / 16);
-      return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
-    });
-    return uuid;
-  };
 }
 this.Skylink = Skylink;
 
-//// HANDLES THE DATA CHANNELS AND TRANSFERS
-//// -- PRIVATE METHODS -----------------------------------------------------
-function DataChannel (id, channel) {
-  this.id = id;
-  this.type = id === 'main' ? 'messaging' : 'data';
-  this._config = {
-    // id: channelId,
-    // negotiated: true,
-    ordered: true // This sets it as ordered (TCP)
-  };
+Skylink.prototype.VERSION = '0.6.7';
 
-  if (!this.reliable) {
-    this._config = {
-      maxPacketLifeTime: 3000, // This overrides it to unordered (UDP)
-      maxRetransmits: 3, // This overrides it to unordered (UDP)
-      ordered: false
-    };
-  }
-
-  if (channel) {
-    this._ref = channel;
-    this._listenToEvents();
-  }
-
-  // Append event listeners
-  SkylinkEvent._mixin(this);
-}
-
-/**
- * Stores the DataChannel ID.
- * @attribute id
- */
-DataChannel.prototype.id = null;
-
-DataChannel.prototype.reliable = true;
-
-DataChannel.prototype.type = 'data';
-
-
-DataChannel.prototype._transfers = [];
-
-DataChannel.prototype.open = function (peer) {
-  var self = this;
-
-  if (!peer) {
-    return console.error('RTCPeerConnection object provided is invalid');
-  }
-
-  if (self._ref && self._ref.readyState !== 'closed') {
-    return console.warn('RTCDataChannel object is already defined. ' +
-      'Does not require opening new RTCDataChannel object session');
-  }
-
-  try {
-    self._ref = peer.createDataChannel(self.id, self._config);
-
-  } catch (error) {
-    console.error('Failed constructing RTCDataChannel object', error);
-    self._trigger('error', error);
-    return;
-  }
-
-  self._listenToEvents();
-
-  console.log('RTCDataChannel constructed successfully');
-};
-
-DataChannel.prototype.close = function () {
-  var self = this;
-
-  if (self._ref && ['closing', 'closed'].indexOf(self._ref.readyState) === -1) {
-    self._ref.close();
-    console.log('RTCDataChannel object is closed');
-  }
-};
-
-DataChannel.prototype.send = function (data) {
-  var self = this;
-
-  if (!self._ref) {
-    return console.error('RTCDataChannel object is not yet defined');
-  }
-
-  if (self._ref.readyState !== 'open') {
-    var notReadyError = 'RTCDataChannel object is not yet opened. Unable to send data';
-    console.error(notReadyError, self._ref.readyState);
-    self._trigger('error', new Error(error));
-    return;
-  }
-
-  var dataString = data;
-
-  if (typeof data === 'object') {
-    dataString = JSON.stringify(data);
-  }
-
-  self._ref.send(dataString);
-
-  console.log('RTCDataChannel message has been sent', data);
-};
-
-DataChannel.prototype._listenToEvents = function () {
-  var self = this;
-
-  // RTCDataChannel.onopen event
-  var onopenHandler = function () {
-    console.log('RTCDataChannel has been opened');
-    self._trigger('open');
-  };
-
-  // - If RTCDataChannel object is already opened
-  if (self._ref.readyState === 'open') {
-    // NOTE: To set a timeout to allow the RTCDataChannel object to be returned before triggering "open"
-    // to allow the object to be set in the _channels array list first
-    setTimeout(onopenHandler, 500);
-  // - Check and wait for RTCDataChannel object to be opened
-  } else {
-    self._trigger(self._ref.readyState);
-    self._ref.onopen = onopenHandler;
-  }
-
-  // RTCDataChannel.onmessage event
-  self._ref.onmessage = function(event) {
-    var data = event.data || event;
-    console.debug('RTCDataChannel onmessage event triggered', data);
-    self._trigger('message', data);
-  };
-
-  // RTCDataChannel.onbufferedamountlow event
-  self._ref.onbufferedamountlow = function(event) {
-    console.debug('RTCDataChannel onbufferedamountlow event triggered');
-    self._trigger('bufferedamountlow');
-  };
-
-  // RTCDataChannel.onerror event
-  self._ref.onerror = function(event) {
-    console.debug('RTCDataChannel onerror event triggered');
-    self._trigger('error', event);
-  };
-
-  // RTCDataChannel.onclose event
-  self._ref.onclose = function() {
-    console.debug('RTCDataChannel onclose event triggered');
-    self._trigger('closed');
-  };
-
-  console.log('RTCDataChannel events is listened');
-};
-
-/**
- * Contains the list of peer RTCDataChannel objects
- * @attribute _channels
- * @param {JSON} (#peerId) Contains the key list of RTCDataChannel objects.
- *   Note that IDs with the value <code>"main"</code> is reserved as the sole
- *   messaging channel.
- * @param {RTCDataChannel} (#peerId).(#channelId) The RTCDataChannel object.
- * @type JSON
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._channels = {};
-
-/**
- * Creates the RTCDataChannel object for peer session.
- * @method _createChannel
- * @param {String} peerId The peer session ID.
- * @param {String} channelId The RTCDataChannel object ID.
- * @type JSON
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._createChannel = function (peerId, channelId) {
-  var self = this;
-
-  // Check if peer session RTCPeerConnection object is defined first
-  if (!self._peerConnections[peerId]) {
-    log.error([peerId, 'RTCDataChannel', channelId,
-      'Ignoring creation of RTCDataChannel as peer connection object is missing']);
-    return;
-  }
-
-  self._channels[peerId][channelId] = new DataChannel(channelId);
-  self._listenToChannel(peerId, channelId);
-  self._channels[peerId][channelId].open(self._peerConnections[peerId]);
-
-  log.log([peerId, 'RTCDataChannel', channelId, 'Created RTCDataChannel object for peer session']);
-};
-
-/**
- * Listens to the RTCDataChannel object events.
- * @method _createChannel
- * @param {String} peerId The peer session ID.
- * @param {String} channelId The RTCDataChannel object ID.
- * @type JSON
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._listenToChannel = function (peerId, channelId) {
-  var self = this;
-
-  if (!(self._channels[peerId] && self._channels[peerId][channelId])) {
-    return log.error([peerId, 'RTCDataChannel', channelId,
-      'Ignoring listening of RTCDataChannel as peer connection object is missing']);
-  }
-
-  var channelType = self._channels[peerId][channelId].type;
-
-  self._channels[peerId][channelId].on('message', function () {
-    self._dataChannelProtocolHandler(event.data, peerId, channelId, channelType);
-  });
-
-  self._channels[peerId][channelId].on('error', function (error) {
-    log.error([peerId, 'RTCDataChannel', channelId, 'Exception occurred in datachannel:'], {
-      channelType: channelType,
-      error: error
-    });
-    self._trigger('dataChannelState', self.DATA_CHANNEL_STATE.ERROR, peerId, error,
-      channelId, channelType);
-  });
-
-  var onstateHandler = function (state) {
-    return function () {
-      log.log([peerId, 'RTCDataChannel', channelId, 'Current RTCDataChannel readyState'], state);
-      self._trigger('dataChannelState', state, peerId, null, channelId, channelType);
-    };
-  };
-
-  self._channels[peerId][channelId].on('connecting', onstateHandler('connecting'));
-  self._channels[peerId][channelId].on('open', onstateHandler('open'));
-  self._channels[peerId][channelId].on('closed', onstateHandler('closed'));
-  self._channels[peerId][channelId].on('closing', onstateHandler('closing'));
-
-  log.log([peerId, 'RTCDataChannel', channelId, 'RTCDataChannel events listened']);
-};
-
-/**
- * Destroys the RTCDataChannel object for peer session.
- * @method _destroyChannel
- * @param {String} peerId The peer session ID.
- * @param {String} channelId The RTCDataChannel object ID.
- * @type JSON
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._destroyChannel = function (peerId, channelId) {
-  var self = this;
-
-  // Check if peer session RTCPeerConnection object is defined first
-  if (!self._peerConnections[peerId]) {
-    log.error([peerId, 'RTCDataChannel', channelId,
-      'Ignoring destroying of RTCDataChannel as peer connection object is missing']);
-    return;
-  }
-
-  if (!self._channels[peerId]) {
-    log.error([peerId, 'RTCDataChannel', channelId,
-      'Ignoring destroying of RTCDataChannel as datachannel session (list) is missing']);
-    return;
-  }
-
-  if (!self._channels[peerId][channelId]) {
-    log.error([peerId, 'RTCDataChannel', channelId,
-      'Ignoring destroying of RTCDataChannel as datachannel session is missing']);
-    return;
-  }
-
-  self._channels[peerId][channelId].close();
-  delete self._channels[peerId][channelId];
-
-  log.log([peerId, 'RTCDataChannel', channelId, 'Destroyed RTCDataChannel object']);
-};
-
-/**
- * Sends the RTCDataChannel object for peer session.
- * @method _destroyChannel
- * @param {String} peerId The peer session ID.
- * @param {String} channelId The RTCDataChannel object ID.
- * @type JSON
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._sendChannelData = function (peerId, channelId, data) {
-  var self = this;
-
-  if (!(self._channels[peerId] && self._channels[peerId][channelId])) {
-    log.error([peerId, 'RTCDataChannel', channelId, 'Ignoring sending of data as ' +
-      'RTCDataChannel object session is not found ->'], data);
-  }
-
-  if (self._channels[peerId][channelId].readyState !== 'open') {
-    var readyState = self._channels[peerId][channelId].readyState;
-
-    log.error([peerId, 'RTCDataChannel', channelKey + '|' + dc.label,
-      'Datachannel is not opened'], {
-        readyState: readyState,
-        type: (data.type || 'DATA'),
-        data: data
-    });
-
-    self._trigger('dataChannelState', self.DATA_CHANNEL_STATE.ERROR,
-      peerId, 'Datachannel is not ready.\nState is: ' + readyState);
-    return;
-  }
-
-  var dataString = data;
-
-  // For JSON objects
-  if (typeof data === 'object') {
-    dataString = JSON.stringify(data);
-  }
-
-  log.debug([peerId, 'RTCDataChannel', channelId, 'Sending data from RTCDataChannel ->'], data);
-
-  self._channels[peerId][channelId].send(dataString);
-};
-
-//// -- PUBLIC METHODS -----------------------------------------------------
 /**
  * These are the list of DataChannel connection states that Skylink would trigger.
  * - Some of the state references the [w3c WebRTC Specification Draft](http://w3c.github.io/webrtc-pc/#idl-def-RTCDataChannelState),
@@ -596,6 +251,485 @@ Skylink.prototype.DATA_CHANNEL_TYPE = {
   MESSAGING: 'messaging',
   DATA: 'data'
 };
+
+/**
+ * These are the list of Peer connection signaling states that Skylink would trigger.
+ * - Some of the state references the [w3c WebRTC Specification Draft](http://www.w3.org/TR/webrtc/#idl-def-RTCSignalingState).
+ * @attribute PEER_CONNECTION_STATE
+ * @type JSON
+ * @param {String} STABLE <small>Value <code>"stable"</code></small>
+ *   The state when there is no handshaking in progress and when
+ *   handshaking has just started or close.<br>
+ * This state occurs when Peer connection has just been initialised and after
+ *   <code>HAVE_LOCAL_OFFER</code> or <code>HAVE_REMOTE_OFFER</code>.
+ * @param {String} HAVE_LOCAL_OFFER <small>Value <code>"have-local-offer"</code></small>
+ *   The state when the local session description <code>"offer"</code> is generated and to be sent.<br>
+ * This state occurs after <code>STABLE</code> state.
+ * @param {String} HAVE_REMOTE_OFFER <small>Value <code>"have-remote-offer"</code></small>
+ *   The state when the remote session description <code>"offer"</code> is received.<br>
+ * At this stage, this indicates that the Peer connection signaling handshaking has been completed, and
+ *   likely would go back to <code>STABLE</code> after local <code>"answer"</code> is received by Peer.
+ * @param {String} CLOSED <small>Value <code>"closed"</code></small>
+ *   The state when the Peer connection is closed.<br>
+ * This state occurs when connection with Peer has been closed, usually when Peer leaves the room.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.PEER_CONNECTION_STATE = {
+  STABLE: 'stable',
+  HAVE_LOCAL_OFFER: 'have-local-offer',
+  HAVE_REMOTE_OFFER: 'have-remote-offer',
+  CLOSED: 'closed'
+};
+
+/**
+ * These are the types of server Peers that Skylink would connect with.
+ * - Different server Peers that serves different functionalities.
+ * - The server Peers functionalities are only available depending on the
+ *   Application Key configuration.
+ * - Eventually, this list will be populated as there are more server Peer
+ *   functionalities provided by the Skylink platform.
+ * @attribute SERVER_PEER_TYPE
+ * @param {String} MCU <small>Value <code>"mcu"</code></small>
+ *   This server Peer is a MCU server connection.
+ * @type JSON
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.SERVER_PEER_TYPE = {
+  MCU: 'mcu'
+  //SIP: 'sip'
+};
+
+
+
+//// HANDLES THE DATA CHANNELS AND TRANSFERS
+//// -- PRIVATE METHODS -----------------------------------------------------
+/**
+ * Handles the RTCDataChannel connection and transfers.
+ * @class DataChannel
+ * @constructor
+ * @param {JSON|RTCDataChannel} options The DataChannel connection settings.
+ *   This parameter may be provided as a RTCDataChannel object.
+ * @param {String} options.id The DataChannel connection ID.
+ * @param {Boolean} [options.reliable=true] The flag that indicates if DataChannel
+ *   connection should be reliable or not.
+ * @param {RTCPeerConnection} options.RTCPeerConnection The RTCPeerConnection object
+ *   to start creating the RTCDataChannel object with.
+ * @private
+ * @since 0.6.8
+ * @for DataChannel
+ */
+function DataChannel (options) {
+  // Append event listeners
+  SkylinkEvent._mixin(this);
+
+  // Check if object received is a RTCDataChannel object
+  if (typeof options.send === 'function') {
+    // Configure the ID
+    this.id = options.label;
+    // Configure the type
+    this.type = options.label === 'main' ? 'messaging' : 'data';
+    // Configure the reliable mode setting
+    this.reliable = !!options.ordered;
+    // Configure the _RTCDataChannel object
+    this._RTCDataChannel = options;
+    // Configure the _RTCDataChannelInit setting
+    this._RTCDataChannelInit = null;
+
+    console.debug(this.id, 'Parsed loaded RTCDataChannel object', options);
+
+  } else {
+    // Configure the ID
+    this.id = options.id;
+    // Configure the type
+    this.type = options.id === 'main' ? 'messaging' : 'data';
+    // Construct the RTCDataChannel object
+    this._construct(options.RTCPeerConnection);
+
+    console.debug(this.id, 'Parsed loaded options', options);
+  }
+
+  this._listenToEvents();
+
+  if (this.reliable) {
+    console.warn(this.id, 'Reliable mode is turned on, hence RTCDataChannel object transfers would be slower');
+  }
+
+  console.log(this.id, 'RTCDataChannel object is ready and has been initialized');
+}
+
+/**
+ * Stores the DataChannel ID.
+ * @attribute id
+ * @type String
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype.id = null;
+
+/**
+ * Stores the DataChannel reliable mode setting.
+ * @attribute reliable
+ * @default true
+ * @type Boolean
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype.reliable = true;
+
+/**
+ * Stores the DataChannel types.
+ * @attribute type
+ * @type String
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype.type = 'data';
+
+/**
+ * Stores the RTCDataChannel object.
+ * @attribute _RTCDataChannel
+ * @type RTCDataChannel
+ * @private
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype._RTCDataChannel = null;
+
+/**
+ * Stores the RTCDataChannelInit configuration.
+ * @attribute _RTCDataChannelInit
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype._RTCDataChannelInit = {
+  // id: channelId,
+  // negotiated: true,
+  ordered: true // This sets it as ordered (TCP)
+};
+
+/**
+ * Stores the list of DataTransfers.
+ * @attribute _transfers
+ * @param {DataTransfer} (#index) The DataTransfer object.
+ * @type Array
+ * @private
+ * @since 0.6.8
+ * @for DataChannel
+ */
+DataChannel.prototype._transfers = [];
+
+/**
+ * Constructs RTCDataChannel object connection.
+ * @method _construct
+ * @param {RTCPeerConnection} peer The RTCPeerConnection object to construct the
+ *   RTCDataChannel object with.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+DataChannel.prototype._construct = function (peer) {
+  var self = this;
+
+  if (!peer) {
+    console.error(self.id, 'Aborting construction of RTCDataChannel object as ' +
+      'provided RTCPeerConnection object is invalid');
+    return;
+  }
+
+  if (self._RTCDataChannel && self._RTCDataChannel.readyState !== 'closed') {
+    console.warn(self.id, 'Aborting construction of RTCDataChannel object as ' +
+      'provided RTCDataChannel object is already defined');
+    return;
+  }
+
+  try {
+    self._RTCDataChannel = peer.createDataChannel(self.id, self._RTCDataChannelInit);
+
+  } catch (error) {
+    console.error(self.id, 'Failed constructing RTCDataChannel object', error);
+    self._trigger('error', error);
+    return;
+  }
+
+  console.debug(self.id, 'RTCDataChannel object has been constructed successfully');
+};
+
+/**
+ * Destroys RTCDataChannel object connection.
+ * @method destroy
+ * @since 0.6.8
+ * @for Skylink
+ */
+DataChannel.prototype.destroy = function () {
+  var self = this;
+
+  if (self._RTCDataChannel && ['closing', 'closed'].indexOf(self._RTCDataChannel.readyState) === -1) {
+    self._RTCDataChannel.close();
+    console.log(self.id, 'RTCDataChannel object connection has been destroyed');
+  }
+};
+
+/**
+ * Sends data using the RTCDataChannel object connection.
+ * @method send
+ * @param {String|JSON} data The data to send.
+ * @since 0.6.8
+ * @for Skylink
+ */
+DataChannel.prototype.send = function (data) {
+  var self = this;
+
+  if (!self._RTCDataChannel) {
+    console.warn(self.id, 'Dropping sending of data as RTCDataChannel object is not defined');
+    return;
+  }
+
+  if (self._RTCDataChannel.readyState !== 'open') {
+    var notReadyError = 'Dropping sending of data as RTCDataChannel object connection is not opened';
+    console.error(notReadyError, self._RTCDataChannel.readyState);
+    self._trigger('error', new Error(error));
+    return;
+  }
+
+  // Currently we support sending of type "string"
+  var dataString = data;
+
+  if (typeof data === 'object') {
+    dataString = JSON.stringify(data);
+  }
+
+  self._RTCDataChannel.send(dataString);
+
+  console.log('Data has been sent with RTCDataChannel object ->', data);
+};
+
+/**
+ * Listens to the RTCDataChannel object events.
+ * @method _listenToEvents
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+DataChannel.prototype._listenToEvents = function () {
+  var self = this;
+
+  // RTCDataChannel.onopen event
+  var onopenHandler = function () {
+    console.debug(self.id, 'RTCDataChannel object readyState ->', 'open');
+    self._trigger('state', 'open');
+  };
+
+  // - If RTCDataChannel object is already opened
+  if (self._RTCDataChannel.readyState === 'open') {
+    // NOTE: To set a timeout to allow the RTCDataChannel object to be returned before triggering "open"
+    // to allow the object to be set in the _channels array list first
+    setTimeout(onopenHandler, 500);
+  // - Check and wait for RTCDataChannel object to be opened
+  } else {
+    self._trigger('state', self._RTCDataChannel.readyState);
+    self._RTCDataChannel.onopen = onopenHandler;
+  }
+
+  // RTCDataChannel.onmessage event
+  self._RTCDataChannel.onmessage = function(event) {
+    var data = event.data || event;
+    console.debug(self.id, 'RTCDataChannel object has received data ->', data);
+    self._trigger('data', data);
+  };
+
+  // RTCDataChannel.onbufferedamountlow event
+  self._RTCDataChannel.onbufferedamountlow = function(event) {
+    console.warn(self.id, 'RTCDataChannel object bufferring amount is low');
+    self._trigger('bufferedamountlow');
+  };
+
+  // RTCDataChannel.onerror event
+  self._RTCDataChannel.onerror = function(event) {
+    console.error(self.id, 'RTCDataChannel object has caught with an exception ->', event);
+    self._trigger('error', event);
+  };
+
+  // RTCDataChannel.onclose event
+  self._RTCDataChannel.onclose = function() {
+    console.debug(self.id, 'RTCDataChannel object readyState ->', 'closed');
+    self._trigger('state', 'closed');
+  };
+
+  console.log(self.id, 'Listening to RTCDataChannel object events');
+};
+
+/**
+ * Contains the list of peer RTCDataChannel objects
+ * @attribute _channels
+ * @param {JSON} (#peerId) Contains the key list of RTCDataChannel objects.
+ *   Note that IDs with the value <code>"main"</code> is reserved as the sole
+ *   messaging channel.
+ * @param {RTCDataChannel} (#peerId).(#channelId) The RTCDataChannel object.
+ * @type JSON
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._channels = {};
+
+/**
+ * Creates the RTCDataChannel object for peer session.
+ * @method _createChannel
+ * @param {String} peerId The peer session ID.
+ * @param {String} channelId The RTCDataChannel object ID.
+ * @type JSON
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._createChannel = function (peerId, channelId) {
+  var self = this;
+
+  // Check if peer session RTCPeerConnection object is defined first
+  if (!self._peerConnections[peerId]) {
+    log.error([peerId, 'RTCDataChannel', channelId,
+      'Ignoring creation of RTCDataChannel as peer connection object is missing']);
+    return;
+  }
+
+  self._channels[peerId][channelId] = new DataChannel({
+    id: channelId,
+    RTCPeerConnection: self._peerConnections[peerId]
+  });
+  self._listenToChannel(peerId, channelId);
+
+  log.log([peerId, 'RTCDataChannel', channelId, 'Created RTCDataChannel object for peer session']);
+};
+
+/**
+ * Listens to the RTCDataChannel object events.
+ * @method _createChannel
+ * @param {String} peerId The peer session ID.
+ * @param {String} channelId The RTCDataChannel object ID.
+ * @type JSON
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._listenToChannel = function (peerId, channelId) {
+  var self = this;
+
+  if (!(self._channels[peerId] && self._channels[peerId][channelId])) {
+    return log.error([peerId, 'RTCDataChannel', channelId,
+      'Ignoring listening of RTCDataChannel as peer connection object is missing']);
+  }
+
+  var channelType = self._channels[peerId][channelId].type;
+
+  self._channels[peerId][channelId].on('data', function (data) {
+    self._dataChannelProtocolHandler(data, peerId, channelId, channelType);
+  });
+
+  self._channels[peerId][channelId].on('error', function (error) {
+    log.error([peerId, 'RTCDataChannel', channelId, 'Exception occurred in datachannel:'], {
+      channelType: channelType,
+      error: error
+    });
+    self._trigger('dataChannelState', self.DATA_CHANNEL_STATE.ERROR, peerId, error,
+      channelId, channelType);
+  });
+
+  self._channels[peerId][channelId].on('state', function (state) {
+    log.log([peerId, 'RTCDataChannel', channelId, 'Current RTCDataChannel readyState'], state);
+    self._trigger('dataChannelState', state, peerId, null, channelId, channelType);
+  });
+
+  log.log([peerId, 'RTCDataChannel', channelId, 'RTCDataChannel events listened']);
+};
+
+/**
+ * Destroys the RTCDataChannel object for peer session.
+ * @method _destroyChannel
+ * @param {String} peerId The peer session ID.
+ * @param {String} channelId The RTCDataChannel object ID.
+ * @type JSON
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._destroyChannel = function (peerId, channelId) {
+  var self = this;
+
+  // Check if peer session RTCPeerConnection object is defined first
+  if (!self._peerConnections[peerId]) {
+    log.error([peerId, 'RTCDataChannel', channelId,
+      'Ignoring destroying of RTCDataChannel as peer connection object is missing']);
+    return;
+  }
+
+  if (!self._channels[peerId]) {
+    log.error([peerId, 'RTCDataChannel', channelId,
+      'Ignoring destroying of RTCDataChannel as datachannel session (list) is missing']);
+    return;
+  }
+
+  if (!self._channels[peerId][channelId]) {
+    log.error([peerId, 'RTCDataChannel', channelId,
+      'Ignoring destroying of RTCDataChannel as datachannel session is missing']);
+    return;
+  }
+
+  self._channels[peerId][channelId].destroy();
+  delete self._channels[peerId][channelId];
+
+  log.log([peerId, 'RTCDataChannel', channelId, 'Destroyed RTCDataChannel object']);
+};
+
+/**
+ * Sends the RTCDataChannel object for peer session.
+ * @method _destroyChannel
+ * @param {String} peerId The peer session ID.
+ * @param {String} channelId The RTCDataChannel object ID.
+ * @type JSON
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._sendChannelData = function (peerId, channelId, data) {
+  var self = this;
+
+  if (!(self._channels[peerId] && self._channels[peerId][channelId])) {
+    log.error([peerId, 'RTCDataChannel', channelId, 'Ignoring sending of data as ' +
+      'RTCDataChannel object session is not found ->'], data);
+  }
+
+  /*if (self._channels[peerId][channelId].readyState !== 'open') {
+    var readyState = self._channels[peerId][channelId].readyState;
+
+    log.error([peerId, 'RTCDataChannel', channelId + '|' + dc.label,
+      'Datachannel is not opened'], {
+        readyState: readyState,
+        type: (data.type || 'DATA'),
+        data: data
+    });
+
+    self._trigger('dataChannelState', self.DATA_CHANNEL_STATE.ERROR,
+      peerId, 'Datachannel is not ready.\nState is: ' + readyState);
+    return;
+  }*/
+
+  var dataString = data;
+
+  // For JSON objects
+  if (typeof data === 'object') {
+    dataString = JSON.stringify(data);
+  }
+
+  log.debug([peerId, 'RTCDataChannel', channelId, 'Sending data from RTCDataChannel ->'], data);
+
+  self._channels[peerId][channelId].send(dataString);
+};
+
+//// -- PUBLIC METHODS -----------------------------------------------------
+
 Skylink.prototype._CHUNK_FILE_SIZE = 49152;
 
 /**
@@ -1272,7 +1406,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
         // if has MCU and is public, do not send individually
         self._sendChannelData('MCU', channel, payload);
         try {
-          var mainChannel = self._channels.MCU.main.label;
+          var mainChannel = self._channels.MCU.main.id;
           self._setDataChannelTimeout('MCU', dataInfo.timeout, true, mainChannel);
         } catch (error) {
           log.error(['MCU', 'RTCDataChannel', 'MCU', 'Failed setting datachannel ' +
@@ -1316,7 +1450,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
       throwTransferErrorFn('Main datachannel does not exists');
       return;
 
-    } else if (self._channels[targetPeerId].main.readyState !==
+    }/* else if (self._channels[targetPeerId].main.readyState !==
       self.DATA_CHANNEL_STATE.OPEN) {
       log.error([targetPeerId, 'RTCDataChannel', targetChannel,
         'Main datachannel is not opened'], {
@@ -1325,7 +1459,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
       });
       throwTransferErrorFn('Main datachannel is not opened');
       return;
-    }
+    }*/
 
     self._createChannel(targetPeerId, targetChannel);
 
@@ -2533,7 +2667,7 @@ Skylink.prototype._startDataTransfer = function(data, dataInfo, listOfPeers, cal
         listOfPeersChannels[peerId] =
           self._sendBlobDataToPeer(data, dataInfo, peerId);
       } else {
-        listOfPeersChannels[peerId] = self._channels[peerId].main.label;
+        listOfPeersChannels[peerId] = self._channels[peerId].main.id;
       }
 
       noOfPeersSent++;
@@ -3907,6 +4041,176 @@ Skylink.prototype._setIceServers = function(givenConfig) {
     iceServers: newIceServers
   };
 };
+/* jshint ignore:start */
+Skylink.prototype.generateUUID = function() {
+  var d = new Date().getTime();
+  var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = (d + Math.random() * 16) % 16 | 0;
+    d = Math.floor(d / 16);
+    return (c == 'x' ? r : (r & 0x7 | 0x8)).toString(16);
+  });
+  return uuid;
+};
+/* jshint ignore:end */
+
+/**
+ * Refreshes a Peer connection.
+ * - This feature can be used to refresh a Peer connection when the
+ *   remote Stream received does not stream any audio/video stream.
+ * - If there are more than 1 refresh during 5 seconds
+ *   or refresh is less than 3 seconds since the last refresh
+ *   initiated by the other peer, it will be aborted.
+ * - As for MCU connection, the restart mechanism makes the self user
+ *    leave and join the currently connected room again.
+ * @method refreshConnection
+ * @param {String|Array} [targetPeerId] The array of targeted Peers connection to refresh
+ *   the connection with.
+ * @param {Function} [callback] The callback fired after all targeted Peers connection has
+ *   been initiated with refresh or have met with an exception.
+ *   The callback signature is <code>function (error, success)</code>.
+ * @param {JSON} callback.error The error object received in the callback.
+ *   If received as <code>null</code>, it means that there is no errors.
+ * @param {Array} callback.error.listOfPeers The list of Peers that the
+ *   refresh connection had been initiated with.
+ * @param {JSON} callback.error.refreshErrors The list of errors occurred
+ *   based on per Peer basis.
+ * @param {Object|String} callback.error.refreshErrors.(#peerId) The Peer ID that
+ *   is associated with the error that occurred when refreshing the connection.
+ * @param {JSON} callback.success The success object received in the callback.
+ *   If received as <code>null</code>, it means that there are errors.
+ * @param {Array} callback.success.listOfPeers The list of Peers that the
+ *   refresh connection had been initiated with.
+ * @example
+ *   SkylinkDemo.on("iceConnectionState", function (state, peerId)) {
+ *     if (iceConnectionState === SkylinkDemo.ICE_CONNECTION_STATE.FAILED) {
+ *       // Do a refresh
+ *       SkylinkDemo.refreshConnection(peerId);
+ *     }
+ *   });
+ * @trigger peerRestart, serverPeerRestart, peerJoined, peerLeft, serverPeerJoined, serverPeerLeft
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype.refreshConnection = function(targetPeerId, callback) {
+  var self = this;
+
+  var listOfPeers = Object.keys(self._peerConnections);
+  var listOfPeerRestarts = [];
+  var error = '';
+  var listOfPeerRestartErrors = {};
+
+  if(Array.isArray(targetPeerId)) {
+    listOfPeers = targetPeerId;
+
+  } else if (typeof targetPeerId === 'string') {
+    listOfPeers = [targetPeerId];
+  } else if (typeof targetPeerId === 'function') {
+    callback = targetPeerId;
+  }
+
+  if (listOfPeers.length === 0) {
+    error = 'There is currently no peer connections to restart';
+    log.warn([null, 'PeerConnection', null, error]);
+
+    listOfPeerRestartErrors.self = new Error(error);
+
+    if (typeof callback === 'function') {
+      callback({
+        refreshErrors: listOfPeerRestartErrors,
+        listOfPeers: listOfPeers
+      }, null);
+    }
+    return;
+  }
+
+  // To fix jshint dont put functions within a loop
+  var refreshSinglePeerCallback = function (peerId) {
+    return function (error, success) {
+      if (listOfPeerRestarts.indexOf(peerId) === -1) {
+        if (error) {
+          log.error([peerId, 'RTCPeerConnection', null, 'Failed restarting for peer'], error);
+          listOfPeerRestartErrors[peerId] = error;
+        }
+        listOfPeerRestarts.push(peerId);
+      }
+
+      if (listOfPeerRestarts.length === listOfPeers.length) {
+        if (typeof callback === 'function') {
+          log.log([null, 'PeerConnection', null, 'Invoked all peers to restart. Firing callback']);
+
+          if (Object.keys(listOfPeerRestartErrors).length > 0) {
+            callback({
+              refreshErrors: listOfPeerRestartErrors,
+              listOfPeers: listOfPeers
+            }, null);
+          } else {
+            callback(null, {
+              listOfPeers: listOfPeers
+            });
+          }
+        }
+      }
+    };
+  };
+
+  var refreshSinglePeer = function(peerId, peerCallback){
+    if (!self._peerConnections[peerId]) {
+      error = 'There is currently no existing peer connection made ' +
+        'with the peer. Unable to restart connection';
+      log.error([peerId, null, null, error]);
+      listOfPeerRestartErrors[peerId] = new Error(error);
+      return;
+    }
+
+    var now = Date.now() || function() { return +new Date(); };
+
+    if (now - self.lastRestart < 3000) {
+      error = 'Last restart was so tight. Aborting.';
+      log.error([peerId, null, null, error]);
+      listOfPeerRestartErrors[peerId] = new Error(error);
+      return;
+    }
+
+    log.log([peerId, 'PeerConnection', null, 'Restarting peer connection']);
+
+    // do a hard reset on variable object
+    self._restartPeerConnection(peerId, true, false, peerCallback, true);
+  };
+
+  var toRefresh = function() {
+    if(!self._hasMCU) {
+      var i;
+
+      for (i = 0; i < listOfPeers.length; i++) {
+        var peerId = listOfPeers[i];
+
+        if (Object.keys(self._peerConnections).indexOf(peerId) > -1) {
+          refreshSinglePeer(peerId, refreshSinglePeerCallback(peerId));
+        } else {
+          error = 'Peer connection with peer does not exists. Unable to restart';
+          log.error([peerId, 'PeerConnection', null, error]);
+          listOfPeerRestartErrors[peerId] = new Error(error);
+        }
+
+        // there's an error to trigger for
+        if (i === listOfPeers.length - 1 && Object.keys(listOfPeerRestartErrors).length > 0) {
+          if (typeof callback === 'function') {
+            callback({
+              refreshErrors: listOfPeerRestartErrors,
+              listOfPeers: listOfPeers
+            }, null);
+          }
+        }
+      }
+    } else {
+      self._restartMCUConnection(callback);
+    }
+  };
+
+  self._throttle(toRefresh,5000)();
+
+};
 Skylink.prototype.PEER_CONNECTION_STATE = {
   STABLE: 'stable',
   HAVE_LOCAL_OFFER: 'have-local-offer',
@@ -4397,7 +4701,7 @@ Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
         self._channels[targetMid] = {};
       }
 
-      self._channels[targetMid][channelKey] = new DataChannel(dc.label, dc);
+      self._channels[targetMid][channelKey] = new DataChannel(dc);
       self._listenToChannel(targetMid, channelKey);
 
     } else {

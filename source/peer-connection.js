@@ -513,7 +513,7 @@ Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
         self._channels[targetMid] = {};
       }
 
-      self._channels[targetMid][channelKey] = new DataChannel(dc.label, dc);
+      self._channels[targetMid][channelKey] = new DataChannel(dc);
       self._listenToChannel(targetMid, channelKey);
 
     } else {

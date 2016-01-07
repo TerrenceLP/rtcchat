@@ -466,7 +466,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
         // if has MCU and is public, do not send individually
         self._sendChannelData('MCU', channel, payload);
         try {
-          var mainChannel = self._channels.MCU.main.label;
+          var mainChannel = self._channels.MCU.main.id;
           self._setDataChannelTimeout('MCU', dataInfo.timeout, true, mainChannel);
         } catch (error) {
           log.error(['MCU', 'RTCDataChannel', 'MCU', 'Failed setting datachannel ' +
@@ -510,7 +510,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
       throwTransferErrorFn('Main datachannel does not exists');
       return;
 
-    } else if (self._channels[targetPeerId].main.readyState !==
+    }/* else if (self._channels[targetPeerId].main.readyState !==
       self.DATA_CHANNEL_STATE.OPEN) {
       log.error([targetPeerId, 'RTCDataChannel', targetChannel,
         'Main datachannel is not opened'], {
@@ -519,7 +519,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
       });
       throwTransferErrorFn('Main datachannel is not opened');
       return;
-    }
+    }*/
 
     self._createChannel(targetPeerId, targetChannel);
 
@@ -1727,7 +1727,7 @@ Skylink.prototype._startDataTransfer = function(data, dataInfo, listOfPeers, cal
         listOfPeersChannels[peerId] =
           self._sendBlobDataToPeer(data, dataInfo, peerId);
       } else {
-        listOfPeersChannels[peerId] = self._channels[peerId].main.label;
+        listOfPeersChannels[peerId] = self._channels[peerId].main.id;
       }
 
       noOfPeersSent++;
