@@ -139,6 +139,19 @@ Skylink.prototype.REGIONAL_SERVER = {
 };
 
 /**
+ * The flag that indicates if Peers connection should have any
+ *   DataChannel connections.
+ * @attribute _enableDataChannel
+ * @type Boolean
+ * @default true
+ * @private
+ * @component DataChannel
+ * @for Skylink
+ * @since 0.3.0
+ */
+Skylink.prototype._enableDataChannel = true;
+
+/**
  * The flag to enforce an SSL platform signaling and platform server connection.
  * If self domain accessing protocol is <code>https:</code>, SSL connections
  *   would be automatically used. This flag is mostly used for self domain accessing protocol
