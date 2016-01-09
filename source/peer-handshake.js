@@ -333,7 +333,7 @@ Skylink.prototype._startPeerConnectionHealthCheck = function (peerId, toOffer) {
     var pc = self._peerConnections[peerId];
 
     if (pc) {
-      var dc = (self._dataChannels[peerId] || {}).main;
+      var dc = (self._channels[peerId] || {}).main;
 
       var dcConnected = pc.hasMainChannel ? dc && dc.readyState === self.DATA_CHANNEL_STATE.OPEN : true;
       var iceConnected = pc.iceConnectionState === self.ICE_CONNECTION_STATE.CONNECTED ||

@@ -302,14 +302,14 @@ Skylink.prototype._setDataChannelTimeout = function(peerId, timeout, isSender, c
         delete self._downloadDataSessions[channelName];
       }
 
-      self._sendDataChannelMessage(peerId, {
+      self._sendChannelData(peerId, channelName, {
         type: self._DC_PROTOCOL_TYPE.ERROR,
         sender: self._user.sid,
         name: name,
         content: 'Connection Timeout. Longer than ' + timeout +
           ' seconds. Connection is abolished.',
         isUploadError: isSender
-      }, channelName);
+      });
       // TODO: Find a way to add channel name so it's more specific
       log.error([peerId, 'RTCDataChannel', channelName, 'Failed transfering data:'],
         'Transfer ' + ((isSender) ? 'for': 'from') + ' ' + peerId +
@@ -464,9 +464,9 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
 
       if (self._hasMCU) {
         // if has MCU and is public, do not send individually
-        self._sendDataChannelMessage('MCU', payload, channel);
+        self._sendChannelData('MCU', channel, payload);
         try {
-          var mainChannel = self._dataChannels.MCU.main.label;
+          var mainChannel = self._channels.MCU.main.id;
           self._setDataChannelTimeout('MCU', dataInfo.timeout, true, mainChannel);
         } catch (error) {
           log.error(['MCU', 'RTCDataChannel', 'MCU', 'Failed setting datachannel ' +
@@ -474,7 +474,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
         }
       } else {
         // if has MCU and is public, do not send individually
-        self._sendDataChannelMessage(targetId, payload, channel);
+        self._sendChannelData(targetId, channel, payload);
         self._setDataChannelTimeout(targetId, dataInfo.timeout, true, channel);
       }
 
@@ -504,25 +504,24 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
     targetChannel = targetPeerId + '-' + dataInfo.transferId;
     supportMulti = true;
 
-    if (!(self._dataChannels[targetPeerId] || {}).main) {
+    if (!(self._channels[targetPeerId] || {}).main) {
       log.error([targetPeerId, 'RTCDataChannel', targetChannel,
         'Main datachannel does not exists'], dataInfo);
       throwTransferErrorFn('Main datachannel does not exists');
       return;
 
-    } else if (self._dataChannels[targetPeerId].main.readyState !==
+    }/* else if (self._channels[targetPeerId].main.readyState !==
       self.DATA_CHANNEL_STATE.OPEN) {
       log.error([targetPeerId, 'RTCDataChannel', targetChannel,
         'Main datachannel is not opened'], {
           transferId: dataInfo.transferId,
-          readyState: self._dataChannels[targetPeerId].main.readyState
+          readyState: self._channels[targetPeerId].main.readyState
       });
       throwTransferErrorFn('Main datachannel is not opened');
       return;
-    }
+    }*/
 
-    self._dataChannels[targetPeerId][targetChannel] =
-      self._createDataChannel(targetPeerId, self.DATA_CHANNEL_TYPE.DATA, null, targetChannel);
+    self._createChannel(targetPeerId, targetChannel);
 
   } else {
     var ongoingTransfer = null;
@@ -565,7 +564,7 @@ Skylink.prototype._sendBlobDataToPeer = function(data, dataInfo, targetPeerId) {
     self._condition('dataChannelState', function () {
       startTransferFn(targetPeerId, targetChannel);
     }, function () {
-      return self._dataChannels[targetPeerId][targetChannel].readyState ===
+      return self._channels[targetPeerId][targetChannel].readyState ===
         self.DATA_CHANNEL_STATE.OPEN;
     }, function (state) {
       return state === self.DATA_CHANNEL_STATE.OPEN;
@@ -790,7 +789,7 @@ Skylink.prototype._ACKProtocolHandler = function(peerId, data, channelName) {
 
         self._uploadDataSessions[channelName].percentage = percentage;
 
-        self._sendDataChannelMessage(peerId, base64BinaryString, channelName);
+        self._sendChannelData(peerId, channelName, base64BinaryString);
         self._setDataChannelTimeout(peerId, timeout, true, channelName);
 
         // to prevent from firing upload = 100;
@@ -851,9 +850,9 @@ Skylink.prototype._ACKProtocolHandler = function(peerId, data, channelName) {
       delete self._uploadDataSessions[channelName];
 
       // close datachannel after transfer
-      if (self._dataChannels[peerId] && self._dataChannels[peerId][channelName]) {
+      if (self._channels[peerId] && self._channels[peerId][channelName]) {
         log.debug([peerId, 'RTCDataChannel', channelName, 'Closing datachannel for upload transfer']);
-        self._closeDataChannel(peerId, channelName);
+        self._destroyChannel(peerId, channelName);
       }
     }
   } else {
@@ -875,9 +874,9 @@ Skylink.prototype._ACKProtocolHandler = function(peerId, data, channelName) {
     delete self._uploadDataSessions[channelName];
 
     // close datachannel if rejected
-    if (self._dataChannels[peerId] && self._dataChannels[peerId][channelName]) {
+    if (self._channels[peerId] && self._channels[peerId][channelName]) {
       log.debug([peerId, 'RTCDataChannel', channelName, 'Closing datachannel for upload transfer']);
-      self._closeDataChannel(peerId, channelName);
+      self._destroyChannel(peerId, channelName);
     }
   }
 };
@@ -1157,11 +1156,11 @@ Skylink.prototype._DATAProtocolHandler = function(peerId, dataString, dataType, 
     var totalReceivedSize = transferStatus.receivedSize;
     var percentage = parseFloat(((totalReceivedSize / transferStatus.size) * 100).toFixed(2), 10);
 
-    this._sendDataChannelMessage(peerId, {
+    this._sendChannelData(peerId, channelName, {
       type: this._DC_PROTOCOL_TYPE.ACK,
       sender: this._user.sid,
       ackN: transferStatus.ackN
-    }, channelName);
+    });
 
     // update the percentage
     this._downloadDataSessions[channelName].percentage = percentage;
@@ -1249,9 +1248,9 @@ Skylink.prototype._DATAProtocolHandler = function(peerId, dataString, dataType, 
       });
 
       // close datachannel after transfer
-      if (this._dataChannels[peerId] && this._dataChannels[peerId][channelName]) {
+      if (this._channels[peerId] && this._channels[peerId][channelName]) {
         log.debug([peerId, 'RTCDataChannel', channelName, 'Closing datachannel for download transfer']);
-        this._closeDataChannel(peerId, channelName);
+        this._destroyChannel(peerId, channelName);
       }
     }
 
@@ -1699,7 +1698,7 @@ Skylink.prototype._startDataTransfer = function(data, dataInfo, listOfPeers, cal
       continue;
     }
 
-    if (self._dataChannels[peerId] && self._dataChannels[peerId].main) {
+    if (self._channels[peerId] && self._channels[peerId].main) {
       log.log([peerId, 'RTCDataChannel', null, 'Sending blob data ->'], dataInfo);
 
       self._trigger('dataTransferState', self.DATA_TRANSFER_STATE.UPLOAD_STARTED,
@@ -1728,7 +1727,7 @@ Skylink.prototype._startDataTransfer = function(data, dataInfo, listOfPeers, cal
         listOfPeersChannels[peerId] =
           self._sendBlobDataToPeer(data, dataInfo, peerId);
       } else {
-        listOfPeersChannels[peerId] = self._dataChannels[peerId].main.label;
+        listOfPeersChannels[peerId] = self._channels[peerId].main.id;
       }
 
       noOfPeersSent++;
@@ -1933,12 +1932,12 @@ Skylink.prototype.acceptDataTransfer = function (peerId, transferId, accept) {
     this._downloadDataTransfers[channelName] = [];
 
     var data = this._downloadDataSessions[channelName];
-    this._sendDataChannelMessage(peerId, {
+    this._sendChannelData(peerId, channelName, {
       type: this._DC_PROTOCOL_TYPE.ACK,
       sender: this._user.sid,
       ackN: 0,
       agent: window.webrtcDetectedBrowser
-    }, channelName);
+    });
     this._trigger('dataTransferState', this.DATA_TRANSFER_STATE.DOWNLOAD_STARTED,
       data.transferId, peerId, {
         name: data.name,
@@ -1955,11 +1954,11 @@ Skylink.prototype.acceptDataTransfer = function (peerId, transferId, accept) {
       accept: accept,
       transferId: transferId
     });
-    this._sendDataChannelMessage(peerId, {
+    this._sendChannelData(peerId, channelName, {
       type: this._DC_PROTOCOL_TYPE.ACK,
       sender: this._user.sid,
       ackN: -1
-    }, channelName);
+    });
     delete this._downloadDataSessions[channelName];
     delete this._downloadDataTransfers[channelName];
   }
@@ -2019,12 +2018,12 @@ Skylink.prototype.cancelDataTransfer = function (peerId, transferId) {
     delete this._uploadDataTransfers[channelName];
 
     // send message
-    this._sendDataChannelMessage(peerId, {
+    this._sendChannelData(peerId, channelName, {
       type: this._DC_PROTOCOL_TYPE.CANCEL,
       sender: this._user.sid,
       name: data.name,
       content: 'Peer cancelled upload transfer'
-    }, channelName);
+    });
 
     log.debug([peerId, 'RTCDataChannel', channelName,
       'Cancelling upload data transfers'], transferId);
@@ -2036,12 +2035,12 @@ Skylink.prototype.cancelDataTransfer = function (peerId, transferId) {
     delete this._downloadDataTransfers[channelName];
 
     // send message
-    this._sendDataChannelMessage(peerId, {
+    this._sendChannelData(peerId, channelName, {
       type: this._DC_PROTOCOL_TYPE.CANCEL,
       sender: this._user.sid,
       name: data.name,
       content: 'Peer cancelled download transfer'
-    }, channelName);
+    });
 
     log.debug([peerId, 'RTCDataChannel', channelName,
       'Cancelling download data transfers'], transferId);
@@ -2099,7 +2098,7 @@ Skylink.prototype.sendP2PMessage = function(message, targetPeerId) {
     return;
   }
 
-  var listOfPeers = Object.keys(self._dataChannels);
+  var listOfPeers = Object.keys(self._channels);
   var isPrivate = false;
 
   //targetPeerId is defined -> private message
@@ -2116,7 +2115,7 @@ Skylink.prototype.sendP2PMessage = function(message, targetPeerId) {
   if (self._hasMCU) {
     if (isPrivate) {
       log.log(['MCU', null, null, 'Relaying private P2P message to peers'], listOfPeers);
-      self._sendDataChannelMessage('MCU', {
+      self._sendChannelData('MCU', 'main', {
         type: self._DC_PROTOCOL_TYPE.MESSAGE,
         isPrivate: isPrivate,
         sender: self._user.sid,
@@ -2126,7 +2125,7 @@ Skylink.prototype.sendP2PMessage = function(message, targetPeerId) {
     } else {
       log.log(['MCU', null, null, 'Relaying P2P message to peers']);
 
-      self._sendDataChannelMessage('MCU', {
+      self._sendChannelData('MCU', 'main', {
         type: self._DC_PROTOCOL_TYPE.MESSAGE,
         isPrivate: isPrivate,
         sender: self._user.sid,
@@ -2146,7 +2145,7 @@ Skylink.prototype.sendP2PMessage = function(message, targetPeerId) {
 
       log.log([peerId, null, useChannel, 'Sending P2P message to peer']);
 
-      self._sendDataChannelMessage(useChannel, {
+      self._sendChannelData(useChannel, 'main', {
         type: self._DC_PROTOCOL_TYPE.MESSAGE,
         isPrivate: isPrivate,
         sender: self._user.sid,

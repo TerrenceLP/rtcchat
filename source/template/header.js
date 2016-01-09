@@ -210,7 +210,6 @@ function Skylink() {
     self._trigger('channelError', error);
   });
 
-
 }
 
 /**

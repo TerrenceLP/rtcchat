@@ -143,14 +143,13 @@ Skylink.prototype._addPeer = function(targetMid, peerBrowser, toOffer, restartCo
   // I'm the callee I need to make an offer
   if (toOffer) {
     if (self._enableDataChannel) {
-      if (typeof self._dataChannels[targetMid] !== 'object') {
+      if (typeof self._channels[targetMid] !== 'object') {
         log.error([targetMid, 'RTCDataChannel', null, 'Create offer error as unable to create datachannel ' +
-          'as datachannels array is undefined'], self._dataChannels[targetMid]);
+          'as datachannels array is undefined'], self._channels[targetMid]);
         return;
       }
 
-      self._dataChannels[targetMid].main =
-        self._createDataChannel(targetMid, self.DATA_CHANNEL_TYPE.MESSAGING, null, targetMid);
+      self._createChannel(targetMid, 'main');
       self._peerConnections[targetMid].hasMainChannel = true;
     }
     self._doOffer(targetMid, peerBrowser);
@@ -430,7 +429,13 @@ Skylink.prototype._removePeer = function(peerId) {
   }
   // close datachannel connection
   if (this._enableDataChannel) {
-    this._closeDataChannel(peerId);
+    if (Array.isArray(this._channels[peerId])) {
+      var channels = Object.keys(this._channels[peerId]);
+
+      for (var i = 0; i < channels.length; i++) {
+        this._destroyChannel(peerId, channels[i]);
+      }
+    }
   }
 
   log.log([peerId, null, null, 'Successfully removed peer']);
@@ -479,7 +484,7 @@ Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
   pc.firefoxStreamId = '';
 
   // datachannels
-  self._dataChannels[targetMid] = {};
+  self._channels[targetMid] = {};
   // candidates
   self._addedCandidates[targetMid] = {
     relay: [],
@@ -504,8 +509,12 @@ Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
         pc.hasMainChannel = true;
       }
 
-      self._dataChannels[targetMid][channelKey] =
-        self._createDataChannel(targetMid, channelType, dc, dc.label);
+      if (!self._channels[targetMid]) {
+        self._channels[targetMid] = {};
+      }
+
+      self._channels[targetMid][channelKey] = new DataChannel(dc);
+      self._listenToChannel(targetMid, channelKey);
 
     } else {
       log.warn([targetMid, 'RTCDataChannel', dc.label, 'Not adding datachannel as enable datachannel ' +
