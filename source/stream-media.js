@@ -457,7 +457,7 @@ Skylink.prototype._onUserMediaSuccess = function(stream, isScreenSharing) {
 
     if (self._inRoom) {
       log.debug([null, 'MediaStream', stream.id, 'Sending mediastream ended status']);
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.STREAM,
         mid: self._user.sid,
         rid: self._room.id,
@@ -1985,7 +1985,7 @@ Skylink.prototype.muteStream = function(options) {
     // update to mute status of video tracks
     if (hasTracksOption.hasVideoTracks) {
       // send message
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.MUTE_VIDEO,
         mid: self._user.sid,
         rid: self._room.id,
@@ -1997,7 +1997,7 @@ Skylink.prototype.muteStream = function(options) {
       // send message
       // set timeout to do a wait interval of 1s
       setTimeout(function () {
-        self._sendChannelMessage({
+        self._socket.send({
           type: self._SIG_MESSAGE_TYPE.MUTE_AUDIO,
           mid: self._user.sid,
           rid: self._room.id,

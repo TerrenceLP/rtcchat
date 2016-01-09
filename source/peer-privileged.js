@@ -158,7 +158,7 @@ Skylink.prototype.getPeers = function(showAll, callback){
 		showAll = false;
 	}
 
-	self._sendChannelMessage({
+	self._socket.send({
 		type: self._SIG_MESSAGE_TYPE.GET_PEERS,
 		privilegedKey: self._appKey,
 		parentKey: self._parentKey,
@@ -198,7 +198,7 @@ Skylink.prototype.introducePeer = function(sendingPeerId, receivingPeerId){
 		self._trigger('introduceStateChange', self.INTRODUCE_STATE.ERROR, self._user.sid, sendingPeerId, receivingPeerId, 'notPrivileged');
 		return;
 	}
-	self._sendChannelMessage({
+	self._socket.send({
 		type: self._SIG_MESSAGE_TYPE.INTRODUCE,
 		sendingPeerId: sendingPeerId,
 		receivingPeerId: receivingPeerId

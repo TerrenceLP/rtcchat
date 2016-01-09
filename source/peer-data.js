@@ -137,7 +137,7 @@ Skylink.prototype.setUserData = function(userData) {
 
   if (self._inRoom) {
     log.log('Updated userData -> ', userData);
-    self._sendChannelMessage({
+    self._socket.send({
       type: self._SIG_MESSAGE_TYPE.UPDATE_USER,
       mid: self._user.sid,
       rid: self._room.id,

@@ -72,6 +72,16 @@ Skylink.prototype.SYSTEM_ACTION_REASON = {
 };
 
 /**
+ * Contains the socket object connection
+ * @attribute _socket
+ * @type SkylinkSocket
+ * @private
+ * @since 0.6.8
+ * @for SkylinkSocket
+ */
+Skylink.prototype._socket = null;
+
+/**
  * Stores the current room self is joined to.
  * The selected room will be usually defaulted to
  *   {{#crossLink "Skylink/_defaultRoom:attribute"}}_defaultRoom{{/crossLink}}
@@ -481,7 +491,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
         }, false);
       }
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.JOIN_ROOM,
         uid: self._user.uid,
         cid: self._key,
@@ -651,10 +661,10 @@ Skylink.prototype._waitForOpenChannel = function(mediaOptions, callback) {
       self._waitForLocalMediaStream(callback, mediaOptions);
     }, function() { // open channel first if it's not opened
 
-      if (!self._channelOpen) {
-        self._openChannel();
+      if (!self._socket.connected) {
+        self._socket.connect();
       }
-      return self._channelOpen;
+      return self._socket.connected;
     }, function(state) {
       return true;
     });
@@ -787,7 +797,7 @@ Skylink.prototype.leaveRoom = function(stopMediaOptions, callback) {
     }
   }, function() {
     return (Object.keys(self._peerConnections).length === 0 &&
-      self._channelOpen === false); // &&
+      self._socket.connected === false); // &&
       //self._readyState === self.READY_STATE_CHANGE.COMPLETED);
   }, false);
 };
@@ -805,7 +815,7 @@ Skylink.prototype.leaveRoom = function(stopMediaOptions, callback) {
  */
 Skylink.prototype.lockRoom = function() {
   log.log('Update to isRoomLocked status ->', true);
-  this._sendChannelMessage({
+  this._socket.send({
     type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
     mid: this._user.sid,
     rid: this._room.id,
@@ -829,7 +839,7 @@ Skylink.prototype.lockRoom = function() {
  */
 Skylink.prototype.unlockRoom = function() {
   log.log('Update to isRoomLocked status ->', false);
-  this._sendChannelMessage({
+  this._socket.send({
     type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
     mid: this._user.sid,
     rid: this._room.id,

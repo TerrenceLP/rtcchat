@@ -9,14 +9,6 @@ window.sw = new Skylink();
 
 
 (function () {
-  test('#SOCKET_ERROR', function (t) {
-    t.plan(2);
-
-    t.deepEqual(typeof sw.SOCKET_ERROR, 'string', 'To be defined');
-    t.deepEqual(sw.VERSION, '0.6.4', 'To be expected version for current release');
-
-    t.end();
-  });
 
   test('#SM_PROTOCOL_VERSION', function (t) {
     t.plan(2);
@@ -55,7 +47,7 @@ window.sw = new Skylink();
     t.plan(3);
 
     t.deepEqual(typeof sw.READY_STATE_CHANGE_ERROR, 'object', 'To be defined');
-    t.deepEqual(Object.keys(sw.READY_STATE_CHANGE_ERROR).length, 14, 'To have a length of 14');
+    t.deepEqual(Object.keys(sw.READY_STATE_CHANGE_ERROR).length, 13, 'To have a length of 13');
     t.deepEqual(sw.READY_STATE_CHANGE_ERROR, {
       API_INVALID: 4001,
       API_DOMAIN_NOT_MATCH: 4002,
@@ -69,7 +61,6 @@ window.sw = new Skylink();
       NO_XMLHTTPREQUEST_SUPPORT: 2,
       NO_WEBRTC_SUPPORT: 3,
       NO_PATH: 4,
-      INVALID_XMLHTTPREQUEST_STATUS: 5,
       ADAPTER_NO_LOADED: 7
     }, 'To be as what the documentation stated');
 
@@ -156,40 +147,8 @@ test('channelRetry, socketError: Check socket reconnection fallback', function(t
     sw.SOCKET_FALLBACK.LONG_POLLING_SSL : sw.SOCKET_FALLBACK.LONG_POLLING;
 
 
-  if (window.location.protocol === 'https:') {
-    expectedFiredErrorCounts = {
-      '0': 10,
-      '-1': 2,
-      '-2': 0,
-      '-3': 1,
-      '-4': 4
-    };
-    expectedFiredFallbackCounts = {
-      'nonfallback': 1, //NON_FALLBACK: 'nonfallback',
-      'fallbackPortNonSSL': 0, //FALLBACK_PORT: 'fallbackPortNonSSL',
-      'fallbackPortSSL': 1, //FALLBACK_SSL_PORT: 'fallbackPortSSL',
-      'fallbackLongPollingNonSSL': 0, //LONG_POLLING: 'fallbackLongPollingNonSSL',
-      'fallbackLongPollingSSL': 11 //LONG_POLLING_SSL: 'fallbackLongPollingSSL'
-    };
-  } else {
-    expectedFiredErrorCounts = {
-      '0': 11,
-      '-1': 3,
-      '-2': 0,
-      '-3': 1,
-      '-4': 4
-    };
-    expectedFiredFallbackCounts = {
-      'nonfallback': 1, //NON_FALLBACK: 'nonfallback',
-      'fallbackPortNonSSL': 2, //FALLBACK_PORT: 'fallbackPortNonSSL',
-      'fallbackPortSSL': 0, //FALLBACK_SSL_PORT: 'fallbackPortSSL',
-      'fallbackLongPollingNonSSL': 12, //LONG_POLLING: 'fallbackLongPollingNonSSL',
-      'fallbackLongPollingSSL': 0 //LONG_POLLING_SSL: 'fallbackLongPollingSSL'
-    };
-  }
-
-
   sw.on('socketError', function (errorCode, error, fallback) {
+    console.info('socketError triggered', errorCode, error, fallback);
     firedErrorCounts[errorCode] += 1;
 
     if (errorCode === sw.SOCKET_ERROR.RECONNECTION_ABORTED) {
@@ -199,22 +158,51 @@ test('channelRetry, socketError: Check socket reconnection fallback', function(t
       sw.off('readyStateChange');
       sw.off('socketError');
 
-      sw._signalingServer = originalSig;
+      sw._socket.server = originalSig;
       t.end();
     }
   });
 
+  sw._socket.on('connectRetry', function (fallback, attempts) {
+    console.info('connectRetry triggered', fallback, attempts,
+      sw._socket._connection.transport, sw._socket._connection.port);
+  });
+
   sw.on('channelRetry', function (fallback, attempts) {
+    console.info('channelRetry triggered', fallback, attempts);
     firedFallbackCounts[fallback] += 1;
   });
 
   // wait for ready state to be ready
   sw._condition('readyStateChange', function () {
-    // change the value for fake value
-    originalSig = sw._signalingServer;
-    sw._signalingServer += 'x';
+    var portsLength = sw._socket.ports[window.location.protocol].length;
+    var retriesLength = sw._socket._connection.retries.max;
 
-    sw._openChannel();
+    expectedFiredErrorCounts = {
+      '0': 1,
+      '-1': portsLength * retriesLength * 2, // For fallback transport
+      '-2': 0,
+      '-3': 1,
+      '-4': portsLength * retriesLength * 2 // For fallback transport
+    };
+    expectedFiredFallbackCounts = {
+      'nonfallback': 1, //NON_FALLBACK: 'nonfallback',
+      // because the first port failed, then the second is triggered as "nonfallback" event
+      'fallbackPortNonSSL': portsLength - 2, //FALLBACK_PORT: 'fallbackPortNonSSL',
+      'fallbackPortSSL': 0, //FALLBACK_SSL_PORT: 'fallbackPortSSL',
+      'fallbackLongPollingNonSSL': portsLength, //LONG_POLLING: 'fallbackLongPollingNonSSL',
+      'fallbackLongPollingSSL': 0 //LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+    };
+
+    if (expectedFiredFallbackCounts.fallbackPortNonSSL < 0) {
+      expectedFiredFallbackCounts.fallbackPortNonSSL = 0;
+    }
+
+    // change the value for fake value
+    originalSig = sw._socket.server;
+    sw._socket.server += 'x';
+
+    sw._socket.connect();
 
   }, function () {
     return sw._readyState === sw.READY_STATE_CHANGE.COMPLETED;
@@ -230,7 +218,7 @@ test('channelOpen, channelClose: Check socket connection', function(t) {
 
   sw.on('channelOpen', function () {
     array.push(1);
-    sw._closeChannel();
+    sw._socket.disconnect();
   });
 
   sw.on('channelClose', function () {
@@ -245,7 +233,7 @@ test('channelOpen, channelClose: Check socket connection', function(t) {
     t.end();
   }, 45000);
 
-  sw._openChannel();
+  sw._socket.connect();
 });
 
 test('init() - forceSSL: Test socket connection forceSSL', function(t) {
@@ -254,23 +242,23 @@ test('init() - forceSSL: Test socket connection forceSSL', function(t) {
   function forceSSLTrue () {
     sw.on('readyStateChange', function (state) {
       if (state === sw.READY_STATE_CHANGE.COMPLETED) {
-        sw._openChannel();
+        sw._socket.connect();
       }
     });
 
     sw.on('channelOpen', function () {
-      t.deepEqual(sw._signalingServerPort, 443, 'ForceSSL port is HTTPS port');
-      t.deepEqual(sw._signalingServerProtocol, 'https:', 'ForceSSL port is HTTPS protocol');
-      sw._closeChannel();
+      t.deepEqual(sw._socket._connection.port, 443, 'ForceSSL port is HTTPS port');
+      t.deepEqual(sw._socket.protocol, 'https:', 'ForceSSL port is HTTPS protocol');
+      sw._socket.disconnect();
     });
 
     sw.on('channelClose', function () {
-      //sw._signalingServer = '192.168.123.4';
-      sw._openChannel();
+      //sw._socket.server = '192.168.123.4';
+      sw._socket.connect();
       // place here because it's fired before channelOpen
       sw.on('socketError', function (errorCode) {
         if (errorCode === sw.SOCKET_ERROR.RECONNECTION_ATTEMPT) {
-          t.deepEqual(sw._signalingServerPort, 3443, 'ForceSSL fallback port is HTTPS port');
+          t.deepEqual(sw._socket._connection.port, 3443, 'ForceSSL fallback port is HTTPS port');
           // start the false check
           sw.off('readyStateChange');
           sw.off('channelOpen');
@@ -290,25 +278,25 @@ test('init() - forceSSL: Test socket connection forceSSL', function(t) {
   function forceSSLFalse () {
     sw.on('readyStateChange', function (state) {
       if (state === sw.READY_STATE_CHANGE.COMPLETED) {
-        sw._openChannel();
+        sw._socket.connect();
       }
     });
 
     sw.on('channelOpen', function () {
-      t.deepEqual(sw._signalingServerPort,
+      t.deepEqual(sw._socket._connection.port,
         (window.location.protocol === 'https:') ? 443 : 80, 'ForceSSL off is default port');
-      t.deepEqual(sw._signalingServerProtocol, window.location.protocol,
+      t.deepEqual(sw._socket.protocol, window.location.protocol,
         'ForceSSL off is default protocol');
-      sw._closeChannel();
+      sw._socket.disconnect();
     });
 
     sw.on('channelClose', function () {
-      //sw._signalingServer = '192.168.123.4';
-      sw._openChannel();
+      //sw._socket.server = '192.168.123.4';
+      sw._socket.connect();
       // place here because it's fired before channelOpen
       sw.on('socketError', function (errorCode) {
         if (errorCode === sw.SOCKET_ERROR.RECONNECTION_ATTEMPT) {
-          t.deepEqual(sw._signalingServerPort,
+          t.deepEqual(sw._socket._connection.port,
             (window.location.protocol === 'https:') ? 3443 : 3000,
             'ForceSSL fallback port is HTTPS port');
           // start the false check

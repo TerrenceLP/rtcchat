@@ -105,7 +105,7 @@ Skylink.prototype._onIceCandidate = function(targetMid, event) {
       log.debug([targetMid, 'RTCIceCandidate', null, 'Created and sending ' +
         candidateType + ' candidate:'], event);
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.CANDIDATE,
         label: event.candidate.sdpMLineIndex,
         id: event.candidate.sdpMid,
@@ -146,7 +146,7 @@ Skylink.prototype._onIceCandidate = function(targetMid, event) {
         sessionDescription.sdp = self._addSDPSsrcFirefoxAnswer(targetMid, sessionDescription.sdp);
       }
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: sessionDescription.type,
         sdp: sessionDescription.sdp,
         mid: self._user.sid,

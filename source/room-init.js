@@ -648,6 +648,27 @@ Skylink.prototype._parseInfo = function(info) {
   this._autoIntroduce = info.autoIntroduce;
   this._parentKey = info.room_key.substring(0,36);
 
+  if (typeof info.ipSigserver === 'string') {
+    this._socket.server = info.ipSigserver;
+  } else {
+    this._socket.server = this._socket.defaults.server;
+  }
+
+  if (Array.isArray(info.httpPortList) && info.httpPortList.length > 0) {
+    this._socket.ports['http:'] = info.httpPortList;
+  } else {
+    this._socket.ports['http:'] = this._socket.defaults.ports['http:'];
+  }
+
+  if (Array.isArray(info.httpsPortList) && info.httpsPortList.length > 0) {
+    this._socket.ports['https:'] = info.httpsPortList;
+  } else {
+    this._socket.ports['https:'] = this._socket.defaults.ports['https:'];
+  }
+
+  // Reconfigure again
+  this._socket.reset();
+
   this._user = {
     uid: info.username,
     token: info.userCred,
@@ -1240,6 +1261,18 @@ Skylink.prototype.init = function(options, callback) {
   self._selectedVideoCodec = videoCodec;
   self._forceTURN = forceTURN;
   self._usePublicSTUN = usePublicSTUN;
+
+  if (socketTimeout >= 5000) {
+    self._socket.timeout = socketTimeout;
+  } else {
+    self._socket.timeout = self._socket.defaults.timeout;
+  }
+
+  if (forceSSL === true) {
+    self._socket.protocol = 'https:';
+  } else {
+    self._socket.protocol = self._socket.defaults.protocol;
+  }
 
   log.log('Init configuration:', {
     serverUrl: self._path,

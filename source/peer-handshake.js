@@ -236,7 +236,7 @@ Skylink.prototype._doOffer = function(targetMid, peerBrowser) {
         'the offer to the other peer. Requesting other peer to create the offer instead'
         ], peerBrowser);
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.WELCOME,
         mid: self._user.sid,
         rid: self._room.id,
@@ -532,7 +532,7 @@ Skylink.prototype._setLocalAndSendMessage = function(targetMid, sessionDescripti
         sessionDescription.sdp = self._addSDPSsrcFirefoxAnswer(targetMid, sessionDescription.sdp);
       }
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: sessionDescription.type,
         sdp: sessionDescription.sdp,
         mid: self._user.sid,

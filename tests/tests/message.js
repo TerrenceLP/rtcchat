@@ -11,7 +11,6 @@ var sw      = new Skylink();
 console.log('API: Tests the messaging in send message functions');
 console.log('===============================================================================================');
 
-
 sw.init(apikey, function(){
   sw.joinRoom();
 });

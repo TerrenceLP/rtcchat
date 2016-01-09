@@ -299,7 +299,7 @@ Skylink.prototype._restartPeerConnection = function (peerId, isSelfInitiatedRest
 
       var lastRestart = Date.now() || function() { return +new Date(); };
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.RESTART,
         mid: self._user.sid,
         rid: self._room.id,
@@ -345,7 +345,7 @@ Skylink.prototype._restartPeerConnection = function (peerId, isSelfInitiatedRest
       var hasLocalDescription = pc.localDescription && pc.localDescription.sdp;
       // By then it should have at least the local description..
       if (hasLocalDescription) {
-        self._sendChannelMessage({
+        self._socket.send({
           type: pc.localDescription.type,
           sdp: pc.localDescription.sdp,
           mid: self._user.sid,
@@ -578,7 +578,7 @@ Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
         log.debug([targetMid, 'RTCIceConnectionState', null,
           'Ice connection state failed. Re-negotiating connection']);
         self._removePeer(targetMid);
-        self._sendChannelMessage({
+        self._socket.send({
           type: self._SIG_MESSAGE_TYPE.WELCOME,
           mid: self._user.sid,
           rid: self._room.id,
@@ -855,7 +855,7 @@ Skylink.prototype._restartMCUConnection = function(callback) {
 
       log.log([peerId, null, null, 'Sending restart message to signaling server']);
 
-      self._sendChannelMessage({
+      self._socket.send({
         type: self._SIG_MESSAGE_TYPE.RESTART,
         mid: self._user.sid,
         rid: self._room.id,

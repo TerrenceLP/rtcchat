@@ -183,18 +183,17 @@ Skylink.prototype._hasMCU = false;
  * If the message is not <code>GROUP</code> type of message received, it will send
  *   it directly to {{#crossLink "Skylink/_processSingleMessage:method"}}_processSingleMessage(){{/crossLink}}
  * @method _processSigMessage
- * @param {String} messageString The message object in JSON string.
+ * @param {JSON} message The message object received.
  * @private
  * @component Message
  * @for Skylink
  * @since 0.1.0
  */
-Skylink.prototype._processSigMessage = function(messageString) {
-  var message = JSON.parse(messageString);
+Skylink.prototype._processSigMessage = function(message) {
   if (message.type === this._SIG_MESSAGE_TYPE.GROUP) {
     log.debug('Bundle of ' + message.lists.length + ' messages');
     for (var i = 0; i < message.lists.length; i++) {
-      this._processSingleMessage(JSON.parse(message.lists[i]));
+      this._processSingleMessage(message.lists[i]);
     }
   } else {
     this._processSingleMessage(message);
@@ -346,7 +345,7 @@ Skylink.prototype._approachEventHandler = function(message){
   // self._room.connection.peerConfig = self._setIceServers(message.pc_config);
   // self._inRoom = true;
   self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ENTER, self._user.sid);
-  self._sendChannelMessage({
+  self._socket.send({
     type: self._SIG_MESSAGE_TYPE.ENTER,
     mid: self._user.sid,
     rid: self._room.id,
@@ -680,7 +679,7 @@ Skylink.prototype._inRoomHandler = function(message) {
   // do we hardcode the logic here, or give the flexibility?
   // It would be better to separate, do we could choose with whom
   // we want to communicate, instead of connecting automatically to all.
-  self._sendChannelMessage({
+  self._socket.send({
     type: self._SIG_MESSAGE_TYPE.ENTER,
     mid: self._user.sid,
     rid: self._room.id,
@@ -811,7 +810,7 @@ Skylink.prototype._enterHandler = function(message) {
 
   self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ENTER, targetMid);
 
-  self._sendChannelMessage({
+  self._socket.send({
     type: self._SIG_MESSAGE_TYPE.WELCOME,
     mid: self._user.sid,
     rid: self._room.id,
@@ -1015,7 +1014,7 @@ Skylink.prototype._restartHandler = function(message){
 
   } else {
     log.debug([targetMid, 'RTCPeerConnection', null, 'Waiting for peer to start re-negotiation'], agent);
-    self._sendChannelMessage({
+    self._socket.send({
       type: self._SIG_MESSAGE_TYPE.WELCOME,
       mid: self._user.sid,
       rid: self._room.id,
@@ -1220,7 +1219,7 @@ Skylink.prototype._welcomeHandler = function(message) {
   if (!beOfferer) {
     log.debug([targetMid, 'RTCPeerConnection', null, 'Peer has to start the connection. Sending restart message'], beOfferer);
 
-    this._sendChannelMessage({
+    this._socket.send({
       type: this._SIG_MESSAGE_TYPE.WELCOME,
       mid: this._user.sid,
       rid: this._room.id,
@@ -1525,7 +1524,7 @@ Skylink.prototype.sendMessage = function(message, targetPeerId) {
   if (!isPrivate) {
     log.log([null, 'Socket', null, 'Broadcasting message to peers']);
 
-    this._sendChannelMessage({
+    this._socket.send({
       cid: this._key,
       data: message,
       mid: this._user.sid,
@@ -1545,7 +1544,7 @@ Skylink.prototype.sendMessage = function(message, targetPeerId) {
     if (isPrivate) {
       log.log([peerId, 'Socket', null, 'Sending message to peer']);
 
-      this._sendChannelMessage({
+      this._socket.send({
         cid: this._key,
         data: message,
         mid: this._user.sid,
