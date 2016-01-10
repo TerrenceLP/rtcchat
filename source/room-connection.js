@@ -385,7 +385,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
     if (typeof callback === 'function') {
       callback({
         room: room,
-        errorCode: self._readyState,
+        errorCode: self._room.readyState,
         error: new Error(error)
       }, null);
     }
@@ -411,7 +411,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
         if (typeof callback === 'function') {
           callback({
             room: room,
-            errorCode: self._readyState,
+            errorCode: self._room.readyState,
             error: new Error(error)
           }, null);
         }
@@ -448,7 +448,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
     if (typeof callback === 'function') {
       callback({
         room: self._defaultRoom,
-        errorCode: self._readyState,
+        errorCode: self._room.readyState,
         error: new Error(error)
       }, null);
       return;
@@ -531,7 +531,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
             if (typeof callback === 'function') {
               callback({
                 room: self._selectedRoom,
-                errorCode: self._readyState,
+                errorCode: self._room.readyState,
                 error: new Error(errorObj)
               }, null);
             }
@@ -556,7 +556,7 @@ Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
           if (typeof callback === 'function') {
             callback({
               room: self._selectedRoom,
-              errorCode: self._readyState,
+              errorCode: self._room.readyState,
               error: new Error(errorObj)
             }, null);
           }
@@ -669,7 +669,7 @@ Skylink.prototype._waitForOpenChannel = function(mediaOptions, callback) {
       return true;
     });
   }, function() {
-    return self._readyState === self.READY_STATE_CHANGE.COMPLETED;
+    return self._room.readyState === self.READY_STATE_CHANGE.COMPLETED;
   });
 
 };
@@ -798,7 +798,7 @@ Skylink.prototype.leaveRoom = function(stopMediaOptions, callback) {
   }, function() {
     return (Object.keys(self._peerConnections).length === 0 &&
       self._socket.connected === false); // &&
-      //self._readyState === self.READY_STATE_CHANGE.COMPLETED);
+      //self._room.readyState === self.READY_STATE_CHANGE.COMPLETED);
   }, false);
 };
 

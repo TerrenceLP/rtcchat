@@ -19,7 +19,7 @@ test('#constant_READY_STATE_CHANGE', function (t) {
     COMPLETED: 2,
     ERROR: -1
   }, 'To match documentation for any changes');
-  t.deepEqual(sw._readyState, sw.READY_STATE_CHANGE.INIT, 'Defaults is set correctly');
+  t.deepEqual(sw._room.readyState, sw.READY_STATE_CHANGE.INIT, 'Defaults is set correctly');
 
 });
 
@@ -54,7 +54,7 @@ test('#constant_REGIONAL_SERVER', function (t) {
     APAC1: 'sg',
     US1: 'us2'
   }, 'To match documentation for any changes');
-  t.deepEqual(sw._serverRegion, null,' Defaults is set correctly');
+  t.deepEqual(sw._room.region, null,' Defaults is set correctly');
 
 });
 
@@ -65,18 +65,22 @@ test('#method_init()', function(t) {
     st.plan(4);
 
     st.test('When parameters is ()', function (sst) {
-      sst.plan(1);
+      sst.plan(2);
 
       var called = false;
-      sw.on('readyStateChange', function () {
-        called = true;
+      sw.on('readyStateChange', function (state) {
+        called = state === -1;
       });
 
-      sw.init();
+      try {
+        sw.init();
+      } catch (error) {
+        sst.ok(error, 'Throws an error when no callback is provided');
+      }
 
       setTimeout(function () {
         sw.off('readyStateChange');
-        sst.deepEqual(called, false, 'Does not trigger event');
+        sst.deepEqual(called, true, 'Does trigger event');
       }, 1000);
     });
 
@@ -84,15 +88,15 @@ test('#method_init()', function(t) {
       sst.plan(1);
 
       var called = false;
-      sw.on('readyStateChange', function () {
-        called = true;
+      sw.on('readyStateChange', function (state) {
+        called = state === -1;
       });
 
       sw.init(function () {});
 
       setTimeout(function () {
         sw.off('readyStateChange');
-        sst.deepEqual(called, false, 'Does not trigger event');
+        sst.deepEqual(called, true, 'Does trigger event');
       }, 1000);
     });
 
@@ -129,19 +133,18 @@ test('#method_init()', function(t) {
   t.test('Testing callback error states', function(st) {
     st.plan(5);
 
-    var testItem = function(options) {
+    var testItem = function(options, errorCodes) {
       st.test('When options is ' + JSON.stringify(options), function(sst) {
         sst.plan(2);
 
         var states = [];
         var expected = {
-          errorCode: sw.READY_STATE_CHANGE_ERROR.API_INVALID,
+          errorCode: errorCodes.errorCode, //sw.READY_STATE_CHANGE_ERROR.API_INVALID,
           error: 'object',
-          status: 401
+          status: errorCodes.status, //401
         };
 
         sw.init(options, function(err, success) {
-          console.info('hey there', err, success);
           if (err) {
             sst.deepEqual(success, null, 'Success should be empty');
             sst.deepEqual({
@@ -157,21 +160,21 @@ test('#method_init()', function(t) {
       });
     };
 
-    testItem('fake one');
+    testItem('fake one', { errorCode: sw.READY_STATE_CHANGE_ERROR.API_INVALID, status: 401 });
     testItem({
       apiKey: 'fake'
-    });
+    }, { errorCode: sw.READY_STATE_CHANGE_ERROR.API_INVALID, status: 401 });
     testItem({
       appKey: 'fake',
       apiKey: apikey
-    });
+    }, { errorCode: sw.READY_STATE_CHANGE_ERROR.API_INVALID, status: 401 });
     testItem({
       appKey: 'sofake',
       apiKey: 'fake'
-    });
+    }, { errorCode: sw.READY_STATE_CHANGE_ERROR.API_INVALID, status: 401 });
     testItem({
       appKey: null
-    });
+    }, { errorCode: sw.READY_STATE_CHANGE_ERROR.NO_PATH, status: null });
   });
 
   /*t.test('Testing callback success states', function(st) {
@@ -427,10 +430,19 @@ test('#event_readyStateChange', function(t) {
     window.XMLHttpRequest = null;
 
     sw.on('readyStateChange', function(state, error, room) {
-      console.info('readyStateChange', state, error, room);
+      var parseError = error;
+
+      if (error) {
+        parseError = {
+          status: error.status,
+          content: typeof error.content,
+          errorCode: error.errorCode
+        };
+      }
+
       states.push({
         state: state,
-        error: error,
+        error: parseError,
         room: room
       });
     });
@@ -441,12 +453,12 @@ test('#event_readyStateChange', function(t) {
       st.deepEqual(states, [{
         state: 0,
         error: null,
-        room: apikey
+        room: null
       }, {
         state: -1,
         error: {
           status: null,
-          content: 'XMLHttpRequest not available',
+          content: 'object',
           errorCode: sw.READY_STATE_CHANGE_ERROR.NO_XMLHTTPREQUEST_SUPPORT
         },
         room: apikey
@@ -462,9 +474,19 @@ test('#event_readyStateChange', function(t) {
     window.AdapterJS = null;
 
     sw.on('readyStateChange', function(state, error, room) {
+      var parseError = error;
+
+      if (error) {
+        parseError = {
+          status: error.status,
+          content: typeof error.content,
+          errorCode: error.errorCode
+        };
+      }
+
       states.push({
         state: state,
-        error: error,
+        error: parseError,
         room: room
       });
     });
@@ -475,12 +497,12 @@ test('#event_readyStateChange', function(t) {
       st.deepEqual(states, [{
         state: 0,
         error: null,
-        room: apikey
+        room: null
       }, {
         state: -1,
         error: {
           status: null,
-          content: 'AdapterJS dependency is not loaded or incorrect AdapterJS dependency is used',
+          content: 'object',
           errorCode: sw.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED
         },
         room: apikey
@@ -496,9 +518,19 @@ test('#event_readyStateChange', function(t) {
     window.io = null;
 
     sw.on('readyStateChange', function(state, error, room) {
+      var parseError = error;
+
+      if (error) {
+        parseError = {
+          status: error.status,
+          content: typeof error.content,
+          errorCode: error.errorCode
+        };
+      }
+
       states.push({
         state: state,
-        error: error,
+        error: parseError,
         room: room
       });
     });
@@ -509,12 +541,12 @@ test('#event_readyStateChange', function(t) {
       st.deepEqual(states, [{
         state: 0,
         error: null,
-        room: apikey
+        room: null
       }, {
         state: -1,
         error: {
           status: null,
-          content: 'Socket.io not found',
+          content: 'object',
           errorCode: sw.READY_STATE_CHANGE_ERROR.NO_SOCKET_IO
         },
         room: apikey
@@ -540,7 +572,7 @@ test('#event_readyStateChange', function(t) {
       st.deepEqual(states, [{
         state: 0,
         error: null,
-        room: apikey
+        room: null
       }, {
         state: 1,
         error: null,

@@ -523,7 +523,7 @@ Skylink.prototype._onUserMediaSuccess = function(stream, isScreenSharing) {
       return isSelf;
     });
   }, function () {
-    return self._readyState === self.READY_STATE_CHANGE.COMPLETED;
+    return self._room.readyState === self.READY_STATE_CHANGE.COMPLETED;
   }, function (state) {
     return state === self.READY_STATE_CHANGE.COMPLETED;
   });*/

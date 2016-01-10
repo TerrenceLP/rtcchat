@@ -23,8 +23,8 @@ function get_test () {
         socket)
           browserify tests/tests/socket.js | testling -x "$1";
           ;;
-        api-test)
-          browserify tests/tests/api-test.js | testling -x "$1";
+        api)
+          browserify tests/tests/api.js | testling -x "$1";
           ;;
         webrtc)
           browserify tests/tests/webrtc.js | testling -x "$1";
