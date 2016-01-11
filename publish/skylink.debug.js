@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Mon Jan 11 2016 16:46:22 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Mon Jan 11 2016 18:31:52 GMT+0800 (SGT) */
 
 (function() {
 
@@ -509,6 +509,59 @@ Skylink.prototype.SYSTEM_ACTION_REASON = {
   EXPIRED: 'expired',
   ROOM_CLOSED: 'roomclose',
   ROOM_CLOSING: 'toclose'
+};
+
+/**
+ * These are the list of Peer connection signaling states that Skylink would trigger.
+ * - Some of the state references the [w3c WebRTC Specification Draft](http://www.w3.org/TR/webrtc/#idl-def-RTCSignalingState).
+ * @attribute PEER_CONNECTION_STATE
+ * @type JSON
+ * @param {String} STABLE <small>Value <code>"stable"</code></small>
+ *   The state when there is no handshaking in progress and when
+ *   handshaking has just started or close.<br>
+ * This state occurs when Peer connection has just been initialised and after
+ *   <code>HAVE_LOCAL_OFFER</code> or <code>HAVE_REMOTE_OFFER</code>.
+ * @param {String} HAVE_LOCAL_OFFER <small>Value <code>"have-local-offer"</code></small>
+ *   The state when the local session description <code>"offer"</code> is generated and to be sent.<br>
+ * This state occurs after <code>STABLE</code> state.
+ * @param {String} HAVE_REMOTE_OFFER <small>Value <code>"have-remote-offer"</code></small>
+ *   The state when the remote session description <code>"offer"</code> is received.<br>
+ * At this stage, this indicates that the Peer connection signaling handshaking has been completed, and
+ *   likely would go back to <code>STABLE</code> after local <code>"answer"</code> is received by Peer.
+ * @param {String} CLOSED <small>Value <code>"closed"</code></small>
+ *   The state when the Peer connection is closed.<br>
+ * This state occurs when connection with Peer has been closed, usually when Peer leaves the room.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.PEER_CONNECTION_STATE = {
+  STABLE: 'stable',
+  HAVE_LOCAL_OFFER: 'have-local-offer',
+  HAVE_REMOTE_OFFER: 'have-remote-offer',
+  CLOSED: 'closed'
+};
+
+/**
+ * These are the types of server Peers that Skylink would connect with.
+ * - Different server Peers that serves different functionalities.
+ * - The server Peers functionalities are only available depending on the
+ *   Application Key configuration.
+ * - Eventually, this list will be populated as there are more server Peer
+ *   functionalities provided by the Skylink platform.
+ * @attribute SERVER_PEER_TYPE
+ * @param {String} MCU <small>Value <code>"mcu"</code></small>
+ *   This server Peer is a MCU server connection.
+ * @type JSON
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.SERVER_PEER_TYPE = {
+  MCU: 'mcu'
+  //SIP: 'sip'
 };
 
 this.Skylink = Skylink;
@@ -4552,907 +4605,406 @@ Skylink.prototype.refreshConnection = function(targetPeerId, callback) {
   self._throttle(toRefresh,5000)();
 
 };
-Skylink.prototype.PEER_CONNECTION_STATE = {
-  STABLE: 'stable',
-  HAVE_LOCAL_OFFER: 'have-local-offer',
-  HAVE_REMOTE_OFFER: 'have-remote-offer',
-  CLOSED: 'closed'
-};
+function SkylinkPeer (id, config) {
+  SkylinkEvent._mixin(this);
 
-/**
- * These are the types of server Peers that Skylink would connect with.
- * - Different server Peers that serves different functionalities.
- * - The server Peers functionalities are only available depending on the
- *   Application Key configuration.
- * - Eventually, this list will be populated as there are more server Peer
- *   functionalities provided by the Skylink platform.
- * @attribute SERVER_PEER_TYPE
- * @param {String} MCU <small>Value <code>"mcu"</code></small>
- *   This server Peer is a MCU server connection.
- * @type JSON
- * @readOnly
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype.SERVER_PEER_TYPE = {
-  MCU: 'mcu'
-  //SIP: 'sip'
-};
+  this.id = id;
 
-/**
- * Stores the timestamp of the moment when the last Peers connection
- *   restarts has happened. Used for the restart Peers connection functionality.
- * @attribute _lastRestart
- * @type Object
- * @required
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.9
- */
-Skylink.prototype._lastRestart = null;
-
-/**
- * Stores the counter of the number of consecutive
- *   Peers connection restarts retries.
- * @attribute _retryCount
- * @type Number
- * @required
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.10
- */
-Skylink.prototype._retryCount = 0;
-
-/**
- * Stores the list of Peers connection.
- * @attribute _peerConnections
- * @param {Object} (#peerId) The Peer ID associated to the RTCPeerConnection object.
- * @type JSON
- * @required
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._peerConnections = {};
-
-/**
- * Connects to the Peer.
- * @method _addPeer
- * @param {String} targetMid The Peer ID to connect to.
- * @param {JSON} peerBrowser The Peer platform agent information.
- * @param {String} peerBrowser.agent The Peer platform browser or agent name.
- * @param {Number} peerBrowser.version The Peer platform browser or agent version.
- * @param {Number} peerBrowser.os The Peer platform name.
- * @param {Boolean} [toOffer=false] The flag that indicates if the Peer connection
- *   should be start connection as an offerer or as an answerer.
- * @param {Boolean} [restartConn=false] The flag that indicates if the Peer
- *   connection is part of restart functionality use-case.
- * @param {Boolean} [receiveOnly=false] The flag that indicates if the Peer
- *   connection would send Stream or not (receive only).
- * @param {Boolean} [isSS=false] The flag that indicates if the Peer
- *   connection Stream sent is a screensharing stream or not.
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._addPeer = function(targetMid, peerBrowser, toOffer, restartConn, receiveOnly, isSS) {
-  var self = this;
-  if (self._peerConnections[targetMid] && !restartConn) {
-    log.error([targetMid, null, null, 'Connection to peer has already been made']);
-    return;
+  if (typeof config.agent === 'object' && config.agent !== null) {
+    if (typeof config.agent.name === 'string') {
+      this.agent.name = config.agent.name;
+    }
+    if (typeof config.agent.version === 'number') {
+      this.agent.version = config.agent.version;
+    }
+    if (typeof config.agent.os === 'string') {
+      this.agent.os = config.agent.os;
+    }
   }
-  log.log([targetMid, null, null, 'Starting the connection to peer. Options provided:'], {
-    peerBrowser: peerBrowser,
-    toOffer: toOffer,
-    receiveOnly: receiveOnly,
-    enableDataChannel: self._enableDataChannel
+
+  this.data = config.data;
+
+  if (typeof config.stream === 'object' && config.stream !== null) {
+    this._stream = config.stream;
+  }
+
+  if (typeof config.connection === 'object' && config.connection !== null) {
+    if (config.connection.recvOnly === true) {
+      this._connection.recvonly = true;
+    }
+
+    if (config.connection.dataChannel === false) {
+      this._connection.datachannel = false;
+    }
+
+    if (config.connection.trickleICE === false) {
+      this._connection.trickleICE = false;
+    }
+
+    if (config.connection.stereo === false) {
+      this._connection.stereo = false;
+    }
+
+    if (typeof config.connection.bandwidth === 'object' && config.connection.bandwidth !== null) {
+      if (typeof config.connection.bandwidth.audio === 'number' && config.connection.bandwidth.audio > 0) {
+        this._connection.bandwidth.audio = config.connection.bandwidth.audio;
+      }
+
+      if (typeof config.connection.bandwidth.video === 'number' && config.connection.bandwidth.video > 0) {
+        this._connection.bandwidth.video = config.connection.bandwidth.video;
+      }
+
+      if (typeof config.connection.bandwidth.data === 'number' && config.connection.bandwidth.data > 0) {
+        this._connection.bandwidth.data = config.connection.bandwidth.data;
+      }
+    }
+  }
+
+  // Construct new RTCPeerConnection object
+  this._peer = new RTCPeerConnection({
+    iceServers: config.iceServers
+    // iceTransportPolicy: 'relay',
+    // bundlePolicy: 'balanced',
+    // certificates: [],
+    // iceCandidatePoolSize: 0,
+    // rtcpMuxPolicy: 'require'
+  }, {
+    optional: [{
+      DtlsSrtpKeyAgreement: true
+    }]
   });
 
-  log.info('Adding peer', isSS);
+  this._listenToEvents();
 
-  if (!restartConn) {
-    self._peerConnections[targetMid] = self._createPeerConnection(targetMid, !!isSS);
-  }
+  log.debug([id, 'Peer', null, 'Connection object is ready for handshaking']);
+}
 
-  if (!self._peerConnections[targetMid]) {
-    log.error([targetMid, null, null, 'Failed creating the connection to peer']);
-    return;
-  }
+/**
+ * Contains the peer session ID.
+ * @attribute id
+ * @type String
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.id = null;
 
-  self._peerConnections[targetMid].receiveOnly = !!receiveOnly;
-  self._peerConnections[targetMid].hasScreen = !!isSS;
-  if (!receiveOnly) {
-    self._addLocalMediaStreams(targetMid);
-  }
-  // I'm the callee I need to make an offer
-  if (toOffer) {
-    if (self._enableDataChannel) {
-      if (typeof self._channels[targetMid] !== 'object') {
-        log.error([targetMid, 'RTCDataChannel', null, 'Create offer error as unable to create datachannel ' +
-          'as datachannels array is undefined'], self._channels[targetMid]);
-        return;
-      }
-
-      self._createChannel(targetMid, 'main');
-      self._peerConnections[targetMid].hasMainChannel = true;
-    }
-    self._doOffer(targetMid, peerBrowser);
-  }
-
-  // do a peer connection health check
-  // let MCU handle this case
-  if (!self._hasMCU) {
-    this._startPeerConnectionHealthCheck(targetMid, toOffer);
-  } else {
-    log.warn([targetMid, 'PeerConnectionHealth', null, 'Not setting health timer for MCU connection']);
-    return;
-  }
+/**
+ * Contains the peer agent.
+ * @attribute agent
+ * @type JSON
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.agent = {
+  name: null,
+  version: null,
+  os: null
 };
 
 /**
- * Recreates a peer connection.
- * This is the fallback restart mechanism for other platforms.
- * @method _restartPeerConnection
- * @param {String} peerId The Peer ID to recreate the connection with.
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.6.6
+ * Contains the peer custom data.
+ * @attribute data
+ * @type Any
+ * @since 0.6.8
+ * @for SkylinkPeer
  */
-Skylink.prototype._recreatePeerConnection = function (peerId) {
+SkylinkPeer.prototype.data = null;
+
+/**
+ * Contains the peer streaming information.
+ * @attribute _stream
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._stream = null;
+
+/**
+ * Contains the peer connection information.
+ * @attribute _connection
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._connection = {
+  recvonly: false,
+  datachannel: true,
+  trickleICE: true,
+  stereo: true,
+  bandwidth: {}
+};
+
+/**
+ * Contains the RTCPeerConnection object.
+ * @attribute _peer
+ * @type RTCPeerConnection
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._peer = null;
+
+/**
+ * Contains the list of datachannels.
+ * @attribute _channels
+ * @param {DataChannel} (#channelId) The DataChannel connection object.
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._channels = null;
+
+/**
+ * Listens to RTCPeerConnection events.
+ * @method _listenToEvents
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._listenToEvents = function() {
   var self = this;
 
-  if (!self._peerConnections[peerId]) {
-    log.error([peerId, null, null, 'Peer does not have an existing ' +
-      'connection. Unable to recreate connection']);
-    return;
-  }
+  // RTCPeerConnection ondatachannel event
+  self._peer.ondatachannel = function(event) {
+    var channel = event.channel || event;
 
-  // get the value of receiveOnly
-  log.log([peerId, null, null, 'Recreating a peer connection']);
-
-   // get the value of receiveOnly
-  var receiveOnly = self._peerConnections[peerId] ?
-    !!self._peerConnections[peerId].receiveOnly : false;
-  var hasScreenSharing = self._peerConnections[peerId] ?
-    !!self._peerConnections[peerId].hasScreen : false;
-
-  // close the peer connection and remove the reference
-  var iceConnectionStateClosed = false;
-  var peerConnectionStateClosed = false;
-  var dataChannelStateClosed = !self._enableDataChannel;
-
-  delete self._peerConnectionHealth[peerId];
-
-  self._stopPeerConnectionHealthCheck(peerId);
-
-  if (self._peerConnections[peerId].signalingState !== 'closed') {
-    self._peerConnections[peerId].close();
-  }
-
-  if (self._peerConnections[peerId].hasStream) {
-    self._trigger('streamEnded', peerId, self.getPeerInfo(peerId), false);
-  }
-
-  self._peerConnections[peerId].dataChannelClosed = true;
-
-  delete self._peerConnections[peerId];
-
-  log.log([peerId, null, null, 'Re-creating peer connection']);
-
-  self._peerConnections[peerId] = self._createPeerConnection(peerId, !!hasScreenSharing);
-
-  if (self._peerConnections[peerId]){
-    self._peerConnections[peerId].receiveOnly = receiveOnly;
-    self._peerConnections[peerId].hasScreen = hasScreenSharing;
-  }
-
-  return self._peerConnections[peerId];
-};
-
-/**
- * Restarts a Peer connection in a P2P environment.
- * This is usually done for replacing the previous Stream attached and restarting
- *   the connection with a new one, or when the ICE connection has issues
- *   streaming video/audio stream in the remote Stream which requires
- *   a refresh in the ICE connection.
- * @method _restartPeerConnection
- * @param {String} peerId The Peer ID to restart the connection with.
- * @param {Boolean} isSelfInitiatedRestart The flag that indicates if the restart action
- *    was caused by self.
- * @param {Boolean} isConnectionRestart The flag that indicates whether the restarting action
- *   is caused by ICE connection or handshake connection failure. Currently, this feature works the same as
- *   <code>explict</code> parameter.
- * @param {Function} callback The callback fired after the Peer connection has
- *   been succesfully initiated with a restart. Set this value to <code>null</code> if you
- *   do not want to pass in any callbacks.
- * @param {Boolean} [explict=false] The flag that indicates whether the restart functionality
- *   is invoked by the application or by Skylink when the ICE connection fails to establish
- *   a "healthy" connection state. Currently, this feature works the same as
- *   <code>isConnectionRestart</code> parameter.
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.8
- */
-Skylink.prototype._restartPeerConnection = function (peerId, isSelfInitiatedRestart, isConnectionRestart, callback, explicit) {
-  var self = this;
-
-  if (!self._peerConnections[peerId]) {
-    log.error([peerId, null, null, 'Peer does not have an existing ' +
-      'connection. Unable to restart']);
-    return;
-  }
-
-  delete self._peerConnectionHealth[peerId];
-
-  self._stopPeerConnectionHealthCheck(peerId);
-
-  var pc = self._peerConnections[peerId];
-
-  var agent = (self.getPeerInfo(peerId) || {}).agent || {};
-
-  // fallback to older versions for mobile users
-  if (['Android', 'iOS'].indexOf(agent.name) > -1) {
-    pc = self._recreatePeerConnection(peerId);
-
-    if (!pc) {
-      var noConnObjError = 'Failed restarting (fallback) with mobile SDKs as peer connection object is not defined';
-      log.error([peerId, 'RTCPeerConnection', null, noConnObjError], {
-          localDescription: pc.localDescription,
-          remoteDescription: pc.remoteDescription
-      });
-      if (typeof callback === 'function') {
-        log.debug([peerId, 'RTCPeerConnection', null, 'Firing restart failure callback']);
-        callback(null, new Error(noConnObjError));
-      }
-      return;
-    }
-  }
-
-  // This is when the state is stable and re-handshaking is possible
-  // This could be due to previous connection handshaking that is already done
-  if (pc.signalingState === self.PEER_CONNECTION_STATE.STABLE) {
-    if (self._peerConnections[peerId] && !self._peerConnections[peerId].receiveOnly) {
-      self._addLocalMediaStreams(peerId);
-    }
-
-    if (isSelfInitiatedRestart){
-      log.log([peerId, null, null, 'Sending restart message to signaling server']);
-
-      var lastRestart = Date.now() || function() { return +new Date(); };
-
-      self._socket.send({
-        type: self._SIG_MESSAGE_TYPE.RESTART,
-        mid: self._user.sid,
-        rid: self._room.id,
-        agent: window.webrtcDetectedBrowser,
-        version: window.webrtcDetectedVersion,
-        os: window.navigator.platform,
-        userInfo: self.getPeerInfo(),
-        target: peerId,
-        isConnectionRestart: !!isConnectionRestart,
-        lastRestart: lastRestart,
-        // This will not be used based off the logic in _restartHandler
-        weight: self._peerPriorityWeight,
-        receiveOnly: self._peerConnections[peerId].receiveOnly,
-        enableIceTrickle: self._enableIceTrickle,
-        enableDataChannel: self._enableDataChannel,
-        sessionType: !!self._mediaScreen ? 'screensharing' : 'stream',
-        explicit: !!explicit
-      });
-
-      self._trigger('peerRestart', peerId, self.getPeerInfo(peerId), false);
-
-      if (typeof callback === 'function') {
-        log.debug([peerId, 'RTCPeerConnection', null, 'Firing restart callback']);
-        callback(null, null);
-      }
-    } else {
-      if (typeof callback === 'function') {
-        log.debug([peerId, 'RTCPeerConnection', null, 'Firing restart callback (receiving peer)']);
-        callback(null, null);
-      }
-    }
-
-    // following the previous logic to do checker always
-    self._startPeerConnectionHealthCheck(peerId, false);
-
-  } else {
-    // Let's check if the signalingState is stable first.
-    // In another galaxy or universe, where the local description gets dropped..
-    // In the offerHandler or answerHandler, do the appropriate flags to ignore or drop "extra" descriptions
-    if (pc.signalingState === self.PEER_CONNECTION_STATE.HAVE_LOCAL_OFFER ||
-      pc.signalingState === self.PEER_CONNECTION_STATE.HAVE_REMOTE_OFFER) {
-      // Checks if the local description is defined first
-      var hasLocalDescription = pc.localDescription && pc.localDescription.sdp;
-      // By then it should have at least the local description..
-      if (hasLocalDescription) {
-        self._socket.send({
-          type: pc.localDescription.type,
-          sdp: pc.localDescription.sdp,
-          mid: self._user.sid,
-          target: peerId,
-          rid: self._room.id,
-          restart: true
-        });
-      } else {
-        var noLocalDescriptionError = 'Failed re-sending localDescription as there is ' +
-          'no localDescription set to connection. There could be a handshaking step error';
-        log.error([peerId, 'RTCPeerConnection', null, noLocalDescriptionError], {
-            localDescription: pc.localDescription,
-            remoteDescription: pc.remoteDescription
-        });
-        if (typeof callback === 'function') {
-          log.debug([peerId, 'RTCPeerConnection', null, 'Firing restart failure callback']);
-          callback(null, new Error(noLocalDescriptionError));
-        }
-      }
-    // It could have connection state closed
-    } else {
-      var unableToRestartError = 'Failed restarting as peer connection state is ' + pc.signalingState;
-      log.warn([peerId, 'RTCPeerConnection', null, unableToRestartError]);
-      if (typeof callback === 'function') {
-        log.debug([peerId, 'RTCPeerConnection', null, 'Firing restart failure callback']);
-        callback(null, new Error(unableToRestartError));
-      }
-    }
-  }
-};
-
-/**
- * Disconnects the Peer connection and remove object references associated.
- * @method _removePeer
- * @param {String} peerId The Peer ID to disconnect the connection with.
- * @trigger peerLeft
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._removePeer = function(peerId) {
-  var peerInfo = clone(this.getPeerInfo(peerId)) || {
-    userData: '',
-    settings: {},
-    mediaStatus: {},
-    agent: {},
-    room: clone(this._selectedRoom)
+    log.debug([self.id, 'Peer', channel.label, 'Received RTCDataChannel ->'], channel);
   };
 
-  if (peerId !== 'MCU') {
-    this._trigger('peerLeft', peerId, peerInfo, false);
-  } else {
-    this._hasMCU = false;
-    log.log([peerId, null, null, 'MCU has stopped listening and left']);
-    this._trigger('serverPeerLeft', peerId, this.SERVER_PEER_TYPE.MCU);
-  }
-  // stop any existing peer health timer
-  this._stopPeerConnectionHealthCheck(peerId);
-
-  // check if health timer exists
-  if (typeof this._peerConnections[peerId] !== 'undefined') {
-    // new flag to check if datachannels are all closed
-    this._peerConnections[peerId].dataChannelClosed = true;
-
-    if (this._peerConnections[peerId].signalingState !== 'closed') {
-      this._peerConnections[peerId].close();
-    }
-
-    if (this._peerConnections[peerId].hasStream) {
-      this._trigger('streamEnded', peerId, this.getPeerInfo(peerId), false);
-    }
-
-    delete this._peerConnections[peerId];
-  }
-  // remove peer informations session
-  if (typeof this._peerInformations[peerId] !== 'undefined') {
-    delete this._peerInformations[peerId];
-  }
-  if (typeof this._peerConnectionHealth[peerId] !== 'undefined') {
-    delete this._peerConnectionHealth[peerId];
-  }
-  // close datachannel connection
-  if (this._enableDataChannel) {
-    if (Array.isArray(this._channels[peerId])) {
-      var channels = Object.keys(this._channels[peerId]);
-
-      for (var i = 0; i < channels.length; i++) {
-        this._destroyChannel(peerId, channels[i]);
-      }
-    }
-  }
-
-  log.log([peerId, null, null, 'Successfully removed peer']);
-};
-
-/**
- * Creates a Peer connection. This does not start the handshake connection
- *   but creates the Peer connection object ready for connection.
- * @method _createPeerConnection
- * @param {String} targetMid The Peer ID to create the connection object
- *   with.
- * @param {Boolean} [isScreenSharing=false] The flag that indicates if the Peer
- *   connection Stream sent is a screensharing stream or not.
- * @return {Object} The Peer connection object associated with
- *   the provided ID.
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._createPeerConnection = function(targetMid, isScreenSharing) {
-  var pc, self = this;
-  // currently the AdapterJS 0.12.1-2 causes an issue to prevent firefox from
-  // using .urls feature
-  var newRTCPeerConnection = window.webkitRTCPeerConnection || window.mozRTCPeerConnection ||
-    window.RTCPeerConnection;
-  try {
-    pc = new newRTCPeerConnection(
-      self._room.connection.peerConfig,
-      self._room.connection.peerConstraints);
-    log.info([targetMid, null, null, 'Created peer connection']);
-    log.debug([targetMid, null, null, 'Peer connection config:'],
-      self._room.connection.peerConfig);
-    log.debug([targetMid, null, null, 'Peer connection constraints:'],
-      self._room.connection.peerConstraints);
-  } catch (error) {
-    log.error([targetMid, null, null, 'Failed creating peer connection:'], error);
-    return null;
-  }
-  // attributes (added on by Temasys)
-  pc.setOffer = '';
-  pc.setAnswer = '';
-  pc.hasStream = false;
-  pc.hasScreen = !!isScreenSharing;
-  pc.hasMainChannel = false;
-  pc.firefoxStreamId = '';
-
-  // datachannels
-  self._channels[targetMid] = {};
-  // candidates
-  self._addedCandidates[targetMid] = {
-    relay: [],
-    host: [],
-    srflx: []
-  };
-
-  // callbacks
-  // standard not implemented: onnegotiationneeded,
-  pc.ondatachannel = function(event) {
-    var dc = event.channel || event;
-    log.debug([targetMid, 'RTCDataChannel', dc.label, 'Received datachannel ->'], dc);
-    if (self._enableDataChannel) {
-
-      var channelType = self.DATA_CHANNEL_TYPE.DATA;
-      var channelKey = dc.label;
-
-      // if peer does not have main channel, the first item is main
-      if (!pc.hasMainChannel) {
-        channelType = self.DATA_CHANNEL_TYPE.MESSAGING;
-        channelKey = 'main';
-        pc.hasMainChannel = true;
-      }
-
-      if (!self._channels[targetMid]) {
-        self._channels[targetMid] = {};
-      }
-
-      self._channels[targetMid][channelKey] = new DataChannel(dc);
-      self._listenToChannel(targetMid, channelKey);
-
-    } else {
-      log.warn([targetMid, 'RTCDataChannel', dc.label, 'Not adding datachannel as enable datachannel ' +
-        'is set to false']);
-    }
-  };
-  pc.onaddstream = function(event) {
+  // RTCPeerConnection onaddstream event
+  self._peer.onaddstream = function(event) {
     var stream = event.stream || event;
-    pc.hasStream = true;
-
-    var agent = (self.getPeerInfo(targetMid) || {}).agent || {};
     var timeout = 0;
 
     // NOTE: Add timeouts to the firefox stream received because it seems to have some sort of black stream rendering at first
     // This may not be advisable but that it seems to work after 1500s. (tried with ICE established but it does not work and getStats)
-    if (agent.name === 'firefox' && window.webrtcDetectedBrowser !== 'firefox') {
+    if (self.agent.name === 'firefox' && user.agent.name !== 'firefox') {
       timeout = 1500;
     }
+
     setTimeout(function () {
-      self._onRemoteStreamAdded(targetMid, stream, !!pc.hasScreen);
+      log.debug([self.id, 'Peer', stream.id, 'Received MediaStream ->'], stream);
     }, timeout);
   };
-  pc.onicecandidate = function(event) {
-    log.debug([targetMid, 'RTCIceCandidate', null, 'Ice candidate generated ->'],
-      event.candidate);
-    self._onIceCandidate(targetMid, event);
-  };
-  pc.oniceconnectionstatechange = function(evt) {
-    checkIceConnectionState(targetMid, pc.iceConnectionState,
-      function(iceConnectionState) {
-      log.debug([targetMid, 'RTCIceConnectionState', null,
-        'Ice connection state changed ->'], iceConnectionState);
-      self._trigger('iceConnectionState', iceConnectionState, targetMid);
 
-      // clear all peer connection health check
-      // peer connection is stable. now if there is a waiting check on it
-      if (iceConnectionState === self.ICE_CONNECTION_STATE.COMPLETED &&
-        pc.signalingState === self.PEER_CONNECTION_STATE.STABLE) {
-        log.debug([targetMid, 'PeerConnectionHealth', null,
-          'Peer connection with user is stable']);
-        self._peerConnectionHealth[targetMid] = true;
-        self._stopPeerConnectionHealthCheck(targetMid);
-        self._retryCount = 0;
-      }
+  // RTCPeerConnection onicecandidate event
+  self._peer.onicecandidate = function(event) {
+    var candidate = event.candidate || event;
 
-      if (typeof self._ICEConnectionFailures[targetMid] === 'undefined') {
-        self._ICEConnectionFailures[targetMid] = 0;
-      }
+    if (candidate.candidate) {
+      log.debug([self.id, 'Peer', null, 'Generated RTCIceCandidate ->'], candidate);
 
-      if (self._ICEConnectionFailures[targetMid] > 2) {
-        self._peerIceTrickleDisabled[targetMid] = true;
-      }
+      self._trigger('candidate', candidate);
 
-      if (iceConnectionState === self.ICE_CONNECTION_STATE.FAILED) {
-        self._ICEConnectionFailures[targetMid] += 1;
-
-        if (self._enableIceTrickle && !self._peerIceTrickleDisabled[targetMid]) {
-          self._trigger('iceConnectionState',
-            self.ICE_CONNECTION_STATE.TRICKLE_FAILED, targetMid);
-        }
-        // refresh when failed. ignore for MCU case since restart is handled by MCU in this case
-        if (!self._hasMCU) {
-          self._restartPeerConnection(targetMid, true, true, null, false);
-        }
-      }
-
-      /**** SJS-53: Revert of commit ******
-      // resend if failed
-      if (iceConnectionState === self.ICE_CONNECTION_STATE.FAILED) {
-        log.debug([targetMid, 'RTCIceConnectionState', null,
-          'Ice connection state failed. Re-negotiating connection']);
-        self._removePeer(targetMid);
-        self._socket.send({
-          type: self._SIG_MESSAGE_TYPE.WELCOME,
-          mid: self._user.sid,
-          rid: self._room.id,
-          agent: window.webrtcDetectedBrowser,
-          version: window.webrtcDetectedVersion,
-          userInfo: self.getPeerInfo(),
-          target: targetMid,
-          restartNego: true,
-          hsPriority: -1
-        });
-      } *****/
-    });
-  };
-  // pc.onremovestream = function () {
-  //   self._onRemoteStreamRemoved(targetMid);
-  // };
-  pc.onsignalingstatechange = function() {
-    log.debug([targetMid, 'RTCSignalingState', null,
-      'Peer connection state changed ->'], pc.signalingState);
-    self._trigger('peerConnectionState', pc.signalingState, targetMid);
-
-    // clear all peer connection health check
-    // peer connection is stable. now if there is a waiting check on it
-    if ((pc.iceConnectionState === self.ICE_CONNECTION_STATE.COMPLETED ||
-      pc.iceConnectionState === self.ICE_CONNECTION_STATE.CONNECTED) &&
-      pc.signalingState === self.PEER_CONNECTION_STATE.STABLE) {
-      log.debug([targetMid, 'PeerConnectionHealth', null,
-        'Peer connection with user is stable']);
-      self._peerConnectionHealth[targetMid] = true;
-      self._stopPeerConnectionHealthCheck(targetMid);
-      self._retryCount = 0;
+    } else {
+      log.log([self.id, 'Peer', null, 'Generation of RTCIceCandidates has completed']);
     }
   };
-  pc.onicegatheringstatechange = function() {
-    log.log([targetMid, 'RTCIceGatheringState', null,
-      'Ice gathering state changed ->'], pc.iceGatheringState);
-    self._trigger('candidateGenerationState', pc.iceGatheringState, targetMid);
+
+  // RTCPeerConnection oniceconnectionstatechange event
+  self._peer.oniceconnectionstatechange = function() {
+    log.debug([self.id, 'Peer', null, 'Current iceConnectionState ->'], self._peer.iceConnectionState);
+
+    self._trigger('iceConnectionState', self._peer.iceConnectionState);
   };
 
-  if (window.webrtcDetectedBrowser === 'firefox') {
-    pc.removeStream = function (stream) {
-      var senders = pc.getSenders();
-      for (var s = 0; s < senders.length; s++) {
-        var tracks = stream.getTracks();
-        for (var t = 0; t < tracks.length; t++) {
-          if (tracks[t] === senders[s].track) {
-            pc.removeTrack(senders[s]);
-          }
-        }
-      }
-    };
-  }
+  // RTCPeerConnection onsignalingstatechange event
+  self._peer.onsignalingstatechange = function() {
+    log.debug([self.id, 'Peer', null, 'Current signalingState ->'], self._peer.signalingState);
 
-  return pc;
+    self._trigger('signalingState', self._peer.signalingState);
+  };
+
+  // RTCPeerConnection onicegatheringstatechange event
+  self._peer.onicegatheringstatechange = function() {
+    log.debug([self.id, 'Peer', null, 'Current iceGatheringState ->'], self._peer.iceGatheringState);
+
+    self._trigger('iceGatheringState', self._peer.iceGatheringState);
+  };
+
+  log.debug([self.id, 'Peer', null, 'Listenting to RTCPeerConnection object events']);
 };
 
 /**
- * Refreshes a Peer connection.
- * - This feature can be used to refresh a Peer connection when the
- *   remote Stream received does not stream any audio/video stream.
- * - If there are more than 1 refresh during 5 seconds
- *   or refresh is less than 3 seconds since the last refresh
- *   initiated by the other peer, it will be aborted.
- * - As for MCU connection, the restart mechanism makes the self user
- *    leave and join the currently connected room again.
- * @method refreshConnection
- * @param {String|Array} [targetPeerId] The array of targeted Peers connection to refresh
- *   the connection with.
- * @param {Function} [callback] The callback fired after all targeted Peers connection has
- *   been initiated with refresh or have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {JSON} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {Array} callback.error.listOfPeers The list of Peers that the
- *   refresh connection had been initiated with.
- * @param {JSON} callback.error.refreshErrors The list of errors occurred
- *   based on per Peer basis.
- * @param {Object|String} callback.error.refreshErrors.(#peerId) The Peer ID that
- *   is associated with the error that occurred when refreshing the connection.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {Array} callback.success.listOfPeers The list of Peers that the
- *   refresh connection had been initiated with.
- * @example
- *   SkylinkDemo.on("iceConnectionState", function (state, peerId)) {
- *     if (iceConnectionState === SkylinkDemo.ICE_CONNECTION_STATE.FAILED) {
- *       // Do a refresh
- *       SkylinkDemo.refreshConnection(peerId);
- *     }
- *   });
- * @trigger peerRestart, serverPeerRestart, peerJoined, peerLeft, serverPeerJoined, serverPeerLeft
- * @component Peer
- * @for Skylink
- * @since 0.5.5
+ * Generates a local offer RTCSessionDescription.
+ * @method offer
+ * @param {Boolean} [restartICE=false] The flag that indicates if generation of offer should generate
+ *   new ICE credentials over the server.
+ * @since 0.6.8
+ * @for SkylinkPeer
  */
-Skylink.prototype.refreshConnection = function(targetPeerId, callback) {
+SkylinkPeer.prototype.offer = function (restartICE) {
   var self = this;
 
-  var listOfPeers = Object.keys(self._peerConnections);
-  var listOfPeerRestarts = [];
-  var error = '';
-  var listOfPeerRestartErrors = {};
-
-  if(Array.isArray(targetPeerId)) {
-    listOfPeers = targetPeerId;
-
-  } else if (typeof targetPeerId === 'string') {
-    listOfPeers = [targetPeerId];
-  } else if (typeof targetPeerId === 'function') {
-    callback = targetPeerId;
-  }
-
-  if (listOfPeers.length === 0) {
-    error = 'There is currently no peer connections to restart';
-    log.warn([null, 'PeerConnection', null, error]);
-
-    listOfPeerRestartErrors.self = new Error(error);
-
-    if (typeof callback === 'function') {
-      callback({
-        refreshErrors: listOfPeerRestartErrors,
-        listOfPeers: listOfPeers
-      }, null);
-    }
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring creating of offer as peer object is not initialized']);
     return;
   }
 
-  // To fix jshint dont put functions within a loop
-  var refreshSinglePeerCallback = function (peerId) {
-    return function (error, success) {
-      if (listOfPeerRestarts.indexOf(peerId) === -1) {
-        if (error) {
-          log.error([peerId, 'RTCPeerConnection', null, 'Failed restarting for peer'], error);
-          listOfPeerRestartErrors[peerId] = error;
-        }
-        listOfPeerRestarts.push(peerId);
-      }
+  self._peer.createOffer(function (offer) {
+    log.debug([self.id, 'Peer', null, 'Generated offer ->'], offer);
+    self._setLocalDescription(offer);
 
-      if (listOfPeerRestarts.length === listOfPeers.length) {
-        if (typeof callback === 'function') {
-          log.log([null, 'PeerConnection', null, 'Invoked all peers to restart. Firing callback']);
+  }, function (error) {
+    log.error([self.id, 'Peer', null, 'Failed creating offer ->'], error);
 
-          if (Object.keys(listOfPeerRestartErrors).length > 0) {
-            callback({
-              refreshErrors: listOfPeerRestartErrors,
-              listOfPeers: listOfPeers
-            }, null);
-          } else {
-            callback(null, {
-              listOfPeers: listOfPeers
-            });
-          }
-        }
-      }
-    };
-  };
-
-  var refreshSinglePeer = function(peerId, peerCallback){
-    if (!self._peerConnections[peerId]) {
-      error = 'There is currently no existing peer connection made ' +
-        'with the peer. Unable to restart connection';
-      log.error([peerId, null, null, error]);
-      listOfPeerRestartErrors[peerId] = new Error(error);
-      return;
-    }
-
-    var now = Date.now() || function() { return +new Date(); };
-
-    if (now - self.lastRestart < 3000) {
-      error = 'Last restart was so tight. Aborting.';
-      log.error([peerId, null, null, error]);
-      listOfPeerRestartErrors[peerId] = new Error(error);
-      return;
-    }
-
-    log.log([peerId, 'PeerConnection', null, 'Restarting peer connection']);
-
-    // do a hard reset on variable object
-    self._restartPeerConnection(peerId, true, false, peerCallback, true);
-  };
-
-  var toRefresh = function() {
-    if(!self._hasMCU) {
-      var i;
-
-      for (i = 0; i < listOfPeers.length; i++) {
-        var peerId = listOfPeers[i];
-
-        if (Object.keys(self._peerConnections).indexOf(peerId) > -1) {
-          refreshSinglePeer(peerId, refreshSinglePeerCallback(peerId));
-        } else {
-          error = 'Peer connection with peer does not exists. Unable to restart';
-          log.error([peerId, 'PeerConnection', null, error]);
-          listOfPeerRestartErrors[peerId] = new Error(error);
-        }
-
-        // there's an error to trigger for
-        if (i === listOfPeers.length - 1 && Object.keys(listOfPeerRestartErrors).length > 0) {
-          if (typeof callback === 'function') {
-            callback({
-              refreshErrors: listOfPeerRestartErrors,
-              listOfPeers: listOfPeers
-            }, null);
-          }
-        }
-      }
-    } else {
-      self._restartMCUConnection(callback);
-    }
-  };
-
-  self._throttle(toRefresh,5000)();
-
+    self._trigger('handshake', 'error', error);
+  }, {
+    offerToReceiveAudio: true,
+    offerToReceiveVideo: true,
+    iceRestart: !!restartICE
+  });
 };
 
 /**
- * Restarts all Peers connection in a MCU connection environment.
- * This would require the current user to leave the room and restart all
- *   current existing Peers connection.
- * @method _restartMCUConnection
- * @param {Function} [callback] The callback fired after all targeted Peers connection has
- *   been initiated with refresh or have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {JSON} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {Array} callback.error.listOfPeers The list of Peers that the
- *   refresh connection had been initiated with.
- * @param {JSON} callback.error.refreshErrors The list of errors occurred
- *   based on per Peer basis.
- * @param {Object|String} callback.error.refreshErrors.(#peerId) The Peer ID associated
- *   with the error that occurred when refreshing the connection.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {Array} callback.success.listOfPeers The list of Peers that the
- *   refresh connection had been initiated with.
- * @private
- * @trigger peerRestart, serverPeerRestart, peerJoined, peerLeft, serverPeerJoined
- * @component Peer
- * @for Skylink
- * @since 0.6.1
+ * Generates a local answer RTCSessionDescription in response to given offer.
+ * @method answer
+ * @param {String} offer The offer session description string.
+ * @since 0.6.8
+ * @for SkylinkPeer
  */
-Skylink.prototype._restartMCUConnection = function(callback) {
+SkylinkPeer.prototype.answer = function (sdpString) {
   var self = this;
-  log.info([self._user.sid, null, null, 'Restarting with MCU enabled']);
-  // Save room name
-  /*var roomName = (self._room.id).substring((self._room.id)
-                    .indexOf('_api_') + 5, (self._room.id).length);*/
-  var listOfPeers = Object.keys(self._peerConnections);
-  var listOfPeerRestartErrors = {};
-  var peerId; // j shint is whinning
-  var receiveOnly = false;
-  // for MCU case, these dont matter at all
-  var lastRestart = Date.now() || function() { return +new Date(); };
-  var weight = (new Date()).valueOf();
 
-  self._trigger('serverPeerRestart', 'MCU', self.SERVER_PEER_TYPE.MCU);
-
-  for (var i = 0; i < listOfPeers.length; i++) {
-    peerId = listOfPeers[i];
-
-    if (!self._peerConnections[peerId]) {
-      var error = 'Peer connection with peer does not exists. Unable to restart';
-      log.error([peerId, 'PeerConnection', null, error]);
-      listOfPeerRestartErrors[peerId] = new Error(error);
-      continue;
-    }
-
-    if (peerId === 'MCU') {
-      receiveOnly = !!self._peerConnections[peerId].receiveOnly;
-    }
-
-    if (peerId !== 'MCU') {
-      self._trigger('peerRestart', peerId, self.getPeerInfo(peerId), true);
-
-      log.log([peerId, null, null, 'Sending restart message to signaling server']);
-
-      self._socket.send({
-        type: self._SIG_MESSAGE_TYPE.RESTART,
-        mid: self._user.sid,
-        rid: self._room.id,
-        agent: window.webrtcDetectedBrowser,
-        version: window.webrtcDetectedVersion,
-        os: window.navigator.platform,
-        userInfo: self.getPeerInfo(),
-        target: peerId, //'MCU',
-        isConnectionRestart: false,
-        lastRestart: lastRestart,
-        weight: self._peerPriorityWeight,
-        receiveOnly: receiveOnly,
-        enableIceTrickle: self._enableIceTrickle,
-        enableDataChannel: self._enableDataChannel,
-        sessionType: !!self._mediaScreen ? 'screensharing' : 'stream',
-        explicit: true
-      });
-    }
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring creating of answer as peer object is not initialized']);
+    return;
   }
 
-  // Restart with MCU = peer leaves then rejoins room
-  var peerJoinedFn = function (peerId, peerInfo, isSelf) {
-    log.log([null, 'PeerConnection', null, 'Invoked all peers to restart with MCU. Firing callback']);
-
-    if (typeof callback === 'function') {
-      if (Object.keys(listOfPeerRestartErrors).length > 0) {
-        callback({
-          refreshErrors: listOfPeerRestartErrors,
-          listOfPeers: listOfPeers
-        }, null);
-      } else {
-        callback(null, {
-          listOfPeers: listOfPeers
-        });
-      }
-    }
-  };
-
-  self.once('peerJoined', peerJoinedFn, function (peerId, peerInfo, isSelf) {
-    return isSelf;
+  var offer = new RTCSessionDescription({
+    type: 'offer',
+    sdp: sdpString
   });
 
-  self.leaveRoom(false, function (error, success) {
-    if (error) {
-      if (typeof callback === 'function') {
-        for (var i = 0; i < listOfPeers.length; i++) {
-          listOfPeerRestartErrors[listOfPeers[i]] = error;
-        }
-        callback({
-          refreshErrors: listOfPeerRestartErrors,
-          listOfPeers: listOfPeers
-        }, null);
-      }
-    } else {
-      //self._trigger('serverPeerLeft', 'MCU', self.SERVER_PEER_TYPE.MCU);
-      self.joinRoom(self._selectedRoom);
-    }
+  self._setRemoteDescription(offer, function () {
+    self._peer.createAnswer(function (answer) {
+      log.debug([self.id, 'Peer', null, 'Generated answer ->'], answer);
+      self._setLocalDescription(answer);
+
+    }, function (error) {
+      log.error([self.id, 'Peer', null, 'Failed creating answer ->'], error);
+
+      self._trigger('handshake', 'error', error);
+    });
   });
 };
+
+/**
+ * Completes the connection handshaking in response to given answer.
+ * @method complete
+ * @param {String} answer The answer session description string.
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.complete = function (sdpString) {
+  var self = this;
+
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring setting of answer as peer object is not initialized']);
+    return;
+  }
+
+  var answer = new RTCSessionDescription({
+    type: 'answer',
+    sdp: sdpString
+  });
+
+  self._setRemoteDescription(answer, function () {
+    log.debug([self.id, 'Peer', null, 'Handshaking has completed']);
+  });
+};
+
+/**
+ * Adds the RTCIceCandidate object to the RTCPeerConnection object.
+ * @method addCandidate
+ * @param {JSON} candidate The candidate session.
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.addCandidate = function (candidateSession) {
+  var self = this;
+
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring adding of candidate as peer object is not initialized']);
+    return;
+  }
+
+  var candidate = new RTCIceCandidate({
+    sdpMLineIndex: candidateSession.sdpMLineIndex,
+    sdpMid: candidateSession.sdpMid,
+    candidate: candidateSession.candidate
+  });
+
+  self._peer.addIceCandidate(candidate, function () {
+    log.debug([self.id, 'Peer', null, 'Successfully added candidate'], candidate);
+  }, function (error) {
+    log.error([self.id, 'Peer', null, 'Failed adding candidate'], {
+      candidate: candidate,
+      error: error
+    });
+  });
+};
+
+/**
+ * Sets the local RTCSessionDescription.
+ * @method _setLocalDescription
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._setLocalDescription = function (sdp) {
+  var self = this;
+
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring setting local description as peer object is not initialized']);
+    return;
+  }
+
+  self._peer.setLocalDescription(sdp, function () {
+    log.debug([self.id, 'Peer', null, 'Local description has been set']);
+
+    self._trigger('handshake', sdp.type, null);
+    self._trigger(sdp.type, sdp);
+
+  }, function (error) {
+    log.error([self.id, 'Peer', null, 'Failed setting local description ->'], error);
+
+    self._trigger('handshake', 'error', error);
+  });
+};
+
+/**
+ * Sets the remote RTCSessionDescription.
+ * @method _setRemoteDescription
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._setRemoteDescription = function (sdp, callback) {
+  var self = this;
+
+  if (!self._peer) {
+    log.error([self.id, 'Peer', null, 'Ignoring setting remote description as peer object is not initialized']);
+    return;
+  }
+
+  self._peer.setRemoteDescription(sdp, function () {
+    log.debug([self.id, 'Peer', null, 'Remote description has been set']);
+    self._trigger('handshake', sdp.type, null);
+
+    callback();
+
+  }, function (error) {
+    log.error([self.id, 'Peer', null, 'Failed setting remote description ->'], error);
+
+    self._trigger('handshake', 'error', error);
+  });
+};
+
+
 Skylink.prototype._peerInformations = {};
 
 /**
@@ -6776,387 +6328,6 @@ Skylink.prototype.unlockRoom = function() {
   this._trigger('roomLock', false, this._user.sid,
     this.getPeerInfo(), true);
 };
-Skylink.prototype._globals = {
-  /**
-   * Contains the Application Key
-   * @attribute _self._globals.appKey
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  appKey: null,
-
-  /**
-   * Contains the default room name.
-   * @attribute _self._globals.defaultRoom
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  defaultRoom: null,
-
-  /**
-   * Contains the API server url.
-   * @attribute _self._globals.roomServer
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  roomServer: null,
-
-  /**
-   * Contains the API server region.
-   * @attribute _self._globals.region
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  region: null,
-
-  /**
-   * Contains the room credentials for persistent connections.
-   * @attribute _self._globals.credentials
-   * @param {String} startDateTime The room meeting starting DateTime stamp in (ISO 8601).
-   * @param {Number} duration The room meeting duration.
-   * @param {String} credentials The room generated credentials.
-   * @type JSON
-   * @since 0.6.8
-   * @for Skylink
-   */
-  credentials: null,
-
-  /**
-   * Contains the socket timeout.
-   * @attribute _self._globals.socketTimeout
-   * @type Number
-   * @since 0.6.8
-   * @for Skylink
-   */
-  socketTimeout: 0,
-
-  /**
-   * Contains the flag if connection should force SSL connections to servers.
-   * @attribute _self._globals.forceSSL
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  forceSSL: false,
-
-  /**
-   * Contains the flag if connection should enable TURN servers.
-   * @attribute _self._globals.enableTURNServer
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  enableTURNServer: true,
-
-  /**
-   * Contains the flag if connection should enable STUN servers.
-   * @attribute _self._globals.enableSTUNServer
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  enableSTUNServer: true,
-
-  /**
-   * Contains the flag if connection should force and use TURN connections only.
-   * @attribute _self._globals.forceTURN
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  forceTURN: false,
-
-  /**
-   * Contains the flag if connection should force TURN over SSL connections.
-   * @attribute _self._globals.forceTURNSSL
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  forceTURNSSL: false,
-
-  /**
-   * Contains the TURN server transports to use or enforce.
-   * @attribute _self._globals.TURNServerTransport
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  TURNServerTransport: 'any',
-
-  /**
-   * Contains the flag if connection should enable public STUN servers.
-   * @attribute _self._globals.forceTURN
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  usePublicSTUN: true,
-
-  /**
-   * Contains the flag if connection should trickle ICE.
-   * @attribute _self._globals.enableIceTrickle
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  enableIceTrickle: true,
-
-  /**
-   * Contains the flag if connection should enable RTCDataChannel conenctions.
-   * @attribute _self._globals.enableDataChannel
-   * @type Boolean
-   * @since0 0.6.8
-   * @for Skylink
-   */
-  enableDataChannel: true,
-
-  /**
-   * Contains the SDP audio codec setting for media connections.
-   * @attribute _self._globals.audioCodec
-   * @type String
-   * @since 0.6.8
-   * @for Skylink
-   */
-  audioCodec: 'auto',
-
-  /**
-   * Contains the SDP video codec setting for media connections.
-   * @attribute videoCodec
-   * @type String
-   * @since 0.6.8
-   * @for SkylinkGlobals
-   */
-  videoCodec: 'auto',
-
-  /**
-   * Contains the flag if video+audio MediaStream retrieval failed, fallback to
-   *   retrieve audio MediaStream only.
-   * @attribute _self._globals.audioFallback
-   * @type Boolean
-   * @since 0.6.8
-   * @for Skylink
-   */
-  audioFallback: false
-};
-
-/**
- * Configures the globals.
- * @method _configure
- * @param {JSON} options The configuration options
- * @private
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._configure = function (options) {
-  var self = this;
-
-  // Configure all configuration to defaults
-  // appKey
-  self._globals.appKey = null;
-  // defaultRoom
-  self._globals.defaultRoom = null;
-  // roomServer
-  self._globals.roomServer = '//api.temasys.com.sg';
-  // region
-  self._globals.region = null;
-  // credentials
-  self._globals.credentials = null;
-  // socketTimeout
-  self._globals.socketTimeout = 20000;
-  // forceSSL
-  self._globals.forceSSL = false;
-  // enableTURNServer
-  self._globals.enableTURNServer = true;
-  // enableSTUNServer
-  self._globals.enableSTUNServer = true;
-  // forceTURN
-  self._globals.forceTURN = false;
-  // forceTURNSSL
-  self._globals.forceTURNSSL = false;
-  // TURNServerTransport
-  self._globals.TURNServerTransport = null;
-  // usePublicSTUN
-  self._globals.usePublicSTUN = true;
-  // enableIceTrickle
-  self._globals.enableIceTrickle = true;
-  // enableDataChannel
-  self._globals.enableDataChannel = true;
-  // audioCodec
-  self._globals.audioCodec = null;
-  // videoCodec
-  self._globals.videoCodec = null;
-  // audioFallback
-  self._globals.audioFallback = false;
-
-
-  // configure({} -> appKey)
-  if (typeof options.appKey === 'string' && !!options.appKey) {
-    self._globals.appKey = options.appKey;
-  // configure({} -> apiKey)
-  } else if (typeof options.apiKey === 'string' && !!options.apiKey) {
-    self._globals.appKey = options.apiKey;
-  // ERROR: configure({} -> !(no key found))
-  } else {
-    throw new Error('Provided appKey is invalid');
-  }
-
-  // configure({} -> defaultRoom)
-  if (typeof options.defaultRoom === 'string' && !!options.defaultRoom) {
-    self._globals.defaultRoom = options.defaultRoom;
-  } else {
-    self._globals.defaultRoom = self.appKey;
-  }
-
-  // configure({} -> roomServer)
-  if (typeof options.roomServer === 'string') {
-    if (options.roomServer !== '//api.temasys.com.sg') {
-      log.warn('Note that the roomServer url is overriden with custom URL (' + options.roomServer +
-        ') and this may affect Skylink functionalities');
-    }
-    self._globals.roomServer = options.roomServer;
-  }
-
-  // configure({} -> credentials)
-  if (typeof options.credentials === 'object' && options.credentials !== null) {
-    // configure({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
-    if (typeof options.credentials.startDateTime !== 'string') {
-      throw new Error('Provided credentials.startDateTime DateTime string (ISO 8601) is invalid');
-    }
-
-    // configure({} -> credentials.duration) - Duration in (hours)
-    if (typeof options.credentials.duration !== 'number') {
-      throw new Error('Provided credentials.duration (in hours) is invalid');
-    }
-
-    // configure({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
-    if (typeof options.credentials.credentials !== 'string') {
-      throw new Error('Provided credentials.credentials string is invalid');
-    }
-
-    self._globals.credentials = {
-      startDateTime: options.credentials.startDateTime,
-      duration: options.credentials.duration,
-      credentials: options.credentials.credentials
-    };
-  }
-
-  // configure({} -> region)
-  if (typeof options.region === 'string') {
-    for (var r in self.REGIONAL_SERVER) {
-      if (self.REGIONAL_SERVER.hasOwnProperty(r)) {
-        if (options.region === self.REGIONAL_SERVER[r]) {
-          self._globals.region = options.region;
-          break;
-        }
-      }
-    }
-
-    if (self._globals.region === null) {
-      throw new Error('Provided region is invalid. ' +
-        'Please select the list of options from REGIONAL_SERVER list');
-    }
-  }
-
-  // configure({} -> forceSSL)
-  if (options.forceSSL === true) {
-    self._globals.forceSSL = true;
-  }
-
-  // configure({} -> enableTURNServer)
-  if (options.enableTURNServer === false) {
-    self._globals.enableTURNServer = false;
-  }
-
-  // configure({} -> enableSTUNServer)
-  if (options.enableSTUNServer === false) {
-    self._globals.enableSTUNServer = false;
-  }
-
-  // configure({} -> forceTURN)
-  if (options.forceTURN === true) {
-    self._globals.enableTURNServer = true;
-    self._globals.enableSTUNServer = false;
-  }
-
-  // configure({} -> forceTURNSSL)
-  if (options.forceTURNSSL === true) {
-    self._globals.forceTURNSSL = true;
-  }
-
-  // configure({} -> usePublicSTUN)
-  if (options.usePublicSTUN === false) {
-    self._globals.usePublicSTUN = false;
-  }
-
-  // configure({} -> enableIceTrickle)
-  if (options.enableIceTrickle === false) {
-    self._globals.enableIceTrickle = false;
-  }
-
-  // configure({} -> enableDataChannel)
-  if (options.enableDataChannel === false) {
-    self._globals.enableDataChannel = false;
-  }
-
-  // configure({} -> audioCodec)
-  if (typeof options.audioCodec === 'string') {
-    for (var ac in self.AUDIO_CODEC) {
-      if (self.AUDIO_CODEC.hasOwnProperty(ac)) {
-        if (options.audioCodec === self.AUDIO_CODEC[ac]) {
-          self._globals.audioCodec = options.audioCodec;
-          break;
-        }
-      }
-    }
-
-    if (self._globals.audioCodec === null) {
-      throw new Error('Provided audioCodec is invalid. ' +
-        'Please select the list of options from AUDIO_CODEC list');
-    }
-  } else {
-    self._globals.audioCodec = self.AUDIO_CODEC.AUTO;
-  }
-
-  // configure({} -> videoCodec)
-  if (typeof options.videoCodec === 'string') {
-    for (var vc in self.VIDEO_CODEC) {
-      if (self.VIDEO_CODEC.hasOwnProperty(vc)) {
-        if (options.videoCodec === self.VIDEO_CODEC[vc]) {
-          self._globals.videoCodec = options.videoCodec;
-          break;
-        }
-      }
-    }
-
-    if (self._globals.videoCodec === null) {
-      throw new Error('Provided videoCodec is invalid. ' +
-        'Please select the list of options from VIDEO_CODEC list');
-    }
-  } else {
-    self._globals.videoCodec = self.VIDEO_CODEC.AUTO;
-  }
-
-  // configure({} -> audioFallback)
-  if (options.audioFallback === true) {
-    self._globals.audioFallback = true;
-  }
-
-  // configure({} -> socketTimeout)
-  if (typeof options.socketTimeout === 'number') {
-    if (options.socketTimeout < 5000) {
-      throw new Error('Provided socket timeout is lesser than minimum value of 5000. ' +
-        'Please configure a timeout higher than 5000');
-    }
-    self._globals.socketTimeout = options.socketTimeout;
-  }
-};
-
-
 var globals = {
   /**
    * Contains the Application Key
@@ -8367,7 +7538,43 @@ SkylinkRoom.prototype._createSocket = function () {
  * @for SkylinkRoom
  */
 SkylinkRoom.prototype._createPeer = function (peerId, config) {
+  var self = this;
 
+  if (self._peers[peerId]) {
+    log.debug([peerId, 'Room', self.name, 'Ignoring creating of peer object as session exists']);
+    return;
+  }
+
+  self._peers[peerId] = new SkylinkPeer(peerId, {
+    iceServers: self._connection.iceServers,
+    agent: config.agent,
+    connection: config.connection
+  });
+
+  self._peers[peerId].on('candidate', function (candidate) {
+    self._messageConstructor('candidate', {
+      candidate: candidate.candidate,
+      sdpMLineIndex: candidate.sdpMLineIndex,
+      sdpMid: candidate.sdpMid,
+      target: peerId
+    });
+  });
+
+  self._peers[peerId].on('offer', function (offer) {
+    self._messageConstructor('offer', {
+      sdp: offer.sdp,
+      target: peerId
+    });
+  });
+
+  self._peers[peerId].on('answer', function (answer) {
+    self._messageConstructor('answer', {
+      sdp: answer.sdp,
+      target: peerId
+    });
+  });
+
+  log.debug([peerId, 'Room', self.name, 'Listening to peer object events']);
 };
 
 /**
@@ -8432,16 +7639,54 @@ SkylinkRoom.prototype._messageReactor = function (message) {
 
     // Make firefox against other agents as the answerer always
     if (user.agent.name === 'firefox') {
-      self._connection.tieBreaker -= 1000000000000;
+      self._connection.tieBreaker -= 10000000000;
     }
 
     self._messageConstructor('enter');
 
   // type: "enter"
   } else if (message.type === 'enter') {
-    self._session = self._session;
-  }
+    self._createPeer(message.mid, message);
+    self._messageConstructor('welcome', {
+      target: message.mid
+    });
 
+  // type: "welcome"
+  } else if (message.type === 'welcome') {
+    self._createPeer(message.mid, message);
+
+    if (self._peers[message.mid]) {
+      if (message.tieBreaker > self._connection.tieBreaker) {
+        self._peers[message.mid].offer();
+      } else {
+        self._messageConstructor('welcome', {
+          target: message.mid
+        });
+      }
+    }
+
+  // type: "offer"
+  } else if (message.type === 'offer') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].answer(message.sdp);
+    }
+
+  // type: "answer"
+  } else if (message.type === 'answer') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].complete(message.sdp);
+    }
+
+  // type: "candidate"
+  } else if (message.type === 'candidate') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].addCandidate({
+        sdpMid: message.sdpMid,
+        sdpMLineIndex: message.sdpMLineIndex,
+        candidate: message.candidate
+      });
+    }
+  }
 };
 
 /**
@@ -8479,18 +7724,39 @@ SkylinkRoom.prototype._messageConstructor = function (type, data) {
     // Default to true if undefined
     message.autoIntroduce = self._session.data.autoIntroduce !== false;
 
-  // type: "enter"
-  } else if (type === 'enter') {
+  // type: "enter" / "welcome"
+  } else if (type === 'enter' || type === 'welcome') {
     message.user = {
       agent: user.agent,
       data: user.data
     };
-    message.connection = user.connection;
+    message.connection = {
+      stereo: self._connection.stereo,
+      recvOnly: self._connection.recvonly,
+      dataChannel: globals.enableDataChannel,
+      trickleICE: globals.trickleICE
+    };
     message.stream = {
       audio: false,
       video: false
     };
-    message.tieBreaker = self._connection.tieBreaker;
+
+    if (type === 'welcome') {
+      message.tieBreaker = self._connection.tieBreaker;
+      message.target = data.target;
+    }
+
+  // type: "candidate"
+  } else if (type === 'candidate') {
+    message.sdpMLineIndex = data.sdpMLineIndex;
+    message.sdpMid = data.sdpMid;
+    message.candidate = data.candidate;
+    message.target = data.target;
+
+  // type: "offer"
+  } else if (type === 'offer' || type === 'answer') {
+    message.sdp = data.sdp;
+    message.target = data.target;
   }
 
   self._socket.send(message);
@@ -11121,6 +10387,8 @@ SkylinkSocket.prototype._listenToEvents = function() {
     log.debug([null, 'Socket', null, 'Received message ->'], message);
     self._trigger('message', message);
   });
+
+  log.debug([null, 'Socket', null, 'Listening to io object events']);
 };
 
 Skylink.prototype.SM_PROTOCOL_VERSION = '0.1.1';

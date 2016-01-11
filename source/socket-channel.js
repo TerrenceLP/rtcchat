@@ -480,4 +480,6 @@ SkylinkSocket.prototype._listenToEvents = function() {
     log.debug([null, 'Socket', null, 'Received message ->'], message);
     self._trigger('message', message);
   });
+
+  log.debug([null, 'Socket', null, 'Listening to io object events']);
 };

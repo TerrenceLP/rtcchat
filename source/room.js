@@ -289,7 +289,43 @@ SkylinkRoom.prototype._createSocket = function () {
  * @for SkylinkRoom
  */
 SkylinkRoom.prototype._createPeer = function (peerId, config) {
+  var self = this;
 
+  if (self._peers[peerId]) {
+    log.debug([peerId, 'Room', self.name, 'Ignoring creating of peer object as session exists']);
+    return;
+  }
+
+  self._peers[peerId] = new SkylinkPeer(peerId, {
+    iceServers: self._connection.iceServers,
+    agent: config.agent,
+    connection: config.connection
+  });
+
+  self._peers[peerId].on('candidate', function (candidate) {
+    self._messageConstructor('candidate', {
+      candidate: candidate.candidate,
+      sdpMLineIndex: candidate.sdpMLineIndex,
+      sdpMid: candidate.sdpMid,
+      target: peerId
+    });
+  });
+
+  self._peers[peerId].on('offer', function (offer) {
+    self._messageConstructor('offer', {
+      sdp: offer.sdp,
+      target: peerId
+    });
+  });
+
+  self._peers[peerId].on('answer', function (answer) {
+    self._messageConstructor('answer', {
+      sdp: answer.sdp,
+      target: peerId
+    });
+  });
+
+  log.debug([peerId, 'Room', self.name, 'Listening to peer object events']);
 };
 
 /**
@@ -361,9 +397,47 @@ SkylinkRoom.prototype._messageReactor = function (message) {
 
   // type: "enter"
   } else if (message.type === 'enter') {
-    self._session = self._session;
-  }
+    self._createPeer(message.mid, message);
+    self._messageConstructor('welcome', {
+      target: message.mid
+    });
 
+  // type: "welcome"
+  } else if (message.type === 'welcome') {
+    self._createPeer(message.mid, message);
+
+    if (self._peers[message.mid]) {
+      if (message.tieBreaker > self._connection.tieBreaker) {
+        self._peers[message.mid].offer();
+      } else {
+        self._messageConstructor('welcome', {
+          target: message.mid
+        });
+      }
+    }
+
+  // type: "offer"
+  } else if (message.type === 'offer') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].answer(message.sdp);
+    }
+
+  // type: "answer"
+  } else if (message.type === 'answer') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].complete(message.sdp);
+    }
+
+  // type: "candidate"
+  } else if (message.type === 'candidate') {
+    if (self._peers[message.mid]) {
+      self._peers[message.mid].addCandidate({
+        sdpMid: message.sdpMid,
+        sdpMLineIndex: message.sdpMLineIndex,
+        candidate: message.candidate
+      });
+    }
+  }
 };
 
 /**
@@ -401,18 +475,39 @@ SkylinkRoom.prototype._messageConstructor = function (type, data) {
     // Default to true if undefined
     message.autoIntroduce = self._session.data.autoIntroduce !== false;
 
-  // type: "enter"
-  } else if (type === 'enter') {
+  // type: "enter" / "welcome"
+  } else if (type === 'enter' || type === 'welcome') {
     message.user = {
       agent: user.agent,
       data: user.data
     };
-    message.connection = user.connection;
+    message.connection = {
+      stereo: self._connection.stereo,
+      recvOnly: self._connection.recvonly,
+      dataChannel: globals.enableDataChannel,
+      trickleICE: globals.trickleICE
+    };
     message.stream = {
       audio: false,
       video: false
     };
-    message.tieBreaker = self._connection.tieBreaker;
+
+    if (type === 'welcome') {
+      message.tieBreaker = self._connection.tieBreaker;
+      message.target = data.target;
+    }
+
+  // type: "candidate"
+  } else if (type === 'candidate') {
+    message.sdpMLineIndex = data.sdpMLineIndex;
+    message.sdpMid = data.sdpMid;
+    message.candidate = data.candidate;
+    message.target = data.target;
+
+  // type: "offer"
+  } else if (type === 'offer' || type === 'answer') {
+    message.sdp = data.sdp;
+    message.target = data.target;
   }
 
   self._socket.send(message);
