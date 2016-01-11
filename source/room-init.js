@@ -1,265 +1,206 @@
 /**
- * Handles the room sessions.
- * @class SkylinkRoom
+ * Contains the init() globals configuration.
+ * @attribute globals
+ * @type JSON
+ * @private
+ * @global
+ * @since 0.6.8
+ * @for Skylink
+ */
+var globals = {
+  /**
+   * Contains the Application Key
+   * @attribute _initGlobals.appKey
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  appKey: null,
+
+  /**
+   * Contains the default room name.
+   * @attribute _initGlobals.defaultRoom
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  defaultRoom: null,
+
+  /**
+   * Contains the API server url.
+   * @attribute _initGlobals.roomServer
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  roomServer: null,
+
+  /**
+   * Contains the API server region.
+   * @attribute _initGlobals.region
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  region: null,
+
+  /**
+   * Contains the room credentials for persistent connections.
+   * @attribute _initGlobals.credentials
+   * @param {String} startDateTime The room meeting starting DateTime stamp in (ISO 8601).
+   * @param {Number} duration The room meeting duration.
+   * @param {String} credentials The room generated credentials.
+   * @type JSON
+   * @since 0.6.8
+   * @for Skylink
+   */
+  credentials: null,
+
+  /**
+   * Contains the socket timeout.
+   * @attribute _initGlobals.socketTimeout
+   * @type Number
+   * @since 0.6.8
+   * @for Skylink
+   */
+  socketTimeout: 20000,
+
+  /**
+   * Contains the flag if connection should force SSL connections to servers.
+   * @attribute _initGlobals.forceSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceSSL: false,
+
+  /**
+   * Contains the flag if connection should enable TURN servers.
+   * @attribute _initGlobals.enableTURNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableTURNServer: true,
+
+  /**
+   * Contains the flag if connection should enable STUN servers.
+   * @attribute _initGlobals.enableSTUNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableSTUNServer: true,
+
+  /**
+   * Contains the flag if connection should force and use TURN connections only.
+   * @attribute _initGlobals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURN: false,
+
+  /**
+   * Contains the flag if connection should force TURN over SSL connections.
+   * @attribute _initGlobals.forceTURNSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURNSSL: false,
+
+  /**
+   * Contains the TURN server transports to use or enforce.
+   * @attribute _initGlobals.TURNServerTransport
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  TURNServerTransport: 'any',
+
+  /**
+   * Contains the flag if connection should enable public STUN servers.
+   * @attribute _initGlobals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  usePublicSTUN: true,
+
+  /**
+   * Contains the flag if connection should trickle ICE.
+   * @attribute _initGlobals.enableIceTrickle
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableIceTrickle: true,
+
+  /**
+   * Contains the flag if connection should enable RTCDataChannel conenctions.
+   * @attribute _initGlobals.enableDataChannel
+   * @type Boolean
+   * @since0 0.6.8
+   * @for Skylink
+   */
+  enableDataChannel: true,
+
+  /**
+   * Contains the SDP audio codec setting for media connections.
+   * @attribute _initGlobals.audioCodec
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioCodec: 'auto',
+
+  /**
+   * Contains the SDP video codec setting for media connections.
+   * @attribute _initGlobals.videoCodec
+   * @type String
+   * @since 0.6.8
+   * @for SkylinkGlobals
+   */
+  videoCodec: 'auto',
+
+  /**
+   * Contains the flag if video+audio MediaStream retrieval failed, fallback to
+   *   retrieve audio MediaStream only.
+   * @attribute _initGlobals.audioFallback
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioFallback: false
+};
+
+var user = {
+  data: null,
+  agent: {
+    name: window.webrtcDetectedBrowser,
+    version: window.webrtcDetectedVersion,
+    os: window.navigator.platform
+  },
+  streams: {
+    screenshare: null,
+    usermedia: null
+  },
+  connection: {
+    stereo: false,
+    bandwidth: {}
+  }
+};
+
+/**
+ * Contains the Skylink readyState.
+ * @attribute _readyState
+ * @type Number
  * @private
  * @since 0.6.8
  * @for Skylink
  */
-function SkylinkRoom() {
-  SkylinkEvent._mixin(this);
-  this.reset();
-}
-
-/**
- * Stores the room session information.
- * @attribute session
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.session = null;
-
-/**
- * Contains the default settings.
- * @attribute defaults
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.defaults = {
-  server: '//api.temasys.com.sg',
-  protocol: window.location.protocol
-};
-
-/**
- * The status of the room session.
- * @attribute readyState
- * @type Number
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.readyState = 0;
-
-/**
- * Contains the application key.
- * To be modified by init().
- * @attribute appKey
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.appKey = null;
-
-/**
- * Contains the default and selected room.
- * To be modified by init().
- * @attribute room
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.room = {
-  selected: null,
-  default: null
-};
-
-/**
- * Contains the API server url.
- * To be modified by init().
- * @attribute server
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.server = null;
-
-/**
- * Contains the server region.
- * To be modified by init().
- * @attribute region
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.region = null;
-
-/**
- * Contains the room session credentials.
- * To be modified by init().
- * @attribute credentials
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.credentials = null;
-
-/**
- * Contains the room session protocol.
- * To be modified by init().
- * @attribute protocol
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.protocol = null;
-
-/**
- * Contains the API server path connection information.
- * @attribute _connection
- * @type JSON
- * @private
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype._connection = {
-  path: null,
-  random: null
-};
-
-/**
- * Connects to the API server for a new room session.
- * @method fetchSession
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.fetchSession = function () {
-  var self = this;
-  var xhr = null;
-
-  // Fetch the session
-  self._constructPath();
-
-  // Check if XDomainRequest is available (IE)
-  if (typeof window.XDomainRequest === 'function' || typeof window.XDomainRequest === 'object') {
-    xhr = new XDomainRequest();
-    xhr.setContentType = function (contentType) {
-      xhr.contentType = contentType;
-    };
-
-    log.warn([null, 'Room', null, 'XDomainRequest option is found. Using XDomainRequest for CORS']);
-  // Else use XMLHttpRequest instead
-  } else {
-    xhr = new XMLHttpRequest();
-    xhr.setContentType = function (contentType) {
-      xhr.setRequestHeader('Content-type', contentType);
-    };
-  }
-
-  xhr.onload = function () {
-    var response = JSON.parse(xhr.responseText || xhr.response || '{}');
-
-    log.info([null, 'Room', null, 'Received response from API server ->'], response);
-
-    if (!response.success) {
-      self.readyState = -1;
-
-      // STATUSES given from server
-      // 403 - Room is locked
-      // 401 - API Not authorized
-      // 402 - run out of credits
-      self._trigger('readyState', -1, {
-        status: xhr.status || 200,
-        errorCode: response.error,
-        content: new Error(response.info)
-      }, self.room.selected);
-      return;
-    }
-
-    log.debug([null, 'Room', null, 'Session has been initialized']);
-
-    self.session = response;
-
-    self.readyState = 2;
-
-    self._trigger('readyState', 2, response, self.room.selected);
-  };
-
-  xhr.onerror = function (error) {
-    log.error([null, 'Room', null, 'Failed retrieving session from API server'], error);
-
-    self.readyState = -1;
-
-    self._trigger('readyState', -1, {
-      status: 0,
-      errorCode: -1,
-      content: new Error('Failed retrieving response from API server')
-    }, self.room.selected);
-  };
-
-  xhr.onprogress = function () {
-    log.debug([null, 'Room', null, 'Retrieving session from API server in-progress']);
-
-    self.readyState = 1;
-
-    self._trigger('readyState', 1, null, self.room.selected);
-  };
-
-  log.debug([null, 'Room', null, 'Retrieving API credentials from server ->'], self._connection.path);
-
-  xhr.open('GET', self._connection.path, true);
-  xhr.send();
-};
-
-/**
- * Constructs the API server path to fetch session from.
- * @method _constructPath
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype._constructPath = function () {
-  var self = this;
-
-  // Random string for fetching
-  self._connection.random = (new Date()).getTime();
-
-  // Construct path
-  var append = '?';
-
-  self._connection.path = self.protocol + '//' + self.server + '/api/' +
-    self.appKey + '/' + self.room.selected;
-
-  // Add to path if there is credentials
-  if (self.credentials) {
-    self._connection.path += '/' + self.credentials.startDateTime + '/' +
-      self.credentials.duration;
-
-    self._connection.path += '?cred=' + self.credentials.credentials;
-
-    append = '&';
-  }
-
-  // Add the random string to enforce a new fetch over cache
-  self._connection.path += append + 'rand=' + self._connection.random;
-
-  // Add to path if there is regional server
-  if (self.region) {
-    self._connection.path += append + 'rg=' + this.region;
-  }
-
-  log.debug([null, 'Room', null, 'Constructed path for fetching session']);
-};
-
-/**
- * Resets all the room session.
- * @method reset
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.reset = function () {
-  var self = this;
-
-  self.readyState = 0;
-  self.session =
-  self.appKey =
-  self.room.default =
-  self.room.selected =
-  self.region =
-  self.protocol =
-  self.server =
-  self.credentials =
-  self._connection.path =
-  self._connection.random = null;
-};
+Skylink.prototype._readyState = 0;
 
 /**
  * Contains the room session information.
@@ -272,301 +213,214 @@ SkylinkRoom.prototype.reset = function () {
 Skylink.prototype._room = null;
 
 /**
- * Contains the room connection information.
- * @attribute _connection
- * @type JSON
- * @private
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._connection = {
-  recvonly: false,
-  datachannel: true,
-  ICE: {
-    servers: [],
-    trickle: true,
-    TURN: {
-      force: false,
-      ssl: null,
-      transport: 'any'
-    },
-    STUN: {
-      public: true
-    }
-  },
-  SDP: {
-    codecs: {
-      audio: 'auto',
-      video: 'auto'
-    },
-    stereo: true,
-    bandwidth: {}
-  }
-};
-
-/**
- * Parses the init() configuration.
+ * Configures the init() configuration to store into the globals.
  * @method _initParseConfig
- * @param {JSON} options The init() configuration.
+ * @param {JSON} options The configuration options
+ * @private
  * @since 0.6.8
  * @for Skylink
  */
 Skylink.prototype._initParseConfig = function (options) {
   var self = this;
 
-  // init({} -> appKey)
-  self._room.appKey =  null;
+  // Configure all configuration to defaults
+  // appKey
+  globals.appKey = null;
+  // defaultRoom
+  globals.defaultRoom = null;
+  // roomServer
+  globals.roomServer = '//api.temasys.com.sg';
+  // region
+  globals.region = null;
+  // credentials
+  globals.credentials = null;
+  // socketTimeout
+  globals.socketTimeout = 20000;
+  // forceSSL
+  globals.forceSSL = false;
+  // enableTURNServer
+  globals.enableTURNServer = true;
+  // enableSTUNServer
+  globals.enableSTUNServer = true;
+  // forceTURN
+  globals.forceTURN = false;
+  // forceTURNSSL
+  globals.forceTURNSSL = false;
+  // TURNServerTransport
+  globals.TURNServerTransport = null;
+  // usePublicSTUN
+  globals.usePublicSTUN = true;
+  // enableIceTrickle
+  globals.enableIceTrickle = true;
+  // enableDataChannel
+  globals.enableDataChannel = true;
+  // audioCodec
+  globals.audioCodec = null;
+  // videoCodec
+  globals.videoCodec = null;
+  // audioFallback
+  globals.audioFallback = false;
 
+
+  // configure({} -> appKey)
   if (typeof options.appKey === 'string' && !!options.appKey) {
-    self._room.appKey = options.appKey;
-  // init({} -> apiKey)
+    globals.appKey = options.appKey;
+  // configure({} -> apiKey)
   } else if (typeof options.apiKey === 'string' && !!options.apiKey) {
-    self._room.appKey = options.apiKey;
-  // ERROR: init({} -> !(no key found))
+    globals.appKey = options.apiKey;
+  // ERROR: configure({} -> !(no key found))
   } else {
     throw new Error('Provided appKey is invalid');
   }
 
-  // init({} -> defaultRoom)
+  // configure({} -> defaultRoom)
   if (typeof options.defaultRoom === 'string' && !!options.defaultRoom) {
-    self._room.room.default = options.defaultRoom;
+    globals.defaultRoom = options.defaultRoom;
   } else {
-    self._room.room.default = self._room.appKey;
+    globals.defaultRoom = self.appKey;
   }
 
-  // init({} -> selectedRoom)
-  if (typeof options.selectedRoom === 'string' && !!options.selectedRoom) {
-    self._room.room.selected = options.selectedRoom;
-  } else {
-    self._room.room.selected = self._room.room.default;
-  }
-
-  self._room.server = self._room.defaults.server;
-
-  // init({} -> roomServer)
+  // configure({} -> roomServer)
   if (typeof options.roomServer === 'string') {
-    if (options.roomServer !== self._room.defaults.server) {
+    if (options.roomServer !== '//api.temasys.com.sg') {
       log.warn('Note that the roomServer url is overriden with custom URL (' + options.roomServer +
         ') and this may affect Skylink functionalities');
     }
-    self._room.server = options.roomServer;
+    globals.roomServer = options.roomServer;
   }
 
-  self._room.credentials = null;
-
-  // init({} -> credentials)
+  // configure({} -> credentials)
   if (typeof options.credentials === 'object' && options.credentials !== null) {
-    // init({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
+    // configure({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
     if (typeof options.credentials.startDateTime !== 'string') {
       throw new Error('Provided credentials.startDateTime DateTime string (ISO 8601) is invalid');
     }
 
-    // init({} -> credentials.duration) - Duration in (hours)
+    // configure({} -> credentials.duration) - Duration in (hours)
     if (typeof options.credentials.duration !== 'number') {
       throw new Error('Provided credentials.duration (in hours) is invalid');
     }
 
-    // init({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
+    // configure({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
     if (typeof options.credentials.credentials !== 'string') {
       throw new Error('Provided credentials.credentials string is invalid');
     }
 
-    self._room.credentials = {
+    globals.credentials = {
       startDateTime: options.credentials.startDateTime,
       duration: options.credentials.duration,
       credentials: options.credentials.credentials
     };
   }
 
-  // init({} -> region)
-  self._room.region = null;
-
+  // configure({} -> region)
   if (typeof options.region === 'string') {
     for (var r in self.REGIONAL_SERVER) {
       if (self.REGIONAL_SERVER.hasOwnProperty(r)) {
         if (options.region === self.REGIONAL_SERVER[r]) {
-          self._room.region = options.region;
+          globals.region = options.region;
           break;
         }
       }
     }
 
-    if (self._room.region === null) {
+    if (globals.region === null) {
       throw new Error('Provided region is invalid. ' +
         'Please select the list of options from REGIONAL_SERVER list');
     }
   }
 
-  self._socket.protocol = self._socket.defaults.protocol;
-  self._room.protocol = self._room.defaults.protocol;
-
-  // init({} -> forceSSL)
-  if (typeof options.forceSSL === 'boolean') {
-    if (options.forceSSL) {
-      self._socket.protocol = self._room.protocol = 'https:';
-    }
+  // configure({} -> forceSSL)
+  if (options.forceSSL === true) {
+    globals.forceSSL = true;
   }
 
-  self._connection.ICE.TURN = {
-    force: false
-  };
-
-  // init({} -> enableTURNServer)
-  if (typeof options.enableTURNServer === 'boolean') {
-    if (!options.enableTURNServer) {
-      self._connection.ICE.TURN = null;
-    }
+  // configure({} -> enableTURNServer)
+  if (options.enableTURNServer === false) {
+    globals.enableTURNServer = false;
   }
 
-  self._connection.ICE.STUN = {};
-
-  // init({} -> enableSTUNServer)
-  if (typeof options.enableSTUNServer === 'boolean') {
-    if (!options.enableSTUNServer) {
-      self._connection.ICE.STUN = null;
-    }
+  // configure({} -> enableSTUNServer)
+  if (options.enableSTUNServer === false) {
+    globals.enableSTUNServer = false;
   }
 
-  // init({} -> forceTURN)
-  if (typeof options.forceTURN === 'boolean') {
-    if (options.forceTURN) {
-      self._connection.ICE.TURN = {
-        force: true
-      };
-      self._connection.ICE.STUN = null;
-    }
+  // configure({} -> forceTURN)
+  if (options.forceTURN === true) {
+    globals.enableTURNServer = true;
+    globals.enableSTUNServer = false;
   }
 
-  // Configure TURN settings if enabled
-  if (self._connection.ICE.TURN) {
-    // init({} -> forceTURNSSL)
-    self._connection.ICE.TURN.ssl = window.location.protocol === 'https:' ? {} : null;
-
-    if (typeof options.forceTURNSSL === 'boolean') {
-      if (options.forceTURNSSL) {
-        self._connection.ICE.TURN.ssl = {};
-      }
-    }
-
-    // Configure the TURN SSL options
-    if (self._connection.ICE.TURN.ssl) {
-      self._connection.ICE.TURN.ssl.protocol = ['chrome', 'opera', 'safari', 'IE']
-        .indexOf(window.webrtcDetectedBrowser) > -1;
-      self._connection.ICE.TURN.ssl.port = ['firefox'].indexOf(window.webrtcDetectedBrowser) > -1;
-    }
-
-    self._connection.ICE.TURN.transport = null;
-
-    // init({} -> TURNServerTransport)
-    if (typeof options.TURNServerTransport === 'string') {
-      for (var ts in self.TURN_TRANSPORT) {
-        if (self.TURN_TRANSPORT.hasOwnProperty(ts)) {
-          if (options.TURNServerTransport === self.TURN_TRANSPORT[ts]) {
-            self._connection.ICE.TURN.transport = options.TURNServerTransport;
-            break;
-          }
-        }
-      }
-
-      if (self._connection.ICE.TURN.transport === null) {
-        throw new Error('Provided TURNServerTransport is invalid. ' +
-          'Please select the list of options from TURN_TRANSPORT list');
-      }
-    } else {
-      self._connection.ICE.TURN.transport = self.TURN_TRANSPORT.ANY;
-    }
+  // configure({} -> forceTURNSSL)
+  if (options.forceTURNSSL === true) {
+    globals.forceTURNSSL = true;
   }
 
-  // Configure STUN settings if enabled
-  if (self._connection.ICE.STUN) {
-    // init({} -> usePublicSTUN)
-    self._connection.ICE.STUN.public = true;
-
-    if (typeof options.usePublicSTUN === 'boolean') {
-      if (!options.usePublicSTUN) {
-        self._connection.ICE.STUN.public = false;
-      }
-    }
+  // configure({} -> usePublicSTUN)
+  if (options.usePublicSTUN === false) {
+    globals.usePublicSTUN = false;
   }
 
-  self._connection.ICE.trickle = true;
-
-  // init({} -> enableIceTrickle)
-  if (typeof options.enableIceTrickle === 'boolean') {
-    if (!options.enableIceTrickle) {
-      self._connection.ICE.trickle = false;
-    }
+  // configure({} -> enableIceTrickle)
+  if (options.enableIceTrickle === false) {
+    globals.enableIceTrickle = false;
   }
 
-  self._connection.datachannel = true;
-
-  // init({} -> enableDataChannel)
-  if (typeof options.enableDataChannel === 'boolean') {
-    if (!options.enableDataChannel) {
-      self._connection.dataChannel = false;
-    }
+  // configure({} -> enableDataChannel)
+  if (options.enableDataChannel === false) {
+    globals.enableDataChannel = false;
   }
 
-  self._connection.SDP.codecs.audio = null;
-
-  // init({} -> audioCodec)
+  // configure({} -> audioCodec)
   if (typeof options.audioCodec === 'string') {
     for (var ac in self.AUDIO_CODEC) {
       if (self.AUDIO_CODEC.hasOwnProperty(ac)) {
         if (options.audioCodec === self.AUDIO_CODEC[ac]) {
-          self._connection.SDP.codecs.audio = options.audioCodec;
+          globals.audioCodec = options.audioCodec;
           break;
         }
       }
     }
 
-    if (self._connection.SDP.codecs.audio === null) {
+    if (globals.audioCodec === null) {
       throw new Error('Provided audioCodec is invalid. ' +
         'Please select the list of options from AUDIO_CODEC list');
     }
   } else {
-    self._connection.SDP.codecs.audio = self.AUDIO_CODEC.AUTO;
+    globals.audioCodec = self.AUDIO_CODEC.AUTO;
   }
 
-  self._connection.SDP.codecs.video = null;
-
-  // init({} -> videoCodec)
+  // configure({} -> videoCodec)
   if (typeof options.videoCodec === 'string') {
     for (var vc in self.VIDEO_CODEC) {
       if (self.VIDEO_CODEC.hasOwnProperty(vc)) {
         if (options.videoCodec === self.VIDEO_CODEC[vc]) {
-          self._connection.SDP.codecs.video = options.videoCodec;
+          globals.videoCodec = options.videoCodec;
           break;
         }
       }
     }
 
-    if (self._connection.SDP.codecs.video === null) {
+    if (globals.videoCodec === null) {
       throw new Error('Provided videoCodec is invalid. ' +
         'Please select the list of options from VIDEO_CODEC list');
     }
   } else {
-    self._connection.SDP.codecs.video = self.VIDEO_CODEC.AUTO;
+    globals.videoCodec = self.VIDEO_CODEC.AUTO;
   }
 
-  // init({} -> audioFallback)
-  self._audioFallback = false;
-
-  if (typeof options.audioFallback === 'boolean') {
-    if (options.audioFallback) {
-      self._audioFallback = true;
-    }
+  // configure({} -> audioFallback)
+  if (options.audioFallback === true) {
+    globals.audioFallback = true;
   }
 
-  // init({} -> socketTimeout)
-  self._socket.timeout = 20000;
-
+  // configure({} -> socketTimeout)
   if (typeof options.socketTimeout === 'number') {
     if (options.socketTimeout < 5000) {
       throw new Error('Provided socket timeout is lesser than minimum value of 5000. ' +
         'Please configure a timeout higher than 5000');
     }
-    self._socket.timeout = options.socketTimeout;
+    globals.socketTimeout = options.socketTimeout;
   }
 };
 
@@ -585,55 +439,66 @@ Skylink.prototype._initCheckDependencies = function (callback) {
 
   // When AdapterJS is not loaded
   if (typeof window.AdapterJS !== 'object' || window.AdapterJS === null) {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
       content: new Error('AdapterJS dependency is not loaded. ' +
         'Please load AdapterJS version @@adapterjs in ' +
         'https://github.com/Temasys/AdapterJS/releases/@@adapterjs')
     });
+    return;
+
+  // When AdapterJS version is not @@adapterjs
   } else if (window.AdapterJS.VERSION !== '@@adapterjs') {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
       content: new Error('Incorrect AdapterJS dependency loaded. ' +
         'Please load the AdapterJS version @@adapterjs in ' +
         'https://github.com/Temasys/AdapterJS/releases/@@adapterjs')
     });
+    return;
   }
 
   // When socket.io-client is not loaded
   // NOTE: We are unable to determine the version (or any proper documented way at least)
+  // Hence we do not checks in here for the version
   if (typeof window.io !== 'function') {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_SOCKET_IO,
       content: new Error('XMLHttpRequest is not supported. ' +
         'Please upgrade your browser with the latest in http://browsehappy.com')
     });
+    return;
   }
 
   // When XMLHttpRequest is not supported
   if (!window.XMLHttpRequest && !self._room.useXDomainRequest) {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_XMLHTTPREQUEST_SUPPORT,
       content: new Error('socket.io-client dependency is not loaded. ' +
         'Please load socket.io-client version @@socketio in ' +
         'https://cdn.socket.io/socket.io-@@socketio.js (or http://socket.io/download/)')
     });
+    return;
   }
 
+  // Wait for AdapterJS to be ready
   AdapterJS.webRTCReady(function () {
     if (!window.RTCPeerConnection) {
-      return callback({
+      callback({
         status: null,
         errorCode: self.READY_STATE_CHANGE_ERROR.NO_WEBRTC_SUPPORT,
         content: new Error('Your browser does not support WebRTC. Please switch to Chrome, Firefox, Opera ' +
           'or install our Temasys free Plugin for IE and Safari')
       });
+      return;
     }
-    log.debug('WebRTC functions has been loaded');
+
+    log.debug('init(): WebRTC functions has been loaded');
+
     callback(null);
   });
 };
@@ -944,6 +809,7 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
 
   // Handles error case
   var handleErrorCase = function (content, room) {
+    self._readyState = -1;
     self._trigger('readyStateChange', -1, content, room);
 
     if (typeof callback === 'function') {
@@ -952,77 +818,53 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
         error: content.content,
         status: content.status
       }, null);
-    } else {
-      throw content.content;
+      return;
     }
+
+    throw content.content;
   };
 
   // Handles success case
   var handleSuccessCase = function (session, room) {
-    self._socket.reset();
-    self._socket.server = session.ipSigserver;
-
-    if (Array.isArray(session.httpPortList) && session.httpPortList.length > 0) {
-      self._socket.ports['http:'] = session.httpPortList;
-    } else {
-      self._socket.ports['http:'] = self._socket.defaults.ports['http:'];
-    }
-
-    if (Array.isArray(session.httpsPortList) && session.httpsPortList.length > 0) {
-      self._socket.ports['https:'] = session.httpsPortList;
-    } else {
-      self._socket.ports['https:'] = self._socket.defaults.ports['https:'];
-    }
-
+    self._readyState = 2;
     self._trigger('readyStateChange', 2, null, room);
 
     if (typeof callback === 'function') {
-      callback(null, {
-        serverUrl: self._room._connection.path,
-        readyState: self._room.readyState,
-        appKey: self._room.appKey,
-        roomServer: self._room.server,
-        defaultRoom: self._room.room.default,
-        selectedRoom: self._room.room.selected,
-        serverRegion: self._room.region,
-        enableDataChannel: self._connection.datachannel,
-        enableIceTrickle: self._connection.ICE.trickle,
-        enableTURNServer: !!self._connection.ICE.TURN,
-        enableSTUNServer: !!self._connection.ICE.STUN,
-        // Preconfig one even though it doesnt matter for fallback
-        TURNTransport: self._connection.ICE.TURN ? self._connection.ICE.TURN.transport : self.TURN_TRANSPORT.ANY,
-        audioFallback: self._audioFallback,
-        forceSSL: self._socket.protocol === 'https:',
-        socketTimeout: self._socket.timeout,
-        // Preconfig one even though it doesnt matter for fallback
-        forceTURNSSL: self._connection.ICE.TURN ? !!self._connection.ICE.TURN.ssl : window.location.protocol === 'https:',
-        audioCodec: self._connection.SDP.codecs.audio,
-        videoCodec: self._connection.SDP.codecs.video,
-        // Preconfig one even though it doesnt matter for fallback
-        forceTURN: self._connection.ICE.TURN ? self._connection.ICE.TURN.force : false,
-        // Preconfig one even though it doesnt matter for fallback
-        usePublicSTUN: self._connection.ICE.STUN ? self._connection.ICE.STUN.public : false
-      });
+      var successPayload = clone(globals);
+      successPayload.readyState = self._readyState;
+      successPayload.serverUrl = self._room._session.path;
+      successPayload.selectedRoom = self._room.name;
+      successPayload.serverRegion = successPayload.region;
+      // delete successPayload.region;
+
+      callback(null, successPayload);
     }
   };
 
   try {
     // Reset to defaults
-    self._room.reset();
+    self._readyState = 0;
     self._trigger('readyStateChange', 0, null, null);
 
+    // Initialise configuration and parse into globals
     self._initParseConfig(options);
+
+    // Check and load the dependencies
     self._initCheckDependencies(function (error) {
       if (error) {
-        return handleErrorCase(error, self._room.room.selected);
+        return handleErrorCase(error, globals.defaultRoom);
       }
 
-      self._room.readyState = 1;
-      self._trigger('readyStateChange', 1, null, self._room.room.selected);
+      self._room = new SkylinkRoom();
+      self._listenToEvents();
+
+      self._readyState = 1;
+      self._trigger('readyStateChange', 1, null, globals.defaultRoom);
 
       self._room.once('readyState', function (state, content, room) {
         if (state === -1) {
-          return handleErrorCase(content, room);
+          handleErrorCase(content, room);
+          return;
         }
 
         handleSuccessCase(content, room);
@@ -1038,10 +880,54 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
       status: null,
       content: error,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_PATH
-    }, self._room.room.selected);
+    }, globals.defaultRoom);
   }
 };
 
+
+/**
+ * Listens to all room object events.
+ * @method _listenToEvents
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._listenToEvents = function () {
+  var self = this;
+
+  if (!self._room) {
+    log.error('_listenToEvents(): Unable to listen to room object ' +
+      'events as room object is not initialised');
+    return;
+  }
+
+  // Socket events
+  self._room.on('socketConnect', function () {
+    self._trigger('channelOpen');
+  });
+
+  self._room.on('socketDisconnect', function () {
+    self._trigger('channelClose');
+  });
+
+  self._room.on('socketMessage', function (message) {
+    self._trigger('channelMessage');
+  });
+
+  self._room.on('socketConnectError', function (state, error, transport) {
+    self._trigger('socketError', state, error, transport);
+  });
+
+  self._room.on('socketConnectRetry', function (fallbackMethod, attempt) {
+    self._trigger('channelRetry', fallbackMethod, attempt);
+  });
+
+  self._room.on('socketError', function (error) {
+    self._trigger('channelError', error);
+  });
+
+  log.debug('_listenToEvents(): Listening to room object events');
+};
 
 
 

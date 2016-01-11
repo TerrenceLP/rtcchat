@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Sun Jan 10 2016 13:13:32 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Mon Jan 11 2016 16:46:22 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -51,9 +51,15 @@ function lookup(uri, opts) {
   var parsed = url(uri);
   var source = parsed.source;
   var id = parsed.id;
+  var path = parsed.path;
+  var sameNamespace = (cache[id] && cache[id].nsps[path] &&
+                       path == cache[id].nsps[path].nsp);
+  var newConnection = opts.forceNew || opts['force new connection'] ||
+                      false === opts.multiplex || sameNamespace;
+
   var io;
 
-  if (opts.forceNew || opts['force new connection'] || false === opts.multiplex) {
+  if (newConnection) {
     debug('ignoring socket cache for %s', source);
     io = Manager(source, opts);
   } else {
@@ -8387,7 +8393,7 @@ if (navigator.mozGetUserMedia) {
     console.warn('Opera does not support screensharing feature in getUserMedia');
   }
 })();
-/*! skylinkjs - v0.6.7 - Sun Jan 10 2016 13:13:32 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Mon Jan 11 2016 16:46:22 GMT+0800 (SGT) */
 
 (function() {
 
@@ -8568,39 +8574,6 @@ function Skylink() {
   if (!(this instanceof Skylink)) {
     return new Skylink();
   }
-
-  var self = this;
-
-  // Initialize objects
-  self._socket = new SkylinkSocket();
-  self._room = new SkylinkRoom();
-
-  // Events
-  // SkylinkSocket events
-  self._socket.on('connect', function () {
-    self._trigger('channelOpen');
-  });
-
-  self._socket.on('disconnect', function () {
-    self._trigger('channelClose');
-  });
-
-  self._socket.on('message', function (message) {
-    self._trigger('channelMessage');
-    self._processSigMessage(message);
-  });
-
-  self._socket.on('connectError', function (state, error, transport) {
-    self._trigger('socketError', state, error, transport);
-  });
-
-  self._socket.on('connectRetry', function (fallbackMethod, attempt) {
-    self._trigger('channelRetry', fallbackMethod, attempt);
-  });
-
-  self._socket.on('error', function (error) {
-    self._trigger('channelError', error);
-  });
 }
 
 /**
@@ -8858,6 +8831,79 @@ Skylink.prototype.READY_STATE_CHANGE_ERROR = {
 Skylink.prototype.REGIONAL_SERVER = {
   APAC1: 'sg',
   US1: 'us2'
+};
+
+/**
+ * These are the list of platform signaling system actions that Skylink would be given with.
+ * - Upon receiving from the signaling, the application has to reflect the
+ *   relevant actions given.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION_REASON:attribute"}}SYSTEM_ACTION_REASON{{/crossLink}}
+ *   for the types of system action reasons that would be given.
+ * @attribute SYSTEM_ACTION
+ * @type JSON
+ * @param {String} WARNING <small>Value <code>"warning"</code></small>
+ *   This action serves a warning to self. Usually if
+ *   warning is not heeded, it may result in an <code>REJECT</code> action.
+ * @param {String} REJECT <small>Value <code>"reject"</code></small>
+ *   This action means that self has been kicked out
+ *   of the current signaling room connection, and subsequent Peer connections
+ *   would be disconnected.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.1
+ */
+Skylink.prototype.SYSTEM_ACTION = {
+  WARNING: 'warning',
+  REJECT: 'reject'
+};
+
+/**
+ * These are the list of Skylink platform signaling codes as the reason
+ *   for the system action given by the platform signaling that Skylink would receive.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
+ *   for the types of system actions that would be given.
+ * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
+ *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
+ * @attribute SYSTEM_ACTION_REASON
+ * @type JSON
+ * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when room is locked and self is rejected from joining the room.
+ * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the credentials given is already in use, which the platform signaling
+ *   throws an exception for this error.<br>
+ * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
+ * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the connection with the platform signaling has an exception with self.<br>
+ * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
+ * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has expired so self is unable to join the room as
+ *   the end time of the meeting has ended.<br>
+ * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
+ *   from the room as the meeting is over.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
+ *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
+ *   users before self is rejected from the room.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.2
+ */
+Skylink.prototype.SYSTEM_ACTION_REASON = {
+  //FAST_MESSAGE: 'fastmsg',
+  ROOM_LOCKED: 'locked',
+  //ROOM_FULL: 'roomfull',
+  DUPLICATED_LOGIN: 'duplicatedLogin',
+  SERVER_ERROR: 'serverError',
+  //VERIFICATION: 'verification',
+  EXPIRED: 'expired',
+  ROOM_CLOSED: 'roomclose',
+  ROOM_CLOSING: 'toclose'
 };
 
 this.Skylink = Skylink;
@@ -14643,355 +14689,6 @@ Skylink.prototype.introducePeer = function(sendingPeerId, receivingPeerId){
 };
 
 
-Skylink.prototype.SYSTEM_ACTION = {
-  WARNING: 'warning',
-  REJECT: 'reject'
-};
-
-/**
- * These are the list of Skylink platform signaling codes as the reason
- *   for the system action given by the platform signaling that Skylink would receive.
- * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
- *   for the types of system actions that would be given.
- * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
- *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
- * @attribute SYSTEM_ACTION_REASON
- * @type JSON
- * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when room is locked and self is rejected from joining the room.
- * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the credentials given is already in use, which the platform signaling
- *   throws an exception for this error.<br>
- * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
- * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the connection with the platform signaling has an exception with self.<br>
- * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
- * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the persistent room meeting has expired so self is unable to join the room as
- *   the end time of the meeting has ended.<br>
- * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
- *   from the room as the meeting is over.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
- *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
- *   users before self is rejected from the room.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @readOnly
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype.SYSTEM_ACTION_REASON = {
-  //FAST_MESSAGE: 'fastmsg',
-  ROOM_LOCKED: 'locked',
-  //ROOM_FULL: 'roomfull',
-  DUPLICATED_LOGIN: 'duplicatedLogin',
-  SERVER_ERROR: 'serverError',
-  //VERIFICATION: 'verification',
-  EXPIRED: 'expired',
-  ROOM_CLOSED: 'roomclose',
-  ROOM_CLOSING: 'toclose'
-};
-
-/**
- * Contains the socket object connection
- * @attribute _socket
- * @type SkylinkSocket
- * @private
- * @since 0.6.8
- * @for SkylinkSocket
- */
-Skylink.prototype._socket = null;
-
-/**
- * Stores the current room self is joined to.
- * The selected room will be usually defaulted to
- *   {{#crossLink "Skylink/_defaultRoom:attribute"}}_defaultRoom{{/crossLink}}
- *   if there is no selected room in
- *   {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}}.
- * @attribute _selectedRoom
- * @type String
- * @default Skylink._defaultRoom
- * @private
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._selectedRoom = null;
-
-/**
- * The flag that indicates if the currently joined room is locked.
- * @attribute _roomLocked
- * @type Boolean
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._roomLocked = false;
-
-/**
- * The flag that indicates if self is currently joined in a room.
- * @attribute _inRoom
- * @type Boolean
- * @private
- * @component Room
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype._inRoom = false;
-
-/**
- * Connects self to the selected room.
- * By default, if room parameter is not provided, it will
- *   connect to the default room provided in
- *   {{#crossLink "Skylink/init:method"}}init() <code>defaultRoom</code> settings{{/crossLink}}.
- * If any existing user media streams attached in Skylink, like for an example, calling
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}} or
- *   {{#crossLink "Skylink/sendStream:method"}}sendStream(){{/crossLink}} before
- *   <code>joinRoom()</code>, self would actually send the current attached user media stream
- *   attached. To stop the current attached Stream, please invoke
- *   {{#crossLink "Skylink/stopStream:method"}}stopStream(){{/crossLink}} before
- *   <code>joinRoom()</code> is invoked.
- * @method joinRoom
- * @param {String} [room] The room for
- *   self to join to. If room is not provided, the room
- *   would default to the the <code>defaultRoom</code> option set
- *   in {{#crossLink "Skylink/init:method"}}init() settings{{/crossLink}}.
- * @param {JSON} [options] The connection settings for self connection in the
- *   room. If both audio and video
- *   option is <code>false</code>, there should be no audio and video stream
- *   sending from self connection.
- * @param {String|JSON} [options.userData] The custom user data
- *   information set by developer. This custom user data can also
- *   be set in {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
- * @param {Boolean|JSON} [options.audio=false] The self Stream streaming audio settings.
- *   If <code>false</code>, it means that audio streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream audio
- *   user media access is given.
- * @param {Boolean} [options.audio.stereo] The flag that indicates if
- *   stereo should be enabled in self connection Stream
- *   audio streaming.
- * @param {Boolean} [options.audio.mute=false] The flag that
- *   indicates if the self Stream object audio streaming is muted.
- * @param {Array} [options.audio.optional] The optional constraints for audio streaming
- *   in self user media Stream object. This follows the <code>optional</code>
- *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
- *   Tampering this may cause errors in retrieval of self user media Stream object.
- *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
- * @param {Boolean|JSON} [options.video=false] The self Stream streaming video settings.
- *   If <code>false</code>, it means that video streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream video
- *   user media access is given.
- * @param {Boolean} [options.video.mute=false] The flag that
- *   indicates if the self Stream object video streaming is muted.
- * @param {Array} [options.video.optional] The optional constraints for video streaming
- *   in self user media Stream object. This follows the <code>optional</code>
- *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
- *   Tampering this may cause errors in retrieval of self user media Stream object.
- *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
- * @param {JSON} [options.video.resolution] The self Stream streaming video
- *   resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [options.video.resolution.width] The self
- *   Stream streaming video resolution width.
- * @param {Number} [options.video.resolution.height] The self
- *   Stream streaming video resolution height.
- * @param {Number} [options.video.frameRate=50] The self
- *   Stream streaming video maximum frameRate.
- * @param {String} [options.bandwidth] The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [options.bandwidth.audio=50] The configured
- *   audio stream channel for the self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.video=256] The configured
- *   video stream channel for the self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.data=1638400] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {Boolean} [options.manualGetUserMedia] The flag that indicates if
- *   <code>joinRoom()</code> should not invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   automatically but allow the developer's application to invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   manually in the application. When user media access is required, the
- *   event {{#crossLink "Skylink/mediaAccessRequired:event"}}mediaAccessRequired{{/crossLink}}
- *   will be triggered.
- * @param {Function} [callback] The callback fired after self has
- *   joined the room successfully with the provided media settings or
- *   have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {JSON} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {Array} callback.error.error The exception thrown that caused the failure
- *   for joining the room.
- * @param {JSON} callback.error.errorCode The
- *   <a href="#attr_READY_STATE_CHANGE_ERROR">READY_STATE_CHANGE_ERROR</a>
- *   if there is an <a href="#event_readyStateChange">readyStateChange</a>
- *   event error that caused the failure for joining the room.
- *   [Rel: Skylink.READY_STATE_CHANGE_ERROR]
- * @param {Object|String} callback.error.room The selected room that self is
- *   trying to join to.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {Array} callback.success.room The selected room that self has
- *   succesfully joined to.
- * @param {String} callback.success.peerId The self Peer ID that
- *   would be reflected remotely to peers in the room.
- * @param {JSON} callback.success.peerInfo The connection settings for self connection in the
- *   room. If both audio and video option is <code>false</code>,
- *   there should be no audio and video stream sending from self connection.
-  * @param {String|JSON} callback.success.peerInfo.userData The custom user data
- *   information set by developer. This custom user data can also
- *   be set in <a href="#method_setUserData">setUserData()</a>.
- * @param {Boolean|JSON} [callback.success.peerInfo.audio=false] The self Stream
- *   streaming audio settings. If <code>false</code>, it means that audio
- *   streaming is disabled in the self Stream. If this option is set to
- *   <code>true</code> or is defined with settings,
- *   <a href="#method_getUserMedia">getUserMedia()</a>
- *   will be invoked. Self will not connect to the room unless the Stream audio
- *   user media access is given.
- * @param {Boolean} [callback.success.peerInfo.audio.stereo] The flag that indicates if
- *   stereo should be enabled in self connection Stream
- *    audio streaming.
- * @param {Boolean|JSON} [callback.success.peerInfo.video=false] The self Stream
- *   streaming video settings. If <code>false</code>, it means that video
- *   streaming is disabled in the self Stream. If this option is set to
- *   <code>true</code> or is defined with settings,
- *   <a href="#method_getUserMedia">getUserMedia()</a>
- *   will be invoked. Self will not connect to the room unless the Stream video
- *   user media access is given.
- * @param {JSON} [callback.success.peerInfo.video.resolution] The self Stream streaming video
- *   resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [callback.success.peerInfo.video.resolution.width] The self
- *   Stream streaming video resolution width.
- * @param {Number} [callback.success.peerInfo.video.resolution.height] The self
- *   Stream streaming video resolution height.
- * @param {Number} [callback.success.peerInfo.video.frameRate=50] The self
- *   Stream streaming video maximum frameRate.
- * @param {Boolean} [callback.success.peerInfo.video.screenshare=false] The flag
- *   that indicates if the self connection Stream object sent
- *   is a screensharing stream or not.
- * @param {String} [callback.success.peerInfo.bandwidth] The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.audio=50] The configured
- *   audio stream channel for the self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.video=256] The configured
- *   video stream channel for the self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.data=1638400] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {JSON} callback.success.peerInfo.mediaStatus The self Stream mute
- *   settings for both audio and video streamings.
- * @param {Boolean} [callback.success.peerInfo.mediaStatus.audioMuted=true] The flag that
- *   indicates if the self Stream object audio streaming is muted. If
- *   there is no audio streaming enabled for the self, by default,
- *   it is set to <code>true</code>.
- * @param {Boolean} [callback.success.peerInfo.mediaStatus.videoMuted=true] The flag that
- *   indicates if the self Stream object video streaming is muted. If
- *   there is no video streaming enabled for the Peer connection, by default,
- *   it is set to <code>true</code>.
- * @param {JSON} callback.success.peerInfo.agent The self platform agent information.
- * @param {String} callback.success.peerInfo.agent.name The self platform browser or agent name.
- * @param {Number} callback.success.peerInfo.agent.version The self platform browser or agent version.
- * @param {Number} callback.success.peerInfo.agent.os The self platform name.
- * @param {String} callback.success.peerInfo.room The current room that the self is in.
- * @example
- *   // To just join the default room without any video or audio
- *   // Note that calling joinRoom without any parameters
- *   // still sends any available existing MediaStreams allowed.
- *   // See Examples 2, 3, 4 and 5 etc to prevent video or audio stream
- *   SkylinkDemo.joinRoom();
- *
- *   // To just join the default room with bandwidth settings
- *   SkylinkDemo.joinRoom({
- *     bandwidth: {
- *       data: 14440
- *     }
- *   });
- *
- *   // Example 1: To call getUserMedia and joinRoom seperately
- *   SkylinkDemo.getUserMedia();
- *   SkylinkDemo.on("mediaAccessSuccess", function (stream)) {
- *     attachMediaStream($(".localVideo")[0], stream);
- *     SkylinkDemo.joinRoom();
- *   });
- *
- *   // Example 2: Join a room without any video or audio
- *   SkylinkDemo.joinRoom("room_a");
- *
- *   // Example 3: Join a room with audio only
- *   SkylinkDemo.joinRoom("room_b", {
- *     audio: true,
- *     video: false
- *   });
- *
- *   // Example 4: Join a room with prefixed video width and height settings
- *   SkylinkDemo.joinRoom("room_c", {
- *     audio: true,
- *     video: {
- *       resolution: {
- *         width: 640,
- *         height: 320
- *       }
- *     }
- *   });
- *
- *   // Example 5: Join a room with userData and settings with audio, video
- *   // and bandwidth
- *   SkylinkDemo.joinRoom({
- *     userData: {
- *       item1: "My custom data",
- *       item2: "Put whatever, string or JSON or array"
- *     },
- *     audio: {
- *        stereo: true
- *     },
- *     video: {
- *        resolution: SkylinkDemo.VIDEO_RESOLUTION.VGA,
- *        frameRate: 50
- *     },
- *     bandwidth: {
- *       audio: 48,
- *       video: 256,
- *       data: 14480
- *     }
- *   });
- *
- *   //Example 6: joinRoom with callback
- *   SkylinkDemo.joinRoom(function(error, success){
- *     if (error){
- *       console.log("Error happened. Can not join room");
- *     }
- *     else{
- *       console.log("Successfully joined room");
- *     }
- *   });
- * @trigger readyStateChange, peerJoined, mediaAccessRequired
- * @component Room
- * @for Skylink
- * @since 0.5.5
- */
-
 Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
   var self = this;
   var error;
@@ -15474,261 +15171,581 @@ Skylink.prototype.unlockRoom = function() {
   this._trigger('roomLock', false, this._user.sid,
     this.getPeerInfo(), true);
 };
-function SkylinkRoom() {
-  SkylinkEvent._mixin(this);
-  this.reset();
-}
+Skylink.prototype._globals = {
+  /**
+   * Contains the Application Key
+   * @attribute _self._globals.appKey
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  appKey: null,
 
-/**
- * Stores the room session information.
- * @attribute session
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.session = null;
+  /**
+   * Contains the default room name.
+   * @attribute _self._globals.defaultRoom
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  defaultRoom: null,
 
-/**
- * Contains the default settings.
- * @attribute defaults
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.defaults = {
-  server: '//api.temasys.com.sg',
-  protocol: window.location.protocol
+  /**
+   * Contains the API server url.
+   * @attribute _self._globals.roomServer
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  roomServer: null,
+
+  /**
+   * Contains the API server region.
+   * @attribute _self._globals.region
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  region: null,
+
+  /**
+   * Contains the room credentials for persistent connections.
+   * @attribute _self._globals.credentials
+   * @param {String} startDateTime The room meeting starting DateTime stamp in (ISO 8601).
+   * @param {Number} duration The room meeting duration.
+   * @param {String} credentials The room generated credentials.
+   * @type JSON
+   * @since 0.6.8
+   * @for Skylink
+   */
+  credentials: null,
+
+  /**
+   * Contains the socket timeout.
+   * @attribute _self._globals.socketTimeout
+   * @type Number
+   * @since 0.6.8
+   * @for Skylink
+   */
+  socketTimeout: 0,
+
+  /**
+   * Contains the flag if connection should force SSL connections to servers.
+   * @attribute _self._globals.forceSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceSSL: false,
+
+  /**
+   * Contains the flag if connection should enable TURN servers.
+   * @attribute _self._globals.enableTURNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableTURNServer: true,
+
+  /**
+   * Contains the flag if connection should enable STUN servers.
+   * @attribute _self._globals.enableSTUNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableSTUNServer: true,
+
+  /**
+   * Contains the flag if connection should force and use TURN connections only.
+   * @attribute _self._globals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURN: false,
+
+  /**
+   * Contains the flag if connection should force TURN over SSL connections.
+   * @attribute _self._globals.forceTURNSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURNSSL: false,
+
+  /**
+   * Contains the TURN server transports to use or enforce.
+   * @attribute _self._globals.TURNServerTransport
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  TURNServerTransport: 'any',
+
+  /**
+   * Contains the flag if connection should enable public STUN servers.
+   * @attribute _self._globals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  usePublicSTUN: true,
+
+  /**
+   * Contains the flag if connection should trickle ICE.
+   * @attribute _self._globals.enableIceTrickle
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableIceTrickle: true,
+
+  /**
+   * Contains the flag if connection should enable RTCDataChannel conenctions.
+   * @attribute _self._globals.enableDataChannel
+   * @type Boolean
+   * @since0 0.6.8
+   * @for Skylink
+   */
+  enableDataChannel: true,
+
+  /**
+   * Contains the SDP audio codec setting for media connections.
+   * @attribute _self._globals.audioCodec
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioCodec: 'auto',
+
+  /**
+   * Contains the SDP video codec setting for media connections.
+   * @attribute videoCodec
+   * @type String
+   * @since 0.6.8
+   * @for SkylinkGlobals
+   */
+  videoCodec: 'auto',
+
+  /**
+   * Contains the flag if video+audio MediaStream retrieval failed, fallback to
+   *   retrieve audio MediaStream only.
+   * @attribute _self._globals.audioFallback
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioFallback: false
 };
 
 /**
- * The status of the room session.
- * @attribute readyState
- * @type Number
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.readyState = 0;
-
-/**
- * Contains the application key.
- * To be modified by init().
- * @attribute appKey
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.appKey = null;
-
-/**
- * Contains the default and selected room.
- * To be modified by init().
- * @attribute room
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.room = {
-  selected: null,
-  default: null
-};
-
-/**
- * Contains the API server url.
- * To be modified by init().
- * @attribute server
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.server = null;
-
-/**
- * Contains the server region.
- * To be modified by init().
- * @attribute region
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.region = null;
-
-/**
- * Contains the room session credentials.
- * To be modified by init().
- * @attribute credentials
- * @type JSON
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.credentials = null;
-
-/**
- * Contains the room session protocol.
- * To be modified by init().
- * @attribute protocol
- * @type String
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.protocol = null;
-
-/**
- * Contains the API server path connection information.
- * @attribute _connection
- * @type JSON
+ * Configures the globals.
+ * @method _configure
+ * @param {JSON} options The configuration options
  * @private
  * @since 0.6.8
- * @for SkylinkRoom
+ * @for Skylink
  */
-SkylinkRoom.prototype._connection = {
-  path: null,
-  random: null
-};
-
-/**
- * Connects to the API server for a new room session.
- * @method fetchSession
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.fetchSession = function () {
+Skylink.prototype._configure = function (options) {
   var self = this;
-  var xhr = null;
 
-  // Fetch the session
-  self._constructPath();
+  // Configure all configuration to defaults
+  // appKey
+  self._globals.appKey = null;
+  // defaultRoom
+  self._globals.defaultRoom = null;
+  // roomServer
+  self._globals.roomServer = '//api.temasys.com.sg';
+  // region
+  self._globals.region = null;
+  // credentials
+  self._globals.credentials = null;
+  // socketTimeout
+  self._globals.socketTimeout = 20000;
+  // forceSSL
+  self._globals.forceSSL = false;
+  // enableTURNServer
+  self._globals.enableTURNServer = true;
+  // enableSTUNServer
+  self._globals.enableSTUNServer = true;
+  // forceTURN
+  self._globals.forceTURN = false;
+  // forceTURNSSL
+  self._globals.forceTURNSSL = false;
+  // TURNServerTransport
+  self._globals.TURNServerTransport = null;
+  // usePublicSTUN
+  self._globals.usePublicSTUN = true;
+  // enableIceTrickle
+  self._globals.enableIceTrickle = true;
+  // enableDataChannel
+  self._globals.enableDataChannel = true;
+  // audioCodec
+  self._globals.audioCodec = null;
+  // videoCodec
+  self._globals.videoCodec = null;
+  // audioFallback
+  self._globals.audioFallback = false;
 
-  // Check if XDomainRequest is available (IE)
-  if (typeof window.XDomainRequest === 'function' || typeof window.XDomainRequest === 'object') {
-    xhr = new XDomainRequest();
-    xhr.setContentType = function (contentType) {
-      xhr.contentType = contentType;
-    };
 
-    log.warn([null, 'Room', null, 'XDomainRequest option is found. Using XDomainRequest for CORS']);
-  // Else use XMLHttpRequest instead
+  // configure({} -> appKey)
+  if (typeof options.appKey === 'string' && !!options.appKey) {
+    self._globals.appKey = options.appKey;
+  // configure({} -> apiKey)
+  } else if (typeof options.apiKey === 'string' && !!options.apiKey) {
+    self._globals.appKey = options.apiKey;
+  // ERROR: configure({} -> !(no key found))
   } else {
-    xhr = new XMLHttpRequest();
-    xhr.setContentType = function (contentType) {
-      xhr.setRequestHeader('Content-type', contentType);
-    };
+    throw new Error('Provided appKey is invalid');
   }
 
-  xhr.onload = function () {
-    var response = JSON.parse(xhr.responseText || xhr.response || '{}');
+  // configure({} -> defaultRoom)
+  if (typeof options.defaultRoom === 'string' && !!options.defaultRoom) {
+    self._globals.defaultRoom = options.defaultRoom;
+  } else {
+    self._globals.defaultRoom = self.appKey;
+  }
 
-    log.info([null, 'Room', null, 'Received response from API server ->'], response);
+  // configure({} -> roomServer)
+  if (typeof options.roomServer === 'string') {
+    if (options.roomServer !== '//api.temasys.com.sg') {
+      log.warn('Note that the roomServer url is overriden with custom URL (' + options.roomServer +
+        ') and this may affect Skylink functionalities');
+    }
+    self._globals.roomServer = options.roomServer;
+  }
 
-    if (!response.success) {
-      self.readyState = -1;
-
-      // STATUSES given from server
-      // 403 - Room is locked
-      // 401 - API Not authorized
-      // 402 - run out of credits
-      self._trigger('readyState', -1, {
-        status: xhr.status || 200,
-        errorCode: response.error,
-        content: new Error(response.info)
-      }, self.room.selected);
-      return;
+  // configure({} -> credentials)
+  if (typeof options.credentials === 'object' && options.credentials !== null) {
+    // configure({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
+    if (typeof options.credentials.startDateTime !== 'string') {
+      throw new Error('Provided credentials.startDateTime DateTime string (ISO 8601) is invalid');
     }
 
-    log.debug([null, 'Room', null, 'Session has been initialized']);
+    // configure({} -> credentials.duration) - Duration in (hours)
+    if (typeof options.credentials.duration !== 'number') {
+      throw new Error('Provided credentials.duration (in hours) is invalid');
+    }
 
-    self.session = response;
+    // configure({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
+    if (typeof options.credentials.credentials !== 'string') {
+      throw new Error('Provided credentials.credentials string is invalid');
+    }
 
-    self.readyState = 2;
+    self._globals.credentials = {
+      startDateTime: options.credentials.startDateTime,
+      duration: options.credentials.duration,
+      credentials: options.credentials.credentials
+    };
+  }
 
-    self._trigger('readyState', 2, response, self.room.selected);
-  };
+  // configure({} -> region)
+  if (typeof options.region === 'string') {
+    for (var r in self.REGIONAL_SERVER) {
+      if (self.REGIONAL_SERVER.hasOwnProperty(r)) {
+        if (options.region === self.REGIONAL_SERVER[r]) {
+          self._globals.region = options.region;
+          break;
+        }
+      }
+    }
 
-  xhr.onerror = function (error) {
-    log.error([null, 'Room', null, 'Failed retrieving session from API server'], error);
+    if (self._globals.region === null) {
+      throw new Error('Provided region is invalid. ' +
+        'Please select the list of options from REGIONAL_SERVER list');
+    }
+  }
 
-    self.readyState = -1;
+  // configure({} -> forceSSL)
+  if (options.forceSSL === true) {
+    self._globals.forceSSL = true;
+  }
 
-    self._trigger('readyState', -1, {
-      status: 0,
-      errorCode: -1,
-      content: new Error('Failed retrieving response from API server')
-    }, self.room.selected);
-  };
+  // configure({} -> enableTURNServer)
+  if (options.enableTURNServer === false) {
+    self._globals.enableTURNServer = false;
+  }
 
-  xhr.onprogress = function () {
-    log.debug([null, 'Room', null, 'Retrieving session from API server in-progress']);
+  // configure({} -> enableSTUNServer)
+  if (options.enableSTUNServer === false) {
+    self._globals.enableSTUNServer = false;
+  }
 
-    self.readyState = 1;
+  // configure({} -> forceTURN)
+  if (options.forceTURN === true) {
+    self._globals.enableTURNServer = true;
+    self._globals.enableSTUNServer = false;
+  }
 
-    self._trigger('readyState', 1, null, self.room.selected);
-  };
+  // configure({} -> forceTURNSSL)
+  if (options.forceTURNSSL === true) {
+    self._globals.forceTURNSSL = true;
+  }
 
-  log.debug([null, 'Room', null, 'Retrieving API credentials from server ->'], self._connection.path);
+  // configure({} -> usePublicSTUN)
+  if (options.usePublicSTUN === false) {
+    self._globals.usePublicSTUN = false;
+  }
 
-  xhr.open('GET', self._connection.path, true);
-  xhr.send();
+  // configure({} -> enableIceTrickle)
+  if (options.enableIceTrickle === false) {
+    self._globals.enableIceTrickle = false;
+  }
+
+  // configure({} -> enableDataChannel)
+  if (options.enableDataChannel === false) {
+    self._globals.enableDataChannel = false;
+  }
+
+  // configure({} -> audioCodec)
+  if (typeof options.audioCodec === 'string') {
+    for (var ac in self.AUDIO_CODEC) {
+      if (self.AUDIO_CODEC.hasOwnProperty(ac)) {
+        if (options.audioCodec === self.AUDIO_CODEC[ac]) {
+          self._globals.audioCodec = options.audioCodec;
+          break;
+        }
+      }
+    }
+
+    if (self._globals.audioCodec === null) {
+      throw new Error('Provided audioCodec is invalid. ' +
+        'Please select the list of options from AUDIO_CODEC list');
+    }
+  } else {
+    self._globals.audioCodec = self.AUDIO_CODEC.AUTO;
+  }
+
+  // configure({} -> videoCodec)
+  if (typeof options.videoCodec === 'string') {
+    for (var vc in self.VIDEO_CODEC) {
+      if (self.VIDEO_CODEC.hasOwnProperty(vc)) {
+        if (options.videoCodec === self.VIDEO_CODEC[vc]) {
+          self._globals.videoCodec = options.videoCodec;
+          break;
+        }
+      }
+    }
+
+    if (self._globals.videoCodec === null) {
+      throw new Error('Provided videoCodec is invalid. ' +
+        'Please select the list of options from VIDEO_CODEC list');
+    }
+  } else {
+    self._globals.videoCodec = self.VIDEO_CODEC.AUTO;
+  }
+
+  // configure({} -> audioFallback)
+  if (options.audioFallback === true) {
+    self._globals.audioFallback = true;
+  }
+
+  // configure({} -> socketTimeout)
+  if (typeof options.socketTimeout === 'number') {
+    if (options.socketTimeout < 5000) {
+      throw new Error('Provided socket timeout is lesser than minimum value of 5000. ' +
+        'Please configure a timeout higher than 5000');
+    }
+    self._globals.socketTimeout = options.socketTimeout;
+  }
+};
+
+
+var globals = {
+  /**
+   * Contains the Application Key
+   * @attribute _initGlobals.appKey
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  appKey: null,
+
+  /**
+   * Contains the default room name.
+   * @attribute _initGlobals.defaultRoom
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  defaultRoom: null,
+
+  /**
+   * Contains the API server url.
+   * @attribute _initGlobals.roomServer
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  roomServer: null,
+
+  /**
+   * Contains the API server region.
+   * @attribute _initGlobals.region
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  region: null,
+
+  /**
+   * Contains the room credentials for persistent connections.
+   * @attribute _initGlobals.credentials
+   * @param {String} startDateTime The room meeting starting DateTime stamp in (ISO 8601).
+   * @param {Number} duration The room meeting duration.
+   * @param {String} credentials The room generated credentials.
+   * @type JSON
+   * @since 0.6.8
+   * @for Skylink
+   */
+  credentials: null,
+
+  /**
+   * Contains the socket timeout.
+   * @attribute _initGlobals.socketTimeout
+   * @type Number
+   * @since 0.6.8
+   * @for Skylink
+   */
+  socketTimeout: 20000,
+
+  /**
+   * Contains the flag if connection should force SSL connections to servers.
+   * @attribute _initGlobals.forceSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceSSL: false,
+
+  /**
+   * Contains the flag if connection should enable TURN servers.
+   * @attribute _initGlobals.enableTURNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableTURNServer: true,
+
+  /**
+   * Contains the flag if connection should enable STUN servers.
+   * @attribute _initGlobals.enableSTUNServer
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableSTUNServer: true,
+
+  /**
+   * Contains the flag if connection should force and use TURN connections only.
+   * @attribute _initGlobals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURN: false,
+
+  /**
+   * Contains the flag if connection should force TURN over SSL connections.
+   * @attribute _initGlobals.forceTURNSSL
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  forceTURNSSL: false,
+
+  /**
+   * Contains the TURN server transports to use or enforce.
+   * @attribute _initGlobals.TURNServerTransport
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  TURNServerTransport: 'any',
+
+  /**
+   * Contains the flag if connection should enable public STUN servers.
+   * @attribute _initGlobals.forceTURN
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  usePublicSTUN: true,
+
+  /**
+   * Contains the flag if connection should trickle ICE.
+   * @attribute _initGlobals.enableIceTrickle
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  enableIceTrickle: true,
+
+  /**
+   * Contains the flag if connection should enable RTCDataChannel conenctions.
+   * @attribute _initGlobals.enableDataChannel
+   * @type Boolean
+   * @since0 0.6.8
+   * @for Skylink
+   */
+  enableDataChannel: true,
+
+  /**
+   * Contains the SDP audio codec setting for media connections.
+   * @attribute _initGlobals.audioCodec
+   * @type String
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioCodec: 'auto',
+
+  /**
+   * Contains the SDP video codec setting for media connections.
+   * @attribute _initGlobals.videoCodec
+   * @type String
+   * @since 0.6.8
+   * @for SkylinkGlobals
+   */
+  videoCodec: 'auto',
+
+  /**
+   * Contains the flag if video+audio MediaStream retrieval failed, fallback to
+   *   retrieve audio MediaStream only.
+   * @attribute _initGlobals.audioFallback
+   * @type Boolean
+   * @since 0.6.8
+   * @for Skylink
+   */
+  audioFallback: false
+};
+
+var user = {
+  data: null,
+  agent: {
+    name: window.webrtcDetectedBrowser,
+    version: window.webrtcDetectedVersion,
+    os: window.navigator.platform
+  },
+  streams: {
+    screenshare: null,
+    usermedia: null
+  },
+  connection: {
+    stereo: false,
+    bandwidth: {}
+  }
 };
 
 /**
- * Constructs the API server path to fetch session from.
- * @method _constructPath
+ * Contains the Skylink readyState.
+ * @attribute _readyState
+ * @type Number
+ * @private
  * @since 0.6.8
- * @for SkylinkRoom
+ * @for Skylink
  */
-SkylinkRoom.prototype._constructPath = function () {
-  var self = this;
-
-  // Random string for fetching
-  self._connection.random = (new Date()).getTime();
-
-  // Construct path
-  var append = '?';
-
-  self._connection.path = self.protocol + '//' + self.server + '/api/' +
-    self.appKey + '/' + self.room.selected;
-
-  // Add to path if there is credentials
-  if (self.credentials) {
-    self._connection.path += '/' + self.credentials.startDateTime + '/' +
-      self.credentials.duration;
-
-    self._connection.path += '?cred=' + self.credentials.credentials;
-
-    append = '&';
-  }
-
-  // Add the random string to enforce a new fetch over cache
-  self._connection.path += append + 'rand=' + self._connection.random;
-
-  // Add to path if there is regional server
-  if (self.region) {
-    self._connection.path += append + 'rg=' + this.region;
-  }
-
-  log.debug([null, 'Room', null, 'Constructed path for fetching session']);
-};
-
-/**
- * Resets all the room session.
- * @method reset
- * @since 0.6.8
- * @for SkylinkRoom
- */
-SkylinkRoom.prototype.reset = function () {
-  var self = this;
-
-  self.readyState = 0;
-  self.session =
-  self.appKey =
-  self.room.default =
-  self.room.selected =
-  self.region =
-  self.protocol =
-  self.server =
-  self.credentials =
-  self._connection.path =
-  self._connection.random = null;
-};
+Skylink.prototype._readyState = 0;
 
 /**
  * Contains the room session information.
@@ -15741,301 +15758,214 @@ SkylinkRoom.prototype.reset = function () {
 Skylink.prototype._room = null;
 
 /**
- * Contains the room connection information.
- * @attribute _connection
- * @type JSON
- * @private
- * @since 0.6.8
- * @for Skylink
- */
-Skylink.prototype._connection = {
-  recvonly: false,
-  datachannel: true,
-  ICE: {
-    servers: [],
-    trickle: true,
-    TURN: {
-      force: false,
-      ssl: null,
-      transport: 'any'
-    },
-    STUN: {
-      public: true
-    }
-  },
-  SDP: {
-    codecs: {
-      audio: 'auto',
-      video: 'auto'
-    },
-    stereo: true,
-    bandwidth: {}
-  }
-};
-
-/**
- * Parses the init() configuration.
+ * Configures the init() configuration to store into the globals.
  * @method _initParseConfig
- * @param {JSON} options The init() configuration.
+ * @param {JSON} options The configuration options
+ * @private
  * @since 0.6.8
  * @for Skylink
  */
 Skylink.prototype._initParseConfig = function (options) {
   var self = this;
 
-  // init({} -> appKey)
-  self._room.appKey =  null;
+  // Configure all configuration to defaults
+  // appKey
+  globals.appKey = null;
+  // defaultRoom
+  globals.defaultRoom = null;
+  // roomServer
+  globals.roomServer = '//api.temasys.com.sg';
+  // region
+  globals.region = null;
+  // credentials
+  globals.credentials = null;
+  // socketTimeout
+  globals.socketTimeout = 20000;
+  // forceSSL
+  globals.forceSSL = false;
+  // enableTURNServer
+  globals.enableTURNServer = true;
+  // enableSTUNServer
+  globals.enableSTUNServer = true;
+  // forceTURN
+  globals.forceTURN = false;
+  // forceTURNSSL
+  globals.forceTURNSSL = false;
+  // TURNServerTransport
+  globals.TURNServerTransport = null;
+  // usePublicSTUN
+  globals.usePublicSTUN = true;
+  // enableIceTrickle
+  globals.enableIceTrickle = true;
+  // enableDataChannel
+  globals.enableDataChannel = true;
+  // audioCodec
+  globals.audioCodec = null;
+  // videoCodec
+  globals.videoCodec = null;
+  // audioFallback
+  globals.audioFallback = false;
 
+
+  // configure({} -> appKey)
   if (typeof options.appKey === 'string' && !!options.appKey) {
-    self._room.appKey = options.appKey;
-  // init({} -> apiKey)
+    globals.appKey = options.appKey;
+  // configure({} -> apiKey)
   } else if (typeof options.apiKey === 'string' && !!options.apiKey) {
-    self._room.appKey = options.apiKey;
-  // ERROR: init({} -> !(no key found))
+    globals.appKey = options.apiKey;
+  // ERROR: configure({} -> !(no key found))
   } else {
     throw new Error('Provided appKey is invalid');
   }
 
-  // init({} -> defaultRoom)
+  // configure({} -> defaultRoom)
   if (typeof options.defaultRoom === 'string' && !!options.defaultRoom) {
-    self._room.room.default = options.defaultRoom;
+    globals.defaultRoom = options.defaultRoom;
   } else {
-    self._room.room.default = self._room.appKey;
+    globals.defaultRoom = self.appKey;
   }
 
-  // init({} -> selectedRoom)
-  if (typeof options.selectedRoom === 'string' && !!options.selectedRoom) {
-    self._room.room.selected = options.selectedRoom;
-  } else {
-    self._room.room.selected = self._room.room.default;
-  }
-
-  self._room.server = self._room.defaults.server;
-
-  // init({} -> roomServer)
+  // configure({} -> roomServer)
   if (typeof options.roomServer === 'string') {
-    if (options.roomServer !== self._room.defaults.server) {
+    if (options.roomServer !== '//api.temasys.com.sg') {
       log.warn('Note that the roomServer url is overriden with custom URL (' + options.roomServer +
         ') and this may affect Skylink functionalities');
     }
-    self._room.server = options.roomServer;
+    globals.roomServer = options.roomServer;
   }
 
-  self._room.credentials = null;
-
-  // init({} -> credentials)
+  // configure({} -> credentials)
   if (typeof options.credentials === 'object' && options.credentials !== null) {
-    // init({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
+    // configure({} -> credentials.startDateTime) - Starting DateTime stamp in (ISO String)
     if (typeof options.credentials.startDateTime !== 'string') {
       throw new Error('Provided credentials.startDateTime DateTime string (ISO 8601) is invalid');
     }
 
-    // init({} -> credentials.duration) - Duration in (hours)
+    // configure({} -> credentials.duration) - Duration in (hours)
     if (typeof options.credentials.duration !== 'number') {
       throw new Error('Provided credentials.duration (in hours) is invalid');
     }
 
-    // init({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
+    // configure({} -> credentials.credentials) - Generated credentials based of DateTime stamp and duration
     if (typeof options.credentials.credentials !== 'string') {
       throw new Error('Provided credentials.credentials string is invalid');
     }
 
-    self._room.credentials = {
+    globals.credentials = {
       startDateTime: options.credentials.startDateTime,
       duration: options.credentials.duration,
       credentials: options.credentials.credentials
     };
   }
 
-  // init({} -> region)
-  self._room.region = null;
-
+  // configure({} -> region)
   if (typeof options.region === 'string') {
     for (var r in self.REGIONAL_SERVER) {
       if (self.REGIONAL_SERVER.hasOwnProperty(r)) {
         if (options.region === self.REGIONAL_SERVER[r]) {
-          self._room.region = options.region;
+          globals.region = options.region;
           break;
         }
       }
     }
 
-    if (self._room.region === null) {
+    if (globals.region === null) {
       throw new Error('Provided region is invalid. ' +
         'Please select the list of options from REGIONAL_SERVER list');
     }
   }
 
-  self._socket.protocol = self._socket.defaults.protocol;
-  self._room.protocol = self._room.defaults.protocol;
-
-  // init({} -> forceSSL)
-  if (typeof options.forceSSL === 'boolean') {
-    if (options.forceSSL) {
-      self._socket.protocol = self._room.protocol = 'https:';
-    }
+  // configure({} -> forceSSL)
+  if (options.forceSSL === true) {
+    globals.forceSSL = true;
   }
 
-  self._connection.ICE.TURN = {
-    force: false
-  };
-
-  // init({} -> enableTURNServer)
-  if (typeof options.enableTURNServer === 'boolean') {
-    if (!options.enableTURNServer) {
-      self._connection.ICE.TURN = null;
-    }
+  // configure({} -> enableTURNServer)
+  if (options.enableTURNServer === false) {
+    globals.enableTURNServer = false;
   }
 
-  self._connection.ICE.STUN = {};
-
-  // init({} -> enableSTUNServer)
-  if (typeof options.enableSTUNServer === 'boolean') {
-    if (!options.enableSTUNServer) {
-      self._connection.ICE.STUN = null;
-    }
+  // configure({} -> enableSTUNServer)
+  if (options.enableSTUNServer === false) {
+    globals.enableSTUNServer = false;
   }
 
-  // init({} -> forceTURN)
-  if (typeof options.forceTURN === 'boolean') {
-    if (options.forceTURN) {
-      self._connection.ICE.TURN = {
-        force: true
-      };
-      self._connection.ICE.STUN = null;
-    }
+  // configure({} -> forceTURN)
+  if (options.forceTURN === true) {
+    globals.enableTURNServer = true;
+    globals.enableSTUNServer = false;
   }
 
-  // Configure TURN settings if enabled
-  if (self._connection.ICE.TURN) {
-    // init({} -> forceTURNSSL)
-    self._connection.ICE.TURN.ssl = window.location.protocol === 'https:' ? {} : null;
-
-    if (typeof options.forceTURNSSL === 'boolean') {
-      if (options.forceTURNSSL) {
-        self._connection.ICE.TURN.ssl = {};
-      }
-    }
-
-    // Configure the TURN SSL options
-    if (self._connection.ICE.TURN.ssl) {
-      self._connection.ICE.TURN.ssl.protocol = ['chrome', 'opera', 'safari', 'IE']
-        .indexOf(window.webrtcDetectedBrowser) > -1;
-      self._connection.ICE.TURN.ssl.port = ['firefox'].indexOf(window.webrtcDetectedBrowser) > -1;
-    }
-
-    self._connection.ICE.TURN.transport = null;
-
-    // init({} -> TURNServerTransport)
-    if (typeof options.TURNServerTransport === 'string') {
-      for (var ts in self.TURN_TRANSPORT) {
-        if (self.TURN_TRANSPORT.hasOwnProperty(ts)) {
-          if (options.TURNServerTransport === self.TURN_TRANSPORT[ts]) {
-            self._connection.ICE.TURN.transport = options.TURNServerTransport;
-            break;
-          }
-        }
-      }
-
-      if (self._connection.ICE.TURN.transport === null) {
-        throw new Error('Provided TURNServerTransport is invalid. ' +
-          'Please select the list of options from TURN_TRANSPORT list');
-      }
-    } else {
-      self._connection.ICE.TURN.transport = self.TURN_TRANSPORT.ANY;
-    }
+  // configure({} -> forceTURNSSL)
+  if (options.forceTURNSSL === true) {
+    globals.forceTURNSSL = true;
   }
 
-  // Configure STUN settings if enabled
-  if (self._connection.ICE.STUN) {
-    // init({} -> usePublicSTUN)
-    self._connection.ICE.STUN.public = true;
-
-    if (typeof options.usePublicSTUN === 'boolean') {
-      if (!options.usePublicSTUN) {
-        self._connection.ICE.STUN.public = false;
-      }
-    }
+  // configure({} -> usePublicSTUN)
+  if (options.usePublicSTUN === false) {
+    globals.usePublicSTUN = false;
   }
 
-  self._connection.ICE.trickle = true;
-
-  // init({} -> enableIceTrickle)
-  if (typeof options.enableIceTrickle === 'boolean') {
-    if (!options.enableIceTrickle) {
-      self._connection.ICE.trickle = false;
-    }
+  // configure({} -> enableIceTrickle)
+  if (options.enableIceTrickle === false) {
+    globals.enableIceTrickle = false;
   }
 
-  self._connection.datachannel = true;
-
-  // init({} -> enableDataChannel)
-  if (typeof options.enableDataChannel === 'boolean') {
-    if (!options.enableDataChannel) {
-      self._connection.dataChannel = false;
-    }
+  // configure({} -> enableDataChannel)
+  if (options.enableDataChannel === false) {
+    globals.enableDataChannel = false;
   }
 
-  self._connection.SDP.codecs.audio = null;
-
-  // init({} -> audioCodec)
+  // configure({} -> audioCodec)
   if (typeof options.audioCodec === 'string') {
     for (var ac in self.AUDIO_CODEC) {
       if (self.AUDIO_CODEC.hasOwnProperty(ac)) {
         if (options.audioCodec === self.AUDIO_CODEC[ac]) {
-          self._connection.SDP.codecs.audio = options.audioCodec;
+          globals.audioCodec = options.audioCodec;
           break;
         }
       }
     }
 
-    if (self._connection.SDP.codecs.audio === null) {
+    if (globals.audioCodec === null) {
       throw new Error('Provided audioCodec is invalid. ' +
         'Please select the list of options from AUDIO_CODEC list');
     }
   } else {
-    self._connection.SDP.codecs.audio = self.AUDIO_CODEC.AUTO;
+    globals.audioCodec = self.AUDIO_CODEC.AUTO;
   }
 
-  self._connection.SDP.codecs.video = null;
-
-  // init({} -> videoCodec)
+  // configure({} -> videoCodec)
   if (typeof options.videoCodec === 'string') {
     for (var vc in self.VIDEO_CODEC) {
       if (self.VIDEO_CODEC.hasOwnProperty(vc)) {
         if (options.videoCodec === self.VIDEO_CODEC[vc]) {
-          self._connection.SDP.codecs.video = options.videoCodec;
+          globals.videoCodec = options.videoCodec;
           break;
         }
       }
     }
 
-    if (self._connection.SDP.codecs.video === null) {
+    if (globals.videoCodec === null) {
       throw new Error('Provided videoCodec is invalid. ' +
         'Please select the list of options from VIDEO_CODEC list');
     }
   } else {
-    self._connection.SDP.codecs.video = self.VIDEO_CODEC.AUTO;
+    globals.videoCodec = self.VIDEO_CODEC.AUTO;
   }
 
-  // init({} -> audioFallback)
-  self._audioFallback = false;
-
-  if (typeof options.audioFallback === 'boolean') {
-    if (options.audioFallback) {
-      self._audioFallback = true;
-    }
+  // configure({} -> audioFallback)
+  if (options.audioFallback === true) {
+    globals.audioFallback = true;
   }
 
-  // init({} -> socketTimeout)
-  self._socket.timeout = 20000;
-
+  // configure({} -> socketTimeout)
   if (typeof options.socketTimeout === 'number') {
     if (options.socketTimeout < 5000) {
       throw new Error('Provided socket timeout is lesser than minimum value of 5000. ' +
         'Please configure a timeout higher than 5000');
     }
-    self._socket.timeout = options.socketTimeout;
+    globals.socketTimeout = options.socketTimeout;
   }
 };
 
@@ -16054,55 +15984,66 @@ Skylink.prototype._initCheckDependencies = function (callback) {
 
   // When AdapterJS is not loaded
   if (typeof window.AdapterJS !== 'object' || window.AdapterJS === null) {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
       content: new Error('AdapterJS dependency is not loaded. ' +
         'Please load AdapterJS version 0.12.3 in ' +
         'https://github.com/Temasys/AdapterJS/releases/0.12.3')
     });
+    return;
+
+  // When AdapterJS version is not 0.12.3
   } else if (window.AdapterJS.VERSION !== '0.12.3') {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
       content: new Error('Incorrect AdapterJS dependency loaded. ' +
         'Please load the AdapterJS version 0.12.3 in ' +
         'https://github.com/Temasys/AdapterJS/releases/0.12.3')
     });
+    return;
   }
 
   // When socket.io-client is not loaded
   // NOTE: We are unable to determine the version (or any proper documented way at least)
+  // Hence we do not checks in here for the version
   if (typeof window.io !== 'function') {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_SOCKET_IO,
       content: new Error('XMLHttpRequest is not supported. ' +
         'Please upgrade your browser with the latest in http://browsehappy.com')
     });
+    return;
   }
 
   // When XMLHttpRequest is not supported
   if (!window.XMLHttpRequest && !self._room.useXDomainRequest) {
-    return callback({
+    callback({
       status: null,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_XMLHTTPREQUEST_SUPPORT,
       content: new Error('socket.io-client dependency is not loaded. ' +
         'Please load socket.io-client version 1.3.7 in ' +
         'https://cdn.socket.io/socket.io-1.3.7.js (or http://socket.io/download/)')
     });
+    return;
   }
 
+  // Wait for AdapterJS to be ready
   AdapterJS.webRTCReady(function () {
     if (!window.RTCPeerConnection) {
-      return callback({
+      callback({
         status: null,
         errorCode: self.READY_STATE_CHANGE_ERROR.NO_WEBRTC_SUPPORT,
         content: new Error('Your browser does not support WebRTC. Please switch to Chrome, Firefox, Opera ' +
           'or install our Temasys free Plugin for IE and Safari')
       });
+      return;
     }
-    log.debug('WebRTC functions has been loaded');
+
+    log.debug('init(): WebRTC functions has been loaded');
+
     callback(null);
   });
 };
@@ -16413,6 +16354,7 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
 
   // Handles error case
   var handleErrorCase = function (content, room) {
+    self._readyState = -1;
     self._trigger('readyStateChange', -1, content, room);
 
     if (typeof callback === 'function') {
@@ -16421,77 +16363,53 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
         error: content.content,
         status: content.status
       }, null);
-    } else {
-      throw content.content;
+      return;
     }
+
+    throw content.content;
   };
 
   // Handles success case
   var handleSuccessCase = function (session, room) {
-    self._socket.reset();
-    self._socket.server = session.ipSigserver;
-
-    if (Array.isArray(session.httpPortList) && session.httpPortList.length > 0) {
-      self._socket.ports['http:'] = session.httpPortList;
-    } else {
-      self._socket.ports['http:'] = self._socket.defaults.ports['http:'];
-    }
-
-    if (Array.isArray(session.httpsPortList) && session.httpsPortList.length > 0) {
-      self._socket.ports['https:'] = session.httpsPortList;
-    } else {
-      self._socket.ports['https:'] = self._socket.defaults.ports['https:'];
-    }
-
+    self._readyState = 2;
     self._trigger('readyStateChange', 2, null, room);
 
     if (typeof callback === 'function') {
-      callback(null, {
-        serverUrl: self._room._connection.path,
-        readyState: self._room.readyState,
-        appKey: self._room.appKey,
-        roomServer: self._room.server,
-        defaultRoom: self._room.room.default,
-        selectedRoom: self._room.room.selected,
-        serverRegion: self._room.region,
-        enableDataChannel: self._connection.datachannel,
-        enableIceTrickle: self._connection.ICE.trickle,
-        enableTURNServer: !!self._connection.ICE.TURN,
-        enableSTUNServer: !!self._connection.ICE.STUN,
-        // Preconfig one even though it doesnt matter for fallback
-        TURNTransport: self._connection.ICE.TURN ? self._connection.ICE.TURN.transport : self.TURN_TRANSPORT.ANY,
-        audioFallback: self._audioFallback,
-        forceSSL: self._socket.protocol === 'https:',
-        socketTimeout: self._socket.timeout,
-        // Preconfig one even though it doesnt matter for fallback
-        forceTURNSSL: self._connection.ICE.TURN ? !!self._connection.ICE.TURN.ssl : window.location.protocol === 'https:',
-        audioCodec: self._connection.SDP.codecs.audio,
-        videoCodec: self._connection.SDP.codecs.video,
-        // Preconfig one even though it doesnt matter for fallback
-        forceTURN: self._connection.ICE.TURN ? self._connection.ICE.TURN.force : false,
-        // Preconfig one even though it doesnt matter for fallback
-        usePublicSTUN: self._connection.ICE.STUN ? self._connection.ICE.STUN.public : false
-      });
+      var successPayload = clone(globals);
+      successPayload.readyState = self._readyState;
+      successPayload.serverUrl = self._room._session.path;
+      successPayload.selectedRoom = self._room.name;
+      successPayload.serverRegion = successPayload.region;
+      // delete successPayload.region;
+
+      callback(null, successPayload);
     }
   };
 
   try {
     // Reset to defaults
-    self._room.reset();
+    self._readyState = 0;
     self._trigger('readyStateChange', 0, null, null);
 
+    // Initialise configuration and parse into globals
     self._initParseConfig(options);
+
+    // Check and load the dependencies
     self._initCheckDependencies(function (error) {
       if (error) {
-        return handleErrorCase(error, self._room.room.selected);
+        return handleErrorCase(error, globals.defaultRoom);
       }
 
-      self._room.readyState = 1;
-      self._trigger('readyStateChange', 1, null, self._room.room.selected);
+      self._room = new SkylinkRoom();
+      self._listenToEvents();
+
+      self._readyState = 1;
+      self._trigger('readyStateChange', 1, null, globals.defaultRoom);
 
       self._room.once('readyState', function (state, content, room) {
         if (state === -1) {
-          return handleErrorCase(content, room);
+          handleErrorCase(content, room);
+          return;
         }
 
         handleSuccessCase(content, room);
@@ -16507,12 +16425,471 @@ Skylink.prototype.init = function(passedOptions, passedCallback) {
       status: null,
       content: error,
       errorCode: self.READY_STATE_CHANGE_ERROR.NO_PATH
-    }, self._room.room.selected);
+    }, globals.defaultRoom);
   }
 };
 
 
+/**
+ * Listens to all room object events.
+ * @method _listenToEvents
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._listenToEvents = function () {
+  var self = this;
 
+  if (!self._room) {
+    log.error('_listenToEvents(): Unable to listen to room object ' +
+      'events as room object is not initialised');
+    return;
+  }
+
+  // Socket events
+  self._room.on('socketConnect', function () {
+    self._trigger('channelOpen');
+  });
+
+  self._room.on('socketDisconnect', function () {
+    self._trigger('channelClose');
+  });
+
+  self._room.on('socketMessage', function (message) {
+    self._trigger('channelMessage');
+  });
+
+  self._room.on('socketConnectError', function (state, error, transport) {
+    self._trigger('socketError', state, error, transport);
+  });
+
+  self._room.on('socketConnectRetry', function (fallbackMethod, attempt) {
+    self._trigger('channelRetry', fallbackMethod, attempt);
+  });
+
+  self._room.on('socketError', function (error) {
+    self._trigger('channelError', error);
+  });
+
+  log.debug('_listenToEvents(): Listening to room object events');
+};
+
+
+
+
+
+function SkylinkRoom(room) {
+  SkylinkEvent._mixin(this);
+
+  // The room name
+  this.name = globals.defaultRoom;
+
+  if (typeof room === 'string' && !!room) {
+    this.name = room;
+  }
+
+  // Random string for fetching
+  this._session.random = (new Date()).getTime();
+  // Protocol for connecting
+  this._session.protocol = window.location.protocol;
+
+  if (globals.forceSSL) {
+    this._session.protocol = 'https:';
+  }
+
+  // The appending of parameters
+  var append = '?';
+
+  // Construct path
+  this._session.path = this._session.protocol + globals.roomServer + '/api/' +
+    globals.appKey + '/' + this.name;
+
+  // Add to path if there is credentials
+  if (globals.credentials) {
+    // Append the startDateTime stamp and the duration
+    this._session.path += '/' + globals.credentials.startDateTime + '/' +
+      globals.credentials.duration;
+    // Append the path
+    this._session.path += '?cred=' + globals.credentials.credentials;
+    // The appending is done so you have to add-on instead of instiatiating
+    append = '&';
+  }
+
+  // Add the random string to enforce a new fetch over cache
+  this._session.path += append + 'rand=' + this._session.random;
+
+  // Add to path if there is regional server
+  if (globals.region) {
+    this._session.path += append + 'rg=' + globals.region;
+  }
+
+  log.debug([null, 'Room', this.name, 'Constructed path for fetching session']);
+}
+
+/**
+ * Contains the room name.
+ * @attribute name
+ * @type String
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.name = null;
+
+/**
+ * Tha readyState for the room object.
+ * @attribute readyState
+ * @type Number
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.readyState = 0;
+
+/**
+ * Tha flag that indicates if the user is connected.
+ * @attribute connected
+ * @type Boolean
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.connected = false;
+
+/**
+ * The flag that indicates if the room is locked.
+ * @attribute locked
+ * @type Boolean
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.locked = false;
+
+/**
+ * Contains the room session information.
+ * @attribute _session
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._session = {
+  protocol: null,
+  path: null,
+  random: null,
+  data: null
+};
+
+/**
+ * Contains the room connection information.
+ * @attribute _connection
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._connection = {
+  // ROOM CONNECTION STATES
+  // 0 - inital
+  // 1 - connected
+  // -1 - error
+  state: 0,
+  recvonly: false,
+  iceServers: []
+};
+
+/**
+ * Contains the room socket connection object.
+ * @attribute _socket
+ * @type SkylinkSocket
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._socket = null;
+
+/**
+ * Contains the peer sessions.
+ * @attribute _peer
+ * @param {SkylinkPeer} (#peerId) The peer session.
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._peers = {};
+
+/**
+ * Connects to the API server for a new room session.
+ * @method fetchSession
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.fetchSession = function () {
+  var self = this;
+  var xhr = null;
+
+  self.readyState = 0;
+  self._trigger('readyState', 0, null, self.name);
+
+  // Check if XDomainRequest is available (IE)
+  if (typeof window.XDomainRequest === 'function' || typeof window.XDomainRequest === 'object') {
+    xhr = new XDomainRequest();
+    xhr.setContentType = function (contentType) {
+      xhr.contentType = contentType;
+    };
+
+    log.warn([null, 'Room', self.name, 'XDomainRequest option is found. Using XDomainRequest for CORS']);
+  // Else use XMLHttpRequest instead
+  } else {
+    xhr = new XMLHttpRequest();
+    xhr.setContentType = function (contentType) {
+      xhr.setRequestHeader('Content-type', contentType);
+    };
+  }
+
+  // XMLHttpRequest onload event
+  xhr.onload = function () {
+    var response = JSON.parse(xhr.responseText || xhr.response || '{}');
+
+    log.info([null, 'Room', self.name, 'Received response from API server ->'], response);
+
+    if (!response.success) {
+      self.readyState = -1;
+      // ERROR STATUSES given from server
+      // 403 - Room is locked
+      // 401 - API Not authorized
+      // 402 - run out of credits
+      self._trigger('readyState', -1, {
+        status: xhr.status || 200,
+        errorCode: response.error,
+        content: new Error(response.info)
+      }, self.name);
+      return;
+    }
+
+    log.debug([null, 'Room', self.name, 'Session has been initialized']);
+
+    self._session.data = response;
+    self._createSocket();
+
+    self.readyState = 2;
+    self._trigger('readyState', 2, response, self.name);
+  };
+
+  // XMLHttpRequest onerror event
+  xhr.onerror = function (error) {
+    log.error([null, 'Room', self.name, 'Failed retrieving session from API server'], error);
+
+    self.readyState = -1;
+    self._trigger('readyState', -1, {
+      status: 0,
+      errorCode: -1,
+      content: new Error('Failed retrieving response from API server')
+    }, self.name);
+  };
+
+  // XMLHttpRequest onprogress event
+  xhr.onprogress = function () {
+    log.debug([null, 'Room', self.name, 'Retrieving session from API server in-progress']);
+
+    self.readyState = 1;
+    self._trigger('readyState', 1, null, self.name);
+  };
+
+  log.debug([null, 'Room', self.name, 'Retrieving API credentials from server ->'], self._session.path);
+
+  xhr.open('GET', self._session.path, true);
+  xhr.send();
+};
+
+/**
+ * Creates the socket object.
+ * @method _createSocket
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._createSocket = function () {
+  var self = this;
+
+  if (!self._session.data) {
+    log.error([null, 'Room', self.name, 'Unable to initialize socket object as there is no session']);
+    return;
+  }
+
+  self._socket = new SkylinkSocket({
+    server: self._session.data.ipSigserver,
+    protocol: self._session.protocol,
+    timeout: globals.timeout,
+    httpPortList: self._session.data.httpPortList,
+    httpsPortList: self._session.data.httpsPortList
+  });
+
+  // Hook on SkylinkSocket events
+  self._socket.on('connect', function () {
+    self._trigger('socketConnect');
+  });
+
+  self._socket.on('disconnect', function () {
+    self._trigger('socketDisconnect');
+  });
+
+  self._socket.on('message', function (message) {
+    self._trigger('socketMessage', message);
+    self._messageReactor(message);
+  });
+
+  self._socket.on('connectError', function (state, error, transport) {
+    self._trigger('socketConnectError', state, error, transport);
+  });
+
+  self._socket.on('connectRetry', function (fallbackMethod, attempt) {
+    self._trigger('socketConnectRetry', fallbackMethod, attempt);
+  });
+
+  self._socket.on('error', function (error) {
+    self._trigger('socketError', error);
+  });
+
+  log.debug([null, 'Room', self.name, 'Listening to socket object events']);
+};
+
+/**
+ * Creates the peer object.
+ * @method _createPeer
+ * @param {String} peerId The peer session ID.
+ * @param {JSON} config The peer configuration.
+ * @private
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._createPeer = function (peerId, config) {
+
+};
+
+/**
+ * Connects to the signaling server to join the room.
+ * @method connect
+ * @param {Stream} stream The Stream object.
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype.connect = function (stream) {
+  var self = this;
+
+  self._socket.once('connectState', function (state, error) {
+    // success case
+    if (state === 1) {
+      self._connection.state = 1;
+      self._trigger('connectState', 1, null);
+
+      self._messageConstructor('joinRoom');
+    // error case
+    } else {
+      self._connection.state = 1;
+
+      if (state === 0) {
+        self._trigger('connectState', -1,
+          new Error('Socket disconnected whilst attempting to join room'));
+        return;
+      }
+
+      self._trigger('connectState', -1, error);
+    }
+  }, function (state) {
+    // Not the initial state
+    return state !== 0;
+  });
+
+  self._connection.state = 0;
+  self._trigger('connectState', 0, null);
+
+  self._socket.connect();
+};
+
+/**
+ * Handles the messages received from the signaling server.
+ * @method _messageReactor
+ * @param {JSON} message The message object data.
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._messageReactor = function (message) {
+  var self = this;
+
+  // type: "inRoom"
+  if (message.type === 'inRoom') {
+    self._session.data.sid = message.sid;
+    self._connection.iceServers = message.pc_config.iceServers;
+    self._connection.tieBreaker = (new Date()).getTime();
+
+    if (typeof message.tieBreaker === 'number') {
+      self._connection.tieBreaker = message.tieBreaker;
+    }
+
+    // Make firefox against other agents as the answerer always
+    if (user.agent.name === 'firefox') {
+      self._connection.tieBreaker -= 1000000000000;
+    }
+
+    self._messageConstructor('enter');
+
+  // type: "enter"
+  } else if (message.type === 'enter') {
+    self._session = self._session;
+  }
+
+};
+
+/**
+ * Handles the messages received from the signaling server.
+ * @method _messageReactor
+ * @param {String} type The message type.
+ * @since 0.6.8
+ * @for SkylinkRoom
+ */
+SkylinkRoom.prototype._messageConstructor = function (type, data) {
+  var self = this;
+
+  // Construct the base of the message
+  var message = {
+    type: type,
+    rid: self._session.data.room_key
+  };
+
+  if (typeof self._session.data.sid === 'string') {
+    message.mid = self._session.data.sid;
+  }
+
+  // type: "joinRoom"
+  if (type === 'joinRoom') {
+    message.uid = self._session.data.username;
+    message.cid = self._session.data.cid;
+    message.userCred = self._session.data.userCred;
+    message.timeStamp = self._session.data.timeStamp;
+    message.apiOwner = self._session.data.apiOwner;
+    message.roomCred = self._session.data.roomCred;
+    message.start = self._session.data.start;
+    message.len = self._session.data.len;
+    // Default to false if undefined
+    message.isPrivileged = self._session.data.isPrivileged === true;
+    // Default to true if undefined
+    message.autoIntroduce = self._session.data.autoIntroduce !== false;
+
+  // type: "enter"
+  } else if (type === 'enter') {
+    message.user = {
+      agent: user.agent,
+      data: user.data
+    };
+    message.connection = user.connection;
+    message.stream = {
+      audio: false,
+      video: false
+    };
+    message.tieBreaker = self._connection.tieBreaker;
+  }
+
+  self._socket.send(message);
+};
 
 
 
@@ -18664,70 +19041,39 @@ Skylink.prototype._throttle = function(func, wait){
       self._timestamp.func = now;
   };
 };
-function SkylinkSocket() {
+function SkylinkSocket(config) {
   SkylinkEvent._mixin(this);
-  this.reset();
+
+  // We are certain as the checks are done in the init()
+  this._connection.timeout = config.timeout;
+
+  // The data received from the signaling server is dynamic so double-check and fallback if required
+  if (typeof config.server === 'string' && !!config.server) {
+    this._connection.server = config.server;
+  }
+
+  if (Array.isArray(config.httpPortList) && config.httpPortList.length > 0) {
+    this._ports['http:'] = config.httpPortList;
+  }
+
+  if (Array.isArray(config.httpsPortList) && config.httpsPortList.length > 0) {
+    this._ports['https:'] = config.httpsPortList;
+  }
+
+  // Configure the first port
+  this._connection.port = this._ports[this._connection.protocol][0];
+
+  // Configure anything by default
+  if (!window.WebSocket) {
+    this._connection.transport = 'Polling';
+
+    log.warn([null, 'Socket', null, 'Your browser does not support WebSocket transports ' +
+      'hence Polling transports is selected'
+    ]);
+  }
+
+  log.debug([null, 'Socket', null, 'Parsed configuration and ready for connection']);
 }
-
-/**
- * Contains the default settings.
- * @attribute defaults
- * @type JSON
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.defaults = {
-  server: 'signaling.temasys.com.sg',
-  timeout: 20000,
-  ports: {
-    'http:': [6001, 80, 3000],
-    'https:': [443, 3443]
-  },
-  protocol: window.location.protocol
-};
-
-/**
- * Contains the socket signaling server url.
- * To be modified by init().
- * @attribute server
- * @type String
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.server = null;
-
-/**
- * Contains the socket ports.
- * To be modified by init().
- * @attribute ports
- * @type JSON
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.ports = {
-  'https:': [],
-  'http:': []
-};
-
-/**
- * Contains the socket protocol.
- * To be modified by init().
- * @attribute protocol
- * @type String
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.protocol = null;
-
-/**
- * Contains the socket timeout.
- * To be modified by init().
- * @attribute timeout
- * @type Number
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.timeout = null;
 
 /**
  * The flag that indicates if socket is connected.
@@ -18747,6 +19093,19 @@ SkylinkSocket.prototype.connected = false;
  * @for SkylinkSocket
  */
 SkylinkSocket.prototype.dead = false;
+
+/**
+ * Contains the socket ports.
+ * To be modified by init().
+ * @attribute ports
+ * @type JSON
+ * @since 0.6.8
+ * @for SkylinkSocket
+ */
+SkylinkSocket.prototype._ports = {
+  'http:': [6001, 80, 3000],
+  'https:': [443, 3443]
+};
 
 /**
  * Contains the socket transports.
@@ -18770,13 +19129,22 @@ SkylinkSocket.prototype._transports = {
  * @for SkylinkSocket
  */
 SkylinkSocket.prototype._connection = {
+  // SOCKET CONNECTION STATES
+  // 0 - connecting / reconnecting
+  // 1 - connected
+  // -1 - disconnected
+  // -2 - connection aborted
+  state: 0,
+  server: 'signaling.temasys.com.sg',
+  protocol: window.location.protocol,
   path: null,
   retries: {
     max: 4,
     delay: 1000,
     current: 0
   },
-  port: 0,
+  timeout: 20000,
+  port: 80,
   transport: 'WebSocket',
   transportFallback: false
 };
@@ -18817,15 +19185,14 @@ SkylinkSocket.prototype._messaging = {
 SkylinkSocket.prototype.connect = function() {
   var self = this;
 
-  // Configure the first port
-  if (self._connection.port === 0) {
-    self._connection.port = self.ports[self.protocol][0];
-  }
-
-  self._connection.path = self.protocol + '//' + self.server + ':' + self._connection.port;
+  self._connection.path = self._connection.protocol + '//' +
+    self._connection.server + ':' + self._connection.port;
 
   self.connected = false;
   self.dead = false;
+
+  self._connection.state = 0;
+  self._trigger('connectState', 0, null);
 
   log.debug([null, 'Socket', null, 'Connecting to signaling server with the ' +
     'following configuration :'
@@ -18838,7 +19205,7 @@ SkylinkSocket.prototype.connect = function() {
     reconnection: true,
     reconnectionAttempts: self._connection.retries.max,
     reconectionDelayMax: self._connection.retries.delay,
-    timeout: self.timeout,
+    timeout: self._connection.timeout,
     transports: self._transports[self._connection.transport]
   });
 
@@ -18858,33 +19225,6 @@ SkylinkSocket.prototype.disconnect = function() {
     log.debug([null, 'Socket', null, 'Disconnecting']);
 
     self._socket.disconnect();
-  }
-};
-
-/**
- * Resets the socket connection session.
- * @method reset
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.reset = function () {
-  var self = this;
-
-  // NOTE: It may save time for reconnection if we know the existing server url and ports
-  //  that works but for now the ports received from signaling server may change or url may change
-  // It's dyanmic and not advisable for now
-  self._connection.transport = 'WebSocket';
-  self._connection.transportFallback = false;
-  self._connection.port = 0;
-  self._connection.retries.current = 0;
-
-  // Configure anything by default
-  if (!window.WebSocket) {
-    self._connection.transport = 'Polling';
-
-    log.warn([null, 'Socket', null, 'Your browser does not support WebSocket transports ' +
-      'hence Polling transports is selected'
-    ]);
   }
 };
 
@@ -19024,27 +19364,12 @@ SkylinkSocket.prototype._reconnect = function() {
   }
 
   // Select the current port
-  var ports = self.ports[self.protocol];
+  var ports = self._ports[self._connection.protocol];
   var index = ports.indexOf(self._connection.port);
   var fallbackType = 'nonfallback';
 
-  // When index = -1
-  if (index === -1) {
-    log.warn([null, 'Socket', null, 'Unable to find port index of provided ports. Fallbacking to index 0']);
-
-    index = 0;
-
-    // Fallback when the port doesn't exists for now
-    if (self.ports['https:'].length === 0) {
-      self.ports['https:'] = self.defaults.ports['https:'];
-    }
-
-    if (self.ports['http:'].length === 0) {
-      self.ports['http:'] = self.defaults.ports['http:'];
-    }
-
-    // When index is still within the range and not the last port
-  } else if (index < ports.length - 1) {
+  // When index is still within the range and not the last port
+  if (index < ports.length - 1) {
     self._connection.port = ports[index + 1];
 
     // When index is the final port
@@ -19060,9 +19385,9 @@ SkylinkSocket.prototype._reconnect = function() {
     } else {
       log.error([null, 'Socket', null, 'Aborting reconnection after many failed retries and attempts']);
       self.dead = true;
-      self._trigger('connectError', -3,
-        new Error('Socket reconnection is aborted as all transports type and ports have been attempted'),
-        self._connection.transport);
+      var abortError = new Error('Socket reconnection is aborted as all transports type and ports have been attempted');
+      self._trigger('connectError', -3, abortError, self._connection.transport);
+      self._trigger('connectState', -2, abortError);
       return;
     }
   }
@@ -19073,7 +19398,7 @@ SkylinkSocket.prototype._reconnect = function() {
   // If port index is not the first..
   if (index > 0 || self._connection.transportFallback) {
     // https: protocol connections
-    if (self.protocol === 'http:') {
+    if (self._connection.protocol === 'http:') {
       // transports with WebSocket and https: protocol connections
       if (self._connection.transport === 'WebSocket') {
         fallbackType = 'fallbackPortNonSSL';
@@ -19163,6 +19488,7 @@ SkylinkSocket.prototype._listenToEvents = function() {
     self.connected = true;
     log.debug([null, 'Socket', null, 'Connection to signaling server has been opened']);
     self._trigger('connect');
+    self._trigger('connectState', 1, null);
   };
 
   // io.on('connect') event
@@ -19181,6 +19507,7 @@ SkylinkSocket.prototype._listenToEvents = function() {
     log.debug([null, 'Socket', null, 'Connection to signaling server has been closed']);
     self.connected = false;
     self._trigger('disconnect');
+    self._trigger('connectState', -1, null);
   });
 
   // io.on('message') event

@@ -5,70 +5,39 @@
  * @since 0.6.8
  * @for Skylink
  */
-function SkylinkSocket() {
+function SkylinkSocket(config) {
   SkylinkEvent._mixin(this);
-  this.reset();
+
+  // We are certain as the checks are done in the init()
+  this._connection.timeout = config.timeout;
+
+  // The data received from the signaling server is dynamic so double-check and fallback if required
+  if (typeof config.server === 'string' && !!config.server) {
+    this._connection.server = config.server;
+  }
+
+  if (Array.isArray(config.httpPortList) && config.httpPortList.length > 0) {
+    this._ports['http:'] = config.httpPortList;
+  }
+
+  if (Array.isArray(config.httpsPortList) && config.httpsPortList.length > 0) {
+    this._ports['https:'] = config.httpsPortList;
+  }
+
+  // Configure the first port
+  this._connection.port = this._ports[this._connection.protocol][0];
+
+  // Configure anything by default
+  if (!window.WebSocket) {
+    this._connection.transport = 'Polling';
+
+    log.warn([null, 'Socket', null, 'Your browser does not support WebSocket transports ' +
+      'hence Polling transports is selected'
+    ]);
+  }
+
+  log.debug([null, 'Socket', null, 'Parsed configuration and ready for connection']);
 }
-
-/**
- * Contains the default settings.
- * @attribute defaults
- * @type JSON
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.defaults = {
-  server: 'signaling.temasys.com.sg',
-  timeout: 20000,
-  ports: {
-    'http:': [6001, 80, 3000],
-    'https:': [443, 3443]
-  },
-  protocol: window.location.protocol
-};
-
-/**
- * Contains the socket signaling server url.
- * To be modified by init().
- * @attribute server
- * @type String
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.server = null;
-
-/**
- * Contains the socket ports.
- * To be modified by init().
- * @attribute ports
- * @type JSON
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.ports = {
-  'https:': [],
-  'http:': []
-};
-
-/**
- * Contains the socket protocol.
- * To be modified by init().
- * @attribute protocol
- * @type String
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.protocol = null;
-
-/**
- * Contains the socket timeout.
- * To be modified by init().
- * @attribute timeout
- * @type Number
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.timeout = null;
 
 /**
  * The flag that indicates if socket is connected.
@@ -88,6 +57,19 @@ SkylinkSocket.prototype.connected = false;
  * @for SkylinkSocket
  */
 SkylinkSocket.prototype.dead = false;
+
+/**
+ * Contains the socket ports.
+ * To be modified by init().
+ * @attribute ports
+ * @type JSON
+ * @since 0.6.8
+ * @for SkylinkSocket
+ */
+SkylinkSocket.prototype._ports = {
+  'http:': [6001, 80, 3000],
+  'https:': [443, 3443]
+};
 
 /**
  * Contains the socket transports.
@@ -111,13 +93,22 @@ SkylinkSocket.prototype._transports = {
  * @for SkylinkSocket
  */
 SkylinkSocket.prototype._connection = {
+  // SOCKET CONNECTION STATES
+  // 0 - connecting / reconnecting
+  // 1 - connected
+  // -1 - disconnected
+  // -2 - connection aborted
+  state: 0,
+  server: 'signaling.temasys.com.sg',
+  protocol: window.location.protocol,
   path: null,
   retries: {
     max: 4,
     delay: 1000,
     current: 0
   },
-  port: 0,
+  timeout: 20000,
+  port: 80,
   transport: 'WebSocket',
   transportFallback: false
 };
@@ -158,15 +149,14 @@ SkylinkSocket.prototype._messaging = {
 SkylinkSocket.prototype.connect = function() {
   var self = this;
 
-  // Configure the first port
-  if (self._connection.port === 0) {
-    self._connection.port = self.ports[self.protocol][0];
-  }
-
-  self._connection.path = self.protocol + '//' + self.server + ':' + self._connection.port;
+  self._connection.path = self._connection.protocol + '//' +
+    self._connection.server + ':' + self._connection.port;
 
   self.connected = false;
   self.dead = false;
+
+  self._connection.state = 0;
+  self._trigger('connectState', 0, null);
 
   log.debug([null, 'Socket', null, 'Connecting to signaling server with the ' +
     'following configuration :'
@@ -179,7 +169,7 @@ SkylinkSocket.prototype.connect = function() {
     reconnection: true,
     reconnectionAttempts: self._connection.retries.max,
     reconectionDelayMax: self._connection.retries.delay,
-    timeout: self.timeout,
+    timeout: self._connection.timeout,
     transports: self._transports[self._connection.transport]
   });
 
@@ -199,33 +189,6 @@ SkylinkSocket.prototype.disconnect = function() {
     log.debug([null, 'Socket', null, 'Disconnecting']);
 
     self._socket.disconnect();
-  }
-};
-
-/**
- * Resets the socket connection session.
- * @method reset
- * @since 0.6.8
- * @for SkylinkSocket
- */
-SkylinkSocket.prototype.reset = function () {
-  var self = this;
-
-  // NOTE: It may save time for reconnection if we know the existing server url and ports
-  //  that works but for now the ports received from signaling server may change or url may change
-  // It's dyanmic and not advisable for now
-  self._connection.transport = 'WebSocket';
-  self._connection.transportFallback = false;
-  self._connection.port = 0;
-  self._connection.retries.current = 0;
-
-  // Configure anything by default
-  if (!window.WebSocket) {
-    self._connection.transport = 'Polling';
-
-    log.warn([null, 'Socket', null, 'Your browser does not support WebSocket transports ' +
-      'hence Polling transports is selected'
-    ]);
   }
 };
 
@@ -365,27 +328,12 @@ SkylinkSocket.prototype._reconnect = function() {
   }
 
   // Select the current port
-  var ports = self.ports[self.protocol];
+  var ports = self._ports[self._connection.protocol];
   var index = ports.indexOf(self._connection.port);
   var fallbackType = 'nonfallback';
 
-  // When index = -1
-  if (index === -1) {
-    log.warn([null, 'Socket', null, 'Unable to find port index of provided ports. Fallbacking to index 0']);
-
-    index = 0;
-
-    // Fallback when the port doesn't exists for now
-    if (self.ports['https:'].length === 0) {
-      self.ports['https:'] = self.defaults.ports['https:'];
-    }
-
-    if (self.ports['http:'].length === 0) {
-      self.ports['http:'] = self.defaults.ports['http:'];
-    }
-
-    // When index is still within the range and not the last port
-  } else if (index < ports.length - 1) {
+  // When index is still within the range and not the last port
+  if (index < ports.length - 1) {
     self._connection.port = ports[index + 1];
 
     // When index is the final port
@@ -401,9 +349,9 @@ SkylinkSocket.prototype._reconnect = function() {
     } else {
       log.error([null, 'Socket', null, 'Aborting reconnection after many failed retries and attempts']);
       self.dead = true;
-      self._trigger('connectError', -3,
-        new Error('Socket reconnection is aborted as all transports type and ports have been attempted'),
-        self._connection.transport);
+      var abortError = new Error('Socket reconnection is aborted as all transports type and ports have been attempted');
+      self._trigger('connectError', -3, abortError, self._connection.transport);
+      self._trigger('connectState', -2, abortError);
       return;
     }
   }
@@ -414,7 +362,7 @@ SkylinkSocket.prototype._reconnect = function() {
   // If port index is not the first..
   if (index > 0 || self._connection.transportFallback) {
     // https: protocol connections
-    if (self.protocol === 'http:') {
+    if (self._connection.protocol === 'http:') {
       // transports with WebSocket and https: protocol connections
       if (self._connection.transport === 'WebSocket') {
         fallbackType = 'fallbackPortNonSSL';
@@ -504,6 +452,7 @@ SkylinkSocket.prototype._listenToEvents = function() {
     self.connected = true;
     log.debug([null, 'Socket', null, 'Connection to signaling server has been opened']);
     self._trigger('connect');
+    self._trigger('connectState', 1, null);
   };
 
   // io.on('connect') event
@@ -522,6 +471,7 @@ SkylinkSocket.prototype._listenToEvents = function() {
     log.debug([null, 'Socket', null, 'Connection to signaling server has been closed']);
     self.connected = false;
     self._trigger('disconnect');
+    self._trigger('connectState', -1, null);
   });
 
   // io.on('message') event
