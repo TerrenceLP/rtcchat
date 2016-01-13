@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Mon Jan 11 2016 18:31:52 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Wed Jan 13 2016 17:49:45 GMT+0800 (SGT) */
 
 (function() {
 
@@ -4605,78 +4605,63 @@ Skylink.prototype.refreshConnection = function(targetPeerId, callback) {
   self._throttle(toRefresh,5000)();
 
 };
-function SkylinkPeer (id, config) {
+function SkylinkPeer (config) {
   SkylinkEvent._mixin(this);
 
-  this.id = id;
-
-  if (typeof config.agent === 'object' && config.agent !== null) {
-    if (typeof config.agent.name === 'string') {
-      this.agent.name = config.agent.name;
-    }
-    if (typeof config.agent.version === 'number') {
-      this.agent.version = config.agent.version;
-    }
-    if (typeof config.agent.os === 'string') {
-      this.agent.os = config.agent.os;
-    }
-  }
-
+  // Configure the session ID
+  this.id = config.id;
+  // Configure the agent name
+  this.agent.name = config.agent.name;
+  // Configure the agent version
+  this.agent.version = config.agent.version;
+  // Configure the agent platform
+  this.agent.os = config.agent.os;
+  // Configure the custom data
   this.data = config.data;
+  // Configure the streaming data
+  this.stream = config.stream;
+  // Configure the iceServers
+  this._connection.iceServers = config.iceServers;
 
-  if (typeof config.stream === 'object' && config.stream !== null) {
-    this._stream = config.stream;
+  // Configure the trickle ICE option
+  if (config.connection.trickleICE === false) {
+    this._connection.trickleICE = false;
   }
 
-  if (typeof config.connection === 'object' && config.connection !== null) {
-    if (config.connection.recvOnly === true) {
-      this._connection.recvonly = true;
+  // Configure the datachannel option
+  if (config.connection.datachannel === false) {
+    this._connection.datachannel = false;
+  }
+
+  // Configure the recvonly option
+  if (config.connection.recvonly === true) {
+    this._connection.recvonly = true;
+  }
+
+  // Configure the stereo option for OPUS
+  if (config.connection.stereo === false) {
+    this._connection.stereo = false;
+  }
+
+  // Configure the bandwidth
+  if (typeof config.connection.bandwidth === 'object' && config.connection.bandwidth !== null) {
+    // Configure the bandwidth for audio
+    if (typeof config.connection.bandwidth.audio === 'number' && config.connection.bandwidth.audio > 0) {
+      this._connection.bandwidth.audio = config.connection.bandwidth.audio;
     }
-
-    if (config.connection.dataChannel === false) {
-      this._connection.datachannel = false;
+    // Configure the bandwidth for video
+    if (typeof config.connection.bandwidth.video === 'number' && config.connection.bandwidth.video > 0) {
+      this._connection.bandwidth.video = config.connection.bandwidth.video;
     }
-
-    if (config.connection.trickleICE === false) {
-      this._connection.trickleICE = false;
-    }
-
-    if (config.connection.stereo === false) {
-      this._connection.stereo = false;
-    }
-
-    if (typeof config.connection.bandwidth === 'object' && config.connection.bandwidth !== null) {
-      if (typeof config.connection.bandwidth.audio === 'number' && config.connection.bandwidth.audio > 0) {
-        this._connection.bandwidth.audio = config.connection.bandwidth.audio;
-      }
-
-      if (typeof config.connection.bandwidth.video === 'number' && config.connection.bandwidth.video > 0) {
-        this._connection.bandwidth.video = config.connection.bandwidth.video;
-      }
-
-      if (typeof config.connection.bandwidth.data === 'number' && config.connection.bandwidth.data > 0) {
-        this._connection.bandwidth.data = config.connection.bandwidth.data;
-      }
+    // Configure the bandwidth for data
+    if (typeof config.connection.bandwidth.data === 'number' && config.connection.bandwidth.data > 0) {
+      this._connection.bandwidth.data = config.connection.bandwidth.data;
     }
   }
 
-  // Construct new RTCPeerConnection object
-  this._peer = new RTCPeerConnection({
-    iceServers: config.iceServers
-    // iceTransportPolicy: 'relay',
-    // bundlePolicy: 'balanced',
-    // certificates: [],
-    // iceCandidatePoolSize: 0,
-    // rtcpMuxPolicy: 'require'
-  }, {
-    optional: [{
-      DtlsSrtpKeyAgreement: true
-    }]
-  });
+  this.connect();
 
-  this._listenToEvents();
-
-  log.debug([id, 'Peer', null, 'Connection object is ready for handshaking']);
+  log.debug([this.id, 'Peer', null, 'Ready for connection handshaking']);
 }
 
 /**
@@ -4712,13 +4697,13 @@ SkylinkPeer.prototype.data = null;
 
 /**
  * Contains the peer streaming information.
- * @attribute _stream
+ * @attribute stream
  * @type JSON
  * @private
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype._stream = null;
+SkylinkPeer.prototype.stream = null;
 
 /**
  * Contains the peer connection information.
@@ -4733,7 +4718,23 @@ SkylinkPeer.prototype._connection = {
   datachannel: true,
   trickleICE: true,
   stereo: true,
-  bandwidth: {}
+  bandwidth: {},
+  iceServers: []
+};
+
+/**
+ * Contains the peer connection establishment heath status.
+ * @attribute _heath
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._health = {
+  healthy: false,
+  retries: 0,
+  failures: 0,
+  timer: null
 };
 
 /**
@@ -4749,23 +4750,75 @@ SkylinkPeer.prototype._peer = null;
 /**
  * Contains the list of datachannels.
  * @attribute _channels
- * @param {DataChannel} (#channelId) The DataChannel connection object.
+ * @param {SkylinkDataChannel} (#channelId) The datachannel connection object.
  * @type JSON
  * @private
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype._channels = null;
+SkylinkPeer.prototype._channels = {};
 
 /**
- * Listens to RTCPeerConnection events.
- * @method _listenToEvents
+ * Contains the list of queued remote ICE candidates.
+ * @attribute _candidates
+ * @type JSON
  * @private
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype._listenToEvents = function() {
+SkylinkPeer.prototype._candidates = {
+  incoming: {
+    queue: [],
+    success: [],
+    failure: []
+  },
+  outgoing: [],
+  complete: false
+};
+
+/**
+ * Creates the RTCPeerConnection object and listens to its events.
+ * @method _connect
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.connect = function() {
   var self = this;
+
+  // Settings for the RTCConfiguration
+  var RTCConfiguration = {
+    iceServers: self._connection.iceServers
+    // iceTransportPolicy: 'relay',
+    // bundlePolicy: 'balanced',
+    // certificates: [],
+    // iceCandidatePoolSize: 0,
+    // rtcpMuxPolicy: 'require'
+  };
+
+  // Settings for the RTCConfiguration (optional)
+  var RTCOptional = {
+    optional: [{
+      DtlsSrtpKeyAgreement: true
+    }]
+  };
+
+  log.debug([self.id, 'Peer', null, 'Constructing RTCPeerConnection object ->'], {
+    RTCConfiguration: RTCConfiguration,
+    RTCOptional: RTCOptional
+  });
+
+  if (!self._connection.trickleICE) {
+    log.warn([self.id, 'Peer', null, 'Trickle ICE has been disabled for this connection and this may result in a ' +
+      'slower connection establishment']);
+  }
+
+  if (!self._connection.datachannel) {
+    log.warn([self.id, 'Peer', null, 'Datachannel functionalities is disabled']);
+  }
+
+  // Construct the new RTCPeerConnection object
+  self._peer = new RTCPeerConnection(RTCConfiguration, RTCOptional);
 
   // RTCPeerConnection ondatachannel event
   self._peer.ondatachannel = function(event) {
@@ -4787,6 +4840,7 @@ SkylinkPeer.prototype._listenToEvents = function() {
 
     setTimeout(function () {
       log.debug([self.id, 'Peer', stream.id, 'Received MediaStream ->'], stream);
+      self._trigger('stream', stream);
     }, timeout);
   };
 
@@ -4794,13 +4848,27 @@ SkylinkPeer.prototype._listenToEvents = function() {
   self._peer.onicecandidate = function(event) {
     var candidate = event.candidate || event;
 
+    // Generation of RTCIceCandidates is still ongoing
     if (candidate.candidate) {
-      log.debug([self.id, 'Peer', null, 'Generated RTCIceCandidate ->'], candidate);
+      var candidateId = candidate.candidate.split(' ')[0];
 
+      log.debug([self.id, 'Peer', candidateId, 'Generated RTCIceCandidate ->'], candidate);
+
+      self._candidates.outgoing.push(candidate);
       self._trigger('candidate', candidate);
 
+    // Generation of RTCIceCandidates has completed
     } else {
       log.log([self.id, 'Peer', null, 'Generation of RTCIceCandidates has completed']);
+
+      self._candidates.complete = true;
+
+      // Check if trickle ICE is disabled, and if so, send the local RTCSessionDescription to peer
+      if (!self._connection.trickleICE && self._peer.localDescription && !!self._peer.localDescription.type) {
+        log.debug([self.id, 'Peer', null, 'Connection handshake may proceeed now']);
+
+        self._trigger(self._peer.localDescription.type, self._peer.localDescription);
+      }
     }
   };
 
@@ -4809,6 +4877,23 @@ SkylinkPeer.prototype._listenToEvents = function() {
     log.debug([self.id, 'Peer', null, 'Current iceConnectionState ->'], self._peer.iceConnectionState);
 
     self._trigger('iceConnectionState', self._peer.iceConnectionState);
+
+    if (self._peer.iceConnectionState === 'failed') {
+      self._health.failures++;
+
+      // Check if ICE failure has reached to 3 and disable ICE trickle if so
+      if (self._health.failures === 3 && self._connection.trickleICE) {
+        self._trigger('iceConnectionState', 'trickleFailed');
+        self._connection.trickleICE = false;
+        self._handshakeRestart(true, false);
+
+      // Have not reached to 3 yet
+      } else {
+        self._handshakeRestart(false, true);
+      }
+    } else if (['connected', 'completed'].indexOf(self._peer.iceConnectionState) > -1) {
+      self._health.healthy = true;
+    }
   };
 
   // RTCPeerConnection onsignalingstatechange event
@@ -4825,95 +4910,290 @@ SkylinkPeer.prototype._listenToEvents = function() {
     self._trigger('iceGatheringState', self._peer.iceGatheringState);
   };
 
-  log.debug([self.id, 'Peer', null, 'Listenting to RTCPeerConnection object events']);
+  log.log([self.id, 'Peer', null, 'Listenting to RTCPeerConnection object events']);
+
+  self._monitorHealth();
 };
 
 /**
- * Generates a local offer RTCSessionDescription.
- * @method offer
- * @param {Boolean} [restartICE=false] The flag that indicates if generation of offer should generate
- *   new ICE credentials over the server.
+ * Connection handshake process:
+ * Sets the local RTCSessionDescription.
+ * @method _setLocalDescription
+ * @param {RTCSessionDescription} sdp The local RTCSessionDescription object generated.
+ * @private
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype.offer = function (restartICE) {
+SkylinkPeer.prototype._setLocalDescription = function (sessionDescription) {
   var self = this;
 
+  // Make checks if connection object is at correct state
   if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring creating of offer as peer object is not initialized']);
+    log.warn([self.id, 'Peer', null, 'Ignoring local description as peer object is not initialized']);
     return;
   }
 
-  self._peer.createOffer(function (offer) {
-    log.debug([self.id, 'Peer', null, 'Generated offer ->'], offer);
-    self._setLocalDescription(offer);
+  // If sessionDescription type is "offer"
+  if (sessionDescription.type === 'offer') {
+    // If stage is not at "stable"
+    if (self._peer.signalingState !== 'stable') {
+      log.warn([self.id, 'Peer', null, 'Ignoring local description as state is not "stable" ->'],
+        self._peer.signalingState);
+      return;
+    }
+
+  // If sessionDescription type is "answer"
+  } else {
+    // If stage is not at "have-remote-offer"
+    if (self._peer.signalingState !== 'have-remote-offer') {
+      log.warn([self.id, 'Peer', null, 'Ignoring local description as state is not "have-remote-offer" ->'],
+        self._peer.signalingState);
+      return;
+    }
+  }
+
+  log.debug([self.id, 'Peer', null, 'Setting local ' + sessionDescription.type + ' ->'], sessionDescription);
+
+  // Set the local RTCSessionDescription
+  self._peer.setLocalDescription(sessionDescription, function () {
+    // Set local description success
+    log.log([self.id, 'Peer', null, 'Local ' + sessionDescription.type + ' has been set']);
+
+    self._trigger('handshakeProgress', sessionDescription.type, null);
+
+    // Check if trickleICE is disabled and prevent local offer being sent until ICE candidates have generated completely
+    if (!self._connection.trickleICE && !self._candidates.complete) {
+      log.debug([self.id, 'Peer', null, 'Awaiting for all ICE candidates to complete generation']);
+      return;
+    }
+
+    self._trigger(sessionDescription.type, sessionDescription);
 
   }, function (error) {
-    log.error([self.id, 'Peer', null, 'Failed creating offer ->'], error);
+    // Failed setting local description
+    log.error([self.id, 'Peer', null, 'Failed setting local ' + sessionDescription.type + ' ->'], error);
 
-    self._trigger('handshake', 'error', error);
-  }, {
-    offerToReceiveAudio: true,
-    offerToReceiveVideo: true,
-    iceRestart: !!restartICE
+    self._trigger('handshakeProgress', 'error', error);
   });
 };
 
 /**
+ * Connection handshake process:
+ * Sets the remote RTCSessionDescription.
+ * @method _setRemoteDescription
+ * @param {RTCSessionDescription} sdp The remote RTCSessionDescription object received.
+ * @param {Function} callback The callback triggered once setRemoteDescription is done.
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._setRemoteDescription = function (sessionDescription, callback) {
+  var self = this;
+
+  // Checks have been made at handshakeAnswer() and handshakeComplete()
+  log.debug([self.id, 'Peer', null, 'Setting remote ' + sessionDescription.type + ' ->'], sessionDescription);
+
+  // Set the remote RTCSessionDescription
+  self._peer.setRemoteDescription(sessionDescription, function () {
+    // Set remote description success
+    log.debug([self.id, 'Peer', null, 'Remote ' + sessionDescription.type + ' has been set']);
+
+    self._trigger('handshakeProgress', sessionDescription.type, null);
+
+    // Add any queued remote ICE candidates
+    for (var c = 0; c < self._candidates.incoming.queue.length; c++) {
+      self.addCandidate(self._candidates.incoming.queue[c]);
+    }
+
+    // Reset to empty
+    self._candidates.incoming.queue = [];
+    callback();
+
+  }, function (error) {
+    // Failed settings remote description
+    log.error([self.id, 'Peer', null, 'Failed setting remote ' + sessionDescription.type + ' ->'], error);
+
+    self._trigger('handshakeProgress', 'error', error);
+  });
+};
+
+/**
+ * Monitors the RTCPeerConnection health and restarts when required.
+ * @method _monitorHealth
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._monitorHealth = function () {
+  var self = this;
+  var timeout = 10000;
+
+  self._health.timer = setTimeout(function () {
+
+  }, timeout);
+
+  /*self._connection.monitor = setTimeout(function () {
+    if (self._peer && self._peer.iceConnectionState !== 'connect') {
+
+    }
+
+  }, 10000);*/
+};
+
+/**
+ * Restarts the establishment of the RTCPeerConnection.
+ * @method _handshakeRestart
+ * @param {Boolean} [hardRestart=false] The flag that indicates if RTCPeerConnection object should be refreshed.
+ * @param {Boolean} [restartIce=false] The flag that indicates if generation of offer should generate
+ *   new ICE credentials over the server.
+ * @private
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype._handshakeRestart = function (hardRestart, restartIce) {
+  var self = this;
+
+  // If hardRestart, we should re-create the RTCPeerConnection object
+  if (hardRestart) {
+    self.disconnect();
+    self.connect();
+
+  } else {
+    // Have local offer/answer description
+    if (['have-local-offer', 'have-remote-offer'].indexOf(self._peer.signalingState) > -1 &&
+      self._peer.localDescription && self._peer.localDescription.type) {
+      // Resend the local offer/answer description
+      log.debug([self.id, 'Peer', null, 'Sending local ' + self._peer.localDescription.type + ' again for restart ->'],
+        self._peer.localDescription);
+
+      self._trigger(self._peer.localDescription.type, self._peer.localDescription);
+      return;
+    }
+  }
+
+  // Restart normal connection
+  self._trigger('restart', hardRestart, restartIce);
+};
+
+
+/**
+ * Connection handshake step 1:
+ * Generates a local offer RTCSessionDescription.
+ * @method handshakeOffer
+ * @param {Boolean} [restartIce=false] The flag that indicates if generation of offer should generate
+ *   new ICE credentials over the server.
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.handshakeOffer = function (restartIce) {
+  var self = this;
+
+  // If stage is not at "stable", return
+  if (self._peer.signalingState !== 'stable') {
+    log.warn([self.id, 'Peer', null, 'Ignoring local offer generation as state is not "stable" ->'],
+      self._peer.signalingState);
+    return;
+  }
+
+  // The RTCOfferOptions
+  var RTCOfferOptions = {
+    offerToReceiveAudio: true,
+    offerToReceiveVideo: true,
+    iceRestart: !!restartIce
+  };
+
+  log.debug([self.id, 'Peer', null, 'Generating offer ->'], RTCOfferOptions);
+
+  // Generate local offer RTCSessionDescription
+  self._peer.createOffer(function (offer) {
+    // Offer has been generated successfully case
+    log.log([self.id, 'Peer', null, 'Generated offer ->'], offer);
+    // Set local offer RTCSessionDescription
+    self._setLocalDescription(offer);
+
+  }, function (error) {
+    // Offer has failed generating
+    log.error([self.id, 'Peer', null, 'Failed generating offer ->'], error);
+
+    self._trigger('handshakeProgress', 'error', error);
+
+  }, RTCOfferOptions);
+};
+
+/**
+ * Connection handshake step 2:
  * Generates a local answer RTCSessionDescription in response to given offer.
  * @method answer
  * @param {String} offer The offer session description string.
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype.answer = function (sdpString) {
+SkylinkPeer.prototype.handshakeAnswer = function (sdpString) {
   var self = this;
 
-  if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring creating of answer as peer object is not initialized']);
+  // If stage is not at "stable", return
+  if (self._peer.signalingState !== 'stable') {
+    log.warn([self.id, 'Peer', null, 'Ignoring remote offer as state is not "stable" ->'],
+      self._peer.signalingState);
     return;
   }
 
+  // Construct the remote offer RTCSessionDescription
   var offer = new RTCSessionDescription({
     type: 'offer',
     sdp: sdpString
   });
 
+  log.debug([self.id, 'Peer', null, 'Setting remote offer first before generating answer ->'], offer);
+
+  // Set the remote offer RTCSessionDescription
   self._setRemoteDescription(offer, function () {
+    // Remote offer has been set successfully
+    log.debug([self.id, 'Peer', null, 'Generating answer ->'], null);
+
+    // Generate local answer RTCSessionDescription
     self._peer.createAnswer(function (answer) {
-      log.debug([self.id, 'Peer', null, 'Generated answer ->'], answer);
+      // Answer has been generated successfully case
+      log.log([self.id, 'Peer', null, 'Generated answer ->'], answer);
+      // Set local answer RTCSessionDescription
       self._setLocalDescription(answer);
 
     }, function (error) {
-      log.error([self.id, 'Peer', null, 'Failed creating answer ->'], error);
+      // Answer has failed generating
+      log.error([self.id, 'Peer', null, 'Failed generating answer ->'], error);
 
-      self._trigger('handshake', 'error', error);
+      self._trigger('handshakeProgress', 'error', error);
     });
   });
 };
 
 /**
+ * Connection handshake step 3 (final):
  * Completes the connection handshaking in response to given answer.
- * @method complete
+ * @method handshakeComplete
  * @param {String} answer The answer session description string.
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype.complete = function (sdpString) {
+SkylinkPeer.prototype.handshakeComplete = function (sdpString) {
   var self = this;
 
-  if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring setting of answer as peer object is not initialized']);
+  // If stage is not at "stable", return
+  if (self._peer.signalingState !== 'have-local-offer') {
+    log.warn([self.id, 'Peer', null, 'Ignoring remote answer as state is not "have-local-offer" ->'],
+      self._peer.signalingState);
     return;
   }
 
+  // Construct the remote answer RTCSessionDescription
   var answer = new RTCSessionDescription({
     type: 'answer',
     sdp: sdpString
   });
 
   self._setRemoteDescription(answer, function () {
-    log.debug([self.id, 'Peer', null, 'Handshaking has completed']);
+    // Remote answer has been set successfully
+    log.log([self.id, 'Peer', null, 'Connection handshake has completed']);
   });
 };
 
@@ -4927,84 +5207,107 @@ SkylinkPeer.prototype.complete = function (sdpString) {
 SkylinkPeer.prototype.addCandidate = function (candidateSession) {
   var self = this;
 
-  if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring adding of candidate as peer object is not initialized']);
-    return;
-  }
-
+  // Construct the new RTCIceCandidate
   var candidate = new RTCIceCandidate({
     sdpMLineIndex: candidateSession.sdpMLineIndex,
     sdpMid: candidateSession.sdpMid,
     candidate: candidateSession.candidate
   });
+  var candidateId = candidateSession.candidate.split(' ')[0];
 
+  if (!(self._peer.remoteDescription && !!self._peer.remoteDescription.sdp)) {
+    log.debug([self.id, 'Peer', candidateId, 'Queueing remote ICE candidates receiving before remote description ->'],
+      candidate);
+    self._candidates.incoming.queue.push(candidate);
+    return;
+  }
+
+  log.debug([self.id, 'Peer', candidateId, 'Processing remote ICE candidate ->'], candidate);
+
+  // Add the candidate
   self._peer.addIceCandidate(candidate, function () {
-    log.debug([self.id, 'Peer', null, 'Successfully added candidate'], candidate);
+    // Add candidate success
+    log.log([self.id, 'Peer', candidateId, 'Added remote ICE candidate']);
+    self._candidates.incoming.success.push(candidate);
+
   }, function (error) {
-    log.error([self.id, 'Peer', null, 'Failed adding candidate'], {
-      candidate: candidate,
-      error: error
-    });
+    // Add candidate failure
+    log.error([self.id, 'Peer', candidateId, 'Failed adding remote ICE candidate ->'], error);
+    self._candidates.incoming.failure.push(candidate);
   });
 };
 
 /**
- * Sets the local RTCSessionDescription.
- * @method _setLocalDescription
- * @private
+ * Updates the stream of the RTCPeerConnection object.
+ * @method sendStream
+ * @param {MediaStream} stream The stream object.
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype._setLocalDescription = function (sdp) {
+SkylinkPeer.prototype.sendStream = function (newStream) {
   var self = this;
+  var removeStreamHandler = null;
 
-  if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring setting local description as peer object is not initialized']);
-    return;
+  // Remove current MediaStreams
+  if (user.agent.name === 'firefox') {
+    removeStreamHandler = function (oldStream) {
+      var senders = self._peer.getSenders();
+
+      for (var s = 0; s < senders.length; s++) {
+        var tracks = oldStream.getTracks();
+        for (var t = 0; t < tracks.length; t++) {
+          if (tracks[t] === senders[s].track) {
+            self._peer.removeTrack(senders[s]);
+          }
+        }
+      }
+    };
+  } else {
+    removeStreamHandler = function (oldStream) {
+      self._peer.removeStream(oldStream);
+    };
   }
 
-  self._peer.setLocalDescription(sdp, function () {
-    log.debug([self.id, 'Peer', null, 'Local description has been set']);
+  var prevStreams = self._peer.getLocalStreams();
 
-    self._trigger('handshake', sdp.type, null);
-    self._trigger(sdp.type, sdp);
+  for (var i = 0; i < prevStreams.length; i++) {
+    // try removeStream
+    self._peer.removeStream(prevStreams[i]);
+  }
 
-  }, function (error) {
-    log.error([self.id, 'Peer', null, 'Failed setting local description ->'], error);
+  self._peer.addStream(newStream);
 
-    self._trigger('handshake', 'error', error);
-  });
+  if (self._health.healthy) {
+    self._handshakeRestart(false, false);
+  }
 };
 
 /**
- * Sets the remote RTCSessionDescription.
- * @method _setRemoteDescription
- * @private
+ * Sends a Blob data to RTCPeerConnection object.
+ * @method sendData
+ * @param {Blob|String} data The blob object.
  * @since 0.6.8
  * @for SkylinkPeer
  */
-SkylinkPeer.prototype._setRemoteDescription = function (sdp, callback) {
+SkylinkPeer.prototype.sendData = function (blob) {
   var self = this;
 
-  if (!self._peer) {
-    log.error([self.id, 'Peer', null, 'Ignoring setting remote description as peer object is not initialized']);
-    return;
-  }
-
-  self._peer.setRemoteDescription(sdp, function () {
-    log.debug([self.id, 'Peer', null, 'Remote description has been set']);
-    self._trigger('handshake', sdp.type, null);
-
-    callback();
-
-  }, function (error) {
-    log.error([self.id, 'Peer', null, 'Failed setting remote description ->'], error);
-
-    self._trigger('handshake', 'error', error);
-  });
+  // TODO: Open a new channel and send message or blob
 };
 
+/**
+ * Disconnects the RTCPeerConnection object.
+ * @method disconnect
+ * @since 0.6.8
+ * @for SkylinkPeer
+ */
+SkylinkPeer.prototype.disconnect = function () {
+  var self = this;
 
+  self._peer.close();
+
+  // Disconnect all the RTCDataChannel objects
+};
 Skylink.prototype._peerInformations = {};
 
 /**
@@ -7223,28 +7526,80 @@ Skylink.prototype._listenToEvents = function () {
   }
 
   // Socket events
-  self._room.on('socketConnect', function () {
+  self._room.on('socket:connect', function () {
     self._trigger('channelOpen');
   });
 
-  self._room.on('socketDisconnect', function () {
+  self._room.on('socket:disconnect', function () {
     self._trigger('channelClose');
   });
 
-  self._room.on('socketMessage', function (message) {
+  self._room.on('socket:message', function (message) {
     self._trigger('channelMessage');
   });
 
-  self._room.on('socketConnectError', function (state, error, transport) {
+  self._room.on('socket:connectError', function (state, error, transport) {
     self._trigger('socketError', state, error, transport);
   });
 
-  self._room.on('socketConnectRetry', function (fallbackMethod, attempt) {
+  self._room.on('socket:connectRetry', function (fallbackMethod, attempt) {
     self._trigger('channelRetry', fallbackMethod, attempt);
   });
 
-  self._room.on('socketError', function (error) {
+  self._room.on('socket:error', function (error) {
     self._trigger('channelError', error);
+  });
+
+  self._room.on('peer:iceConnectionState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:iceGatheringState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:iceConnectionState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:signalingState', function (peerId, state) {
+    self._trigger('signalingState', state, peerId);
+  });
+
+  self._room.on('peer:handshakeProgress', function (peerId, state, error) {
+    self._trigger('handshakeProgress', state, peerId, error);
+  });
+
+  self._room.on('peer:join', function (peerId) {
+    // Fake data for now
+    self._trigger('peerJoined', peerId, {
+      settings: {
+        audio: true,
+        video: true
+      },
+      mediaStatus: {
+        audioMuted: false,
+        videoMuted: false
+      },
+      agent: {},
+      room: self.id
+    }, false);
+  });
+
+  self._room.on('peer:stream', function (peerId, stream) {
+    // Fake data for now
+    self._trigger('incomingStream', peerId, stream, {
+      settings: {
+        audio: true,
+        video: true
+      },
+      mediaStatus: {
+        audioMuted: false,
+        videoMuted: false
+      },
+      agent: {},
+      room: self.id
+    }, false);
   });
 
   log.debug('_listenToEvents(): Listening to room object events');
@@ -7501,28 +7856,28 @@ SkylinkRoom.prototype._createSocket = function () {
 
   // Hook on SkylinkSocket events
   self._socket.on('connect', function () {
-    self._trigger('socketConnect');
+    self._trigger('socket:connect');
   });
 
   self._socket.on('disconnect', function () {
-    self._trigger('socketDisconnect');
+    self._trigger('socket:disconnect');
   });
 
   self._socket.on('message', function (message) {
-    self._trigger('socketMessage', message);
+    self._trigger('socket:message', message);
     self._messageReactor(message);
   });
 
   self._socket.on('connectError', function (state, error, transport) {
-    self._trigger('socketConnectError', state, error, transport);
+    self._trigger('socket:connectError', state, error, transport);
   });
 
   self._socket.on('connectRetry', function (fallbackMethod, attempt) {
-    self._trigger('socketConnectRetry', fallbackMethod, attempt);
+    self._trigger('socket:connectRetry', fallbackMethod, attempt);
   });
 
   self._socket.on('error', function (error) {
-    self._trigger('socketError', error);
+    self._trigger('socket:error', error);
   });
 
   log.debug([null, 'Room', self.name, 'Listening to socket object events']);
@@ -7545,10 +7900,24 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
     return;
   }
 
-  self._peers[peerId] = new SkylinkPeer(peerId, {
+  self._peers[peerId] = new SkylinkPeer({
+    id: peerId,
     iceServers: self._connection.iceServers,
-    agent: config.agent,
-    connection: config.connection
+    agent: {
+      name: config.user.agent.name,
+      version: config.user.agent.version,
+      os: config.user.agent.os
+    },
+    connection: {
+      recvonly: config.connection.recvOnly,
+      datachannel: config.connection.dataChannel,
+      trickleICE: config.connection.trickleICE,
+      stereo: config.connection.stereo
+    }
+  });
+
+  self._peers[peerId].on('stream', function (stream) {
+    self._trigger('peer:stream', peerId, stream);
   });
 
   self._peers[peerId].on('candidate', function (candidate) {
@@ -7558,6 +7927,22 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
       sdpMid: candidate.sdpMid,
       target: peerId
     });
+  });
+
+  self._peers[peerId].on('handshakeProgress', function (state, error) {
+    self._trigger('peer:handshakeProgress', peerId, state, error);
+  });
+
+  self._peers[peerId].on('iceConnectionState', function (state) {
+    self._trigger('peer:iceConnectionState', peerId, state);
+  });
+
+  self._peers[peerId].on('iceGatheringState', function (state) {
+    self._trigger('peer:iceGatheringState', peerId, state);
+  });
+
+  self._peers[peerId].on('signalingState', function (state) {
+    self._trigger('peer:signalingState', peerId, state);
   });
 
   self._peers[peerId].on('offer', function (offer) {
@@ -7573,6 +7958,11 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
       target: peerId
     });
   });
+
+  self._peers[peerId].sendStream(user.streams.usermedia);
+
+  self._trigger('peer:handshakeProgress', peerId, config.type);
+  self._trigger('peer:join', peerId);
 
   log.debug([peerId, 'Room', self.name, 'Listening to peer object events']);
 };
@@ -7614,7 +8004,15 @@ SkylinkRoom.prototype.connect = function (stream) {
   self._connection.state = 0;
   self._trigger('connectState', 0, null);
 
-  self._socket.connect();
+  window.navigator.getUserMedia({
+    audio: true,
+    video: true
+  }, function (stream) {
+    user.streams.usermedia = stream;
+    self._socket.connect();
+  }, function (error) {
+    throw error;
+  });
 };
 
 /**
@@ -7657,7 +8055,7 @@ SkylinkRoom.prototype._messageReactor = function (message) {
 
     if (self._peers[message.mid]) {
       if (message.tieBreaker > self._connection.tieBreaker) {
-        self._peers[message.mid].offer();
+        self._peers[message.mid].handshakeOffer();
       } else {
         self._messageConstructor('welcome', {
           target: message.mid
@@ -7668,13 +8066,13 @@ SkylinkRoom.prototype._messageReactor = function (message) {
   // type: "offer"
   } else if (message.type === 'offer') {
     if (self._peers[message.mid]) {
-      self._peers[message.mid].answer(message.sdp);
+      self._peers[message.mid].handshakeAnswer(message.sdp);
     }
 
   // type: "answer"
   } else if (message.type === 'answer') {
     if (self._peers[message.mid]) {
-      self._peers[message.mid].complete(message.sdp);
+      self._peers[message.mid].handshakeComplete(message.sdp);
     }
 
   // type: "candidate"
@@ -7727,7 +8125,11 @@ SkylinkRoom.prototype._messageConstructor = function (type, data) {
   // type: "enter" / "welcome"
   } else if (type === 'enter' || type === 'welcome') {
     message.user = {
-      agent: user.agent,
+      agent: {
+        name: user.agent.name,
+        version: user.agent.version,
+        os: user.agent.os
+      },
       data: user.data
     };
     message.connection = {

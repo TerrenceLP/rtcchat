@@ -252,28 +252,28 @@ SkylinkRoom.prototype._createSocket = function () {
 
   // Hook on SkylinkSocket events
   self._socket.on('connect', function () {
-    self._trigger('socketConnect');
+    self._trigger('socket:connect');
   });
 
   self._socket.on('disconnect', function () {
-    self._trigger('socketDisconnect');
+    self._trigger('socket:disconnect');
   });
 
   self._socket.on('message', function (message) {
-    self._trigger('socketMessage', message);
+    self._trigger('socket:message', message);
     self._messageReactor(message);
   });
 
   self._socket.on('connectError', function (state, error, transport) {
-    self._trigger('socketConnectError', state, error, transport);
+    self._trigger('socket:connectError', state, error, transport);
   });
 
   self._socket.on('connectRetry', function (fallbackMethod, attempt) {
-    self._trigger('socketConnectRetry', fallbackMethod, attempt);
+    self._trigger('socket:connectRetry', fallbackMethod, attempt);
   });
 
   self._socket.on('error', function (error) {
-    self._trigger('socketError', error);
+    self._trigger('socket:error', error);
   });
 
   log.debug([null, 'Room', self.name, 'Listening to socket object events']);
@@ -296,10 +296,24 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
     return;
   }
 
-  self._peers[peerId] = new SkylinkPeer(peerId, {
+  self._peers[peerId] = new SkylinkPeer({
+    id: peerId,
     iceServers: self._connection.iceServers,
-    agent: config.agent,
-    connection: config.connection
+    agent: {
+      name: config.user.agent.name,
+      version: config.user.agent.version,
+      os: config.user.agent.os
+    },
+    connection: {
+      recvonly: config.connection.recvOnly,
+      datachannel: config.connection.dataChannel,
+      trickleICE: config.connection.trickleICE,
+      stereo: config.connection.stereo
+    }
+  });
+
+  self._peers[peerId].on('stream', function (stream) {
+    self._trigger('peer:stream', peerId, stream);
   });
 
   self._peers[peerId].on('candidate', function (candidate) {
@@ -309,6 +323,22 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
       sdpMid: candidate.sdpMid,
       target: peerId
     });
+  });
+
+  self._peers[peerId].on('handshakeProgress', function (state, error) {
+    self._trigger('peer:handshakeProgress', peerId, state, error);
+  });
+
+  self._peers[peerId].on('iceConnectionState', function (state) {
+    self._trigger('peer:iceConnectionState', peerId, state);
+  });
+
+  self._peers[peerId].on('iceGatheringState', function (state) {
+    self._trigger('peer:iceGatheringState', peerId, state);
+  });
+
+  self._peers[peerId].on('signalingState', function (state) {
+    self._trigger('peer:signalingState', peerId, state);
   });
 
   self._peers[peerId].on('offer', function (offer) {
@@ -324,6 +354,11 @@ SkylinkRoom.prototype._createPeer = function (peerId, config) {
       target: peerId
     });
   });
+
+  self._peers[peerId].sendStream(user.streams.usermedia);
+
+  self._trigger('peer:handshakeProgress', peerId, config.type);
+  self._trigger('peer:join', peerId);
 
   log.debug([peerId, 'Room', self.name, 'Listening to peer object events']);
 };
@@ -365,7 +400,15 @@ SkylinkRoom.prototype.connect = function (stream) {
   self._connection.state = 0;
   self._trigger('connectState', 0, null);
 
-  self._socket.connect();
+  window.navigator.getUserMedia({
+    audio: true,
+    video: true
+  }, function (stream) {
+    user.streams.usermedia = stream;
+    self._socket.connect();
+  }, function (error) {
+    throw error;
+  });
 };
 
 /**
@@ -408,7 +451,7 @@ SkylinkRoom.prototype._messageReactor = function (message) {
 
     if (self._peers[message.mid]) {
       if (message.tieBreaker > self._connection.tieBreaker) {
-        self._peers[message.mid].offer();
+        self._peers[message.mid].handshakeOffer();
       } else {
         self._messageConstructor('welcome', {
           target: message.mid
@@ -419,13 +462,13 @@ SkylinkRoom.prototype._messageReactor = function (message) {
   // type: "offer"
   } else if (message.type === 'offer') {
     if (self._peers[message.mid]) {
-      self._peers[message.mid].answer(message.sdp);
+      self._peers[message.mid].handshakeAnswer(message.sdp);
     }
 
   // type: "answer"
   } else if (message.type === 'answer') {
     if (self._peers[message.mid]) {
-      self._peers[message.mid].complete(message.sdp);
+      self._peers[message.mid].handshakeComplete(message.sdp);
     }
 
   // type: "candidate"
@@ -478,7 +521,11 @@ SkylinkRoom.prototype._messageConstructor = function (type, data) {
   // type: "enter" / "welcome"
   } else if (type === 'enter' || type === 'welcome') {
     message.user = {
-      agent: user.agent,
+      agent: {
+        name: user.agent.name,
+        version: user.agent.version,
+        os: user.agent.os
+      },
       data: user.data
     };
     message.connection = {

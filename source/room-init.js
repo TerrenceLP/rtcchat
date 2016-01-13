@@ -902,28 +902,80 @@ Skylink.prototype._listenToEvents = function () {
   }
 
   // Socket events
-  self._room.on('socketConnect', function () {
+  self._room.on('socket:connect', function () {
     self._trigger('channelOpen');
   });
 
-  self._room.on('socketDisconnect', function () {
+  self._room.on('socket:disconnect', function () {
     self._trigger('channelClose');
   });
 
-  self._room.on('socketMessage', function (message) {
+  self._room.on('socket:message', function (message) {
     self._trigger('channelMessage');
   });
 
-  self._room.on('socketConnectError', function (state, error, transport) {
+  self._room.on('socket:connectError', function (state, error, transport) {
     self._trigger('socketError', state, error, transport);
   });
 
-  self._room.on('socketConnectRetry', function (fallbackMethod, attempt) {
+  self._room.on('socket:connectRetry', function (fallbackMethod, attempt) {
     self._trigger('channelRetry', fallbackMethod, attempt);
   });
 
-  self._room.on('socketError', function (error) {
+  self._room.on('socket:error', function (error) {
     self._trigger('channelError', error);
+  });
+
+  self._room.on('peer:iceConnectionState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:iceGatheringState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:iceConnectionState', function (peerId, state) {
+    self._trigger('iceConnectionState', state, peerId);
+  });
+
+  self._room.on('peer:signalingState', function (peerId, state) {
+    self._trigger('signalingState', state, peerId);
+  });
+
+  self._room.on('peer:handshakeProgress', function (peerId, state, error) {
+    self._trigger('handshakeProgress', state, peerId, error);
+  });
+
+  self._room.on('peer:join', function (peerId) {
+    // Fake data for now
+    self._trigger('peerJoined', peerId, {
+      settings: {
+        audio: true,
+        video: true
+      },
+      mediaStatus: {
+        audioMuted: false,
+        videoMuted: false
+      },
+      agent: {},
+      room: self.id
+    }, false);
+  });
+
+  self._room.on('peer:stream', function (peerId, stream) {
+    // Fake data for now
+    self._trigger('incomingStream', peerId, stream, {
+      settings: {
+        audio: true,
+        video: true
+      },
+      mediaStatus: {
+        audioMuted: false,
+        videoMuted: false
+      },
+      agent: {},
+      room: self.id
+    }, false);
   });
 
   log.debug('_listenToEvents(): Listening to room object events');

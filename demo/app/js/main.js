@@ -468,11 +468,12 @@ var displayName = 'name_' + 'user_' + Math.floor((Math.random() * 1000) + 1);
 
 Demo.Skylink.init(config, function (error, success) {
   if (success) {
-    Demo.Skylink.joinRoom({
+    /*Demo.Skylink.joinRoom({
       userData: displayName,
       audio: { stereo: true },
       video: true
-    });
+    });*/
+    Demo.Skylink._room.connect();
   }
 });
 
