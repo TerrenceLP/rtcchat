@@ -625,6 +625,8 @@ Skylink.prototype._messageReactToRestart = function (message) {
   // Send the "restart" message again because it's not meant to be
   _this._messageConstructRestart(message.mid, false, message.iceRestart);
   _this._peerConnectMonitor(message.mid);
+
+  _this._trigger('peerRestart', message.mid, _this.getPeerInfo(message.mid), false);
 };
 
 /**
