@@ -54,7 +54,7 @@ Skylink.prototype._peerCreate = function (peerId, config) {
         }
       },
       // The flag if should allow RTCDataChannel connections
-      datachannel: config.connection.datachannel && _this._room.config.current.enableDataChannel,
+      datachannel: config.connection.dataChannel && _this._room.config.current.enableDataChannel,
       // The flag if should allow stereo for OPUS connections
       stereo: config.connection.stereo && _this._user.session.stereo,
       // Health timer
@@ -306,6 +306,15 @@ Skylink.prototype._peerConnectHandshakeOffer = function (peerId, iceRestart) {
     return;
   }
 
+  if (_this._peers[peerId].connection.datachannel) {
+    log.debug([peerId, 'Peer', null, 'Creating RTCDataChannel object']);
+
+    _this._peers[peerId].channels.main = {
+      transfer: [],
+      channel: _this._peers[peerId].peer.createDataChannel('main')
+    };
+  }
+
   // Generate local offer RTCSessionDescription
   _this._peers[peerId].peer.createOffer(function (offer) {
     log.debug([peerId, 'Peer', null, 'Generated local offer ->'], offer);
@@ -448,6 +457,64 @@ Skylink.prototype._peerConnectHandshakeSetLocal = function (peerId, sessionDescr
   }
 
   // Start modifications here
+  /*
+  var sdpLines = sessionDescription.sdp.split('\r\n');
+
+  // remove h264 invalid pref
+  sdpLines = self._removeSDPFirefoxH264Pref(sdpLines);
+  // Check if stereo was enabled
+  if (self._streamSettings.hasOwnProperty('audio')) {
+    if (self._streamSettings.audio.stereo) {
+      self._addSDPStereo(sdpLines);
+    }
+  }
+
+  log.info([targetMid, null, null, 'Requested stereo:'], (self._streamSettings.audio ?
+    (self._streamSettings.audio.stereo ? self._streamSettings.audio.stereo : false) :
+    false));
+
+  // set sdp bitrate
+  if (self._streamSettings.hasOwnProperty('bandwidth')) {
+    var peerSettings = (self._peerInformations[targetMid] || {}).settings || {};
+
+    sdpLines = self._setSDPBitrate(sdpLines, peerSettings);
+  }
+
+  self._streamSettings.bandwidth = self._streamSettings.bandwidth || {};
+
+  self._streamSettings.video = self._streamSettings.video || false;
+
+  log.info([targetMid, null, null, 'Custom bandwidth settings:'], {
+    audio: (self._streamSettings.bandwidth.audio || 'Not set') + ' kB/s',
+    video: (self._streamSettings.bandwidth.video || 'Not set') + ' kB/s',
+    data: (self._streamSettings.bandwidth.data || 'Not set') + ' kB/s'
+  });
+
+  if (self._streamSettings.video.hasOwnProperty('frameRate') &&
+    self._streamSettings.video.hasOwnProperty('resolution')){
+    log.info([targetMid, null, null, 'Custom resolution settings:'], {
+      frameRate: (self._streamSettings.video.frameRate || 'Not set') + ' fps',
+      width: (self._streamSettings.video.resolution.width || 'Not set') + ' px',
+      height: (self._streamSettings.video.resolution.height || 'Not set') + ' px'
+    });
+  }
+
+  // set video codec
+  if (self._selectedVideoCodec !== self.VIDEO_CODEC.AUTO) {
+    sdpLines = self._setSDPVideoCodec(sdpLines);
+  } else {
+    log.log([targetMid, null, null, 'Not setting any video codec']);
+  }
+
+  // set audio codec
+  if (self._selectedAudioCodec !== self.AUDIO_CODEC.AUTO) {
+    sdpLines = self._setSDPAudioCodec(sdpLines);
+  } else {
+    log.log([targetMid, null, null, 'Not setting any audio codec']);
+  }
+
+  sessionDescription.sdp = sdpLines.join('\r\n');
+  */
 
   log.debug([peerId, 'Peer', null, 'Setting local ' + sessionDescription.type + ' ->'], sessionDescription);
 
@@ -912,7 +979,12 @@ Skylink.prototype._peerConnectReactToOndatachannel = function (peerId) {
 
     log.debug([peerId, 'Peer', null, 'Connection received RTCDataChannel ->'], channel);
 
-    _this._createChannel(peerId, channel);
+    _this._peers[peerId].channels[channel.label] = {
+      transfer: [],
+      channel: channel
+    };
+
+    //_this._createChannel(peerId, channel);
   };
 };
 
