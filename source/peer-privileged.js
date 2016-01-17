@@ -1,4 +1,20 @@
-
+/**
+ * Contains the privileged key information.
+ * @attribute _privileged
+ * @type JSON
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._privileged = {
+	privileged: false,
+	autoIntroduce: true,
+	parentKey: null,
+	session: {
+		roomPeers: {},
+		introduceHistory: {}
+	}
+};
 
 /**
  * Whether this user automatically introduce to other peers.

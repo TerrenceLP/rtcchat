@@ -70,26 +70,6 @@
 Skylink.prototype._peerInformations = {};
 
 /**
- * Stores the self credentials that is required to connect to
- *   Skylink platform signalling and identification in the
- *   signalling socket connection.
- * @attribute _user
- * @type JSON
- * @param {String} uid The self session ID.
- * @param {String} sid The self session socket connection ID. This
- *   is used by the signalling socket connection as ID to target
- *   self and the peers Peer ID.
- * @param {String} timeStamp The self session timestamp.
- * @param {String} token The self session access token.
- * @required
- * @private
- * @component User
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype._user = null;
-
-/**
  * Stores the custom user data information set by developer for self.
  * By default, if no custom user data is set, it is an empty string <code>""</code>.
  * @attribute _userData

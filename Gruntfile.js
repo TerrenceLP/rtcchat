@@ -154,7 +154,9 @@ module.exports = function(grunt) {
                         'rev': '<%= grunt.config.get("meta.rev") %>',
                         'date': '<%= grunt.config.get("meta.date") %>',
                         'tag': '<%= grunt.config.get("meta.tag") %>',
-                        'version': '<%= pkg.version %>'
+                        'version': '<%= pkg.version %>',
+                        'socketio': '<%= pkg.dependencies["socket.io-client"] %>',
+                        'adapterjs': '<%= pkg.dependencies.adapterjs %>'
                     },
                     prefix: '@@'
                 },

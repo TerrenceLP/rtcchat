@@ -1,4 +1,4 @@
-/*! skylinkjs - v0.6.7 - Tue Dec 29 2015 17:34:29 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Mon Jan 18 2016 04:27:14 GMT+0800 (SGT) */
 
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.io=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 
@@ -8387,7 +8387,7 @@ if (navigator.mozGetUserMedia) {
     console.warn('Opera does not support screensharing feature in getUserMedia');
   }
 })();
-/*! skylinkjs - v0.6.7 - Tue Dec 29 2015 17:34:29 GMT+0800 (SGT) */
+/*! skylinkjs - v0.6.7 - Mon Jan 18 2016 04:27:14 GMT+0800 (SGT) */
 
 (function() {
 
@@ -8430,6 +8430,14 @@ if (!Object.keys) {
     }
   })()
 }
+
+var objForEach = function (obj, callback) {
+  for (var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      callback(obj[key], key);
+    }
+  }
+};
 
 // Mozilla provided polyfill for Date.getISOString()
 (function() {
@@ -8599,8 +8607,176 @@ function Skylink() {
     return uuid;
   };
 }
-this.Skylink = Skylink;
 
+/**
+ * These are the list of room initialization ready states that Skylink would trigger.
+ * - The states indicates if the required connection information has been retrieved successfully from
+ *   the platform server to start a connection.
+ * - These states are triggered when {{#crossLink "Skylink/init:method"}}init(){{/crossLink}} or
+ *   {{#crossLink "Skylink/joinRoom:attr"}}joinRoom(){{/crossLink}} is invoked.
+ * @attribute READY_STATE_CHANGE
+ * @type JSON
+ * @param {Number} INIT <small>Value <code>0</code></small>
+ *   The state when Skylink is at the initial state before retrieval.<br>
+ * If all dependencies has been loaded, this would proceed to <code>LOADING</code> state.
+ * @param {Number} LOADING <small>Value <code>1</code></small>
+ *   The state when Skylink starts retrieving the connection information from the platform server.<br>
+ * This state occurs after <code>INIT</code> state and if retrieval is successful, this would
+ *   proceed to <code>COMPLETED</code> state.
+ * @param {Number} COMPLETED <small>Value <code>2</code></small>
+ *   The state when the connection information has been retrieved successfully.<br>
+ * This state occurs after <code>LOADING</code>, and if it's
+ *   {{#crossLink "Skylink/joinRoom:attr"}}joinRoom(){{/crossLink}} that is invoked, room connection
+ *   would commerce.
+ * @param {Number} ERROR <small>Value <code>-1</code></small>
+ *   The state when an exception occured while retrieving the connection information.<br>
+ * This state might be triggered when dependencies failed to load or HTTP retrieval fails.<br>
+ * Reference {{#crossLink "Skylink/READY_STATE_CHANGE_ERROR:attr"}}READY_STATE_CHANGE_ERROR{{/crossLink}}
+ *   to see the list of errors that might have triggered the <code>ERROR</code> state.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.1.0
+ */
+Skylink.prototype.READY_STATE_CHANGE = {
+  INIT: 0,
+  LOADING: 1,
+  COMPLETED: 2,
+  ERROR: -1
+};
+
+/**
+ * These are the list of room initialization ready state errors that Skylink has.
+ * - Ready state errors like <code>ROOM_LOCKED</code>, <code>API_NOT_ENOUGH_CREDIT</code>,
+ *   <code>API_NOT_ENOUGH_PREPAID_CREDIT</code>, <code>API_FAILED_FINDING_PREPAID_CREDIT</code> and
+ *   <code>SCRIPT_ERROR</code> has been removed as they are no longer supported.
+ * @attribute READY_STATE_CHANGE_ERROR
+ * @type JSON
+ * @param {Number} API_INVALID <small>Value <code>4001</code></small>
+ *   The error when provided Application Key does not exists <em>(invalid)</em>.<br>
+ * For this error, it's recommended that you check if the Application Key exists in your account
+ *   in the developer console.
+ * @param {Number} API_DOMAIN_NOT_MATCH <small>Value <code>4002</code></small>
+ *   The error when application accessing from backend IP address is not valid for provided Application Key.<br>
+ * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
+ * @param {Number} API_CORS_DOMAIN_NOT_MATCH <small>Value <code>4003</code></small>
+ *   The error when application accessing from the CORS domain is not valid for provided Application Key.<br>
+ * For this error, it's recommended that you check the CORS configuration for the provided Application Key
+ *   in the developer console.
+ * @param {Number} API_CREDENTIALS_INVALID <small>Value <code>4004</code></small>
+ *   The error when credentials provided is not valid for provided Application Key.<br>
+ * For this error, it's recommended to check the <code>credentials</code> provided in
+ *   {{#crossLink "Skylink/init:method"}}init() configuration{{/crossLink}}.
+ * @param {Number} API_CREDENTIALS_NOT_MATCH <small>Value <code>4005</code></small>
+ *   The error when credentials does not match as expected generated credentials for provided Application Key.<br>
+ * For this error, it's recommended to check the <code>credentials</code> provided in
+ *   {{#crossLink "Skylink/init:method"}}init() configuration{{/crossLink}}.
+ * @param {Number} API_INVALID_PARENT_KEY <small>Value <code>4006</code></small>
+ *   The error when provided alias Application Key has an error because parent Application Key does not exists.<br>
+ * For this error, it's recommended to provide another alias Application Key.
+ * @param {Number} API_NO_MEETING_RECORD_FOUND <small>Value <code>4010</code></small>
+ *   The error when there is no meeting currently that is open or available to join
+ *   for self at the current time in the selected room.<br>
+ * For this error, it's recommended to retrieve the list of meetings and check if it exists using
+ *   the [Meeting Resource REST API](https://temasys.atlassian.net/wiki/display/TPD/SkylinkAPI+-+Meeting+%28Persistent+Room%29+Resources).
+ * @param {Number} NO_SOCKET_IO <small>Value <code>1</code></small>
+ *   The error when socket.io dependency is not loaded.<br>
+ * For this error, it's recommended to load the
+ *   [correct socket.io-client dependency](http://socket.io/download/) from the CDN.
+ * @param {Number} NO_XMLHTTPREQUEST_SUPPORT <small>Value <code>2</code></small>
+ *   The error when XMLHttpRequest is not supported in current browser.<br>
+ * For this error, it's recommended to ask user to switch to another browser that supports <code>XMLHttpRequest</code>.
+ * @param {Number} NO_WEBRTC_SUPPORT <small>Value <code>3</code></small>
+ *   The error when WebRTC is not supported in current browser.<br>
+ * For this error, it's recommended to ask user to switch to another browser that supports WebRTC.
+ * @param {Number} NO_PATH <small>Value <code>4</code></small>
+ *   The error when constructed path is invalid.<br>
+ * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
+ * @param {Number} INVALID_XMLHTTPREQUEST_STATUS <small>Value <code>5</code></small>
+ *   The error when XMLHttpRequest does not return a HTTP status code of <code>200</code> but a HTTP failure.<br>
+ * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
+ * @param {Number} ADAPTER_NO_LOADED <small>Value <code>7</code></small>
+ *   The error when AdapterJS dependency is not loaded.<br>
+ * For this error, it's recommended to load the
+ *   [correct AdapterJS dependency](https://github.com/Temasys/AdapterJS/releases) from the CDN.
+ * @param {Number} XML_HTTP_REQUEST_ERROR <small>Value <code>-1</code></small>
+ *   The error when XMLHttpRequest failure on the network level when attempting to
+ *   connect to the platform server to retrieve selected room connection information.<br>
+ * This might happen when connection timeouts. If this is a persistent issue, it's recommended to report this issue.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.4.0
+ */
+Skylink.prototype.READY_STATE_CHANGE_ERROR = {
+  API_INVALID: 4001,
+  API_DOMAIN_NOT_MATCH: 4002,
+  API_CORS_DOMAIN_NOT_MATCH: 4003,
+  API_CREDENTIALS_INVALID: 4004,
+  API_CREDENTIALS_NOT_MATCH: 4005,
+  API_INVALID_PARENT_KEY: 4006,
+  API_NO_MEETING_RECORD_FOUND: 4010,
+  //ROOM_LOCKED: 5001,
+  XML_HTTP_REQUEST_ERROR: -1,
+  NO_SOCKET_IO: 1,
+  NO_XMLHTTPREQUEST_SUPPORT: 2,
+  NO_WEBRTC_SUPPORT: 3,
+  NO_PATH: 4,
+  //INVALID_XMLHTTPREQUEST_STATUS: 5,
+  //SCRIPT_ERROR: 6,
+  ADAPTER_NO_LOADED: 7
+};
+
+/**
+ * These are the list of available platform signaling servers Skylink
+ *   should connect to for faster connectivity.
+ * @attribute REGIONAL_SERVER
+ * @type JSON
+ * @param {String} APAC1 <small>Value <code>"sg"</code></small>
+ *   The option to select the Asia pacific server 1 regional server.
+ * @param {String} US1 <small>Value <code>"us2"</code></small>
+ *   The option to select the US server 1 regional server.
+ * @deprecated Signaling server selection is handled on
+ *    the server side based on load and latency.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.REGIONAL_SERVER = {
+  APAC1: 'sg',
+  US1: 'us2'
+};
+
+/**
+ * These are the list of DataChannel connection states that Skylink would trigger.
+ * - Some of the state references the [w3c WebRTC Specification Draft](http://w3c.github.io/webrtc-pc/#idl-def-RTCDataChannelState),
+ *   except the <code>ERROR</code> state, which is an addition provided state by Skylink
+ *   to inform exception during the DataChannel connection with Peers.
+ * @attribute DATA_CHANNEL_STATE
+ * @type JSON
+ * @param {String} CONNECTING <small>Value <code>"connecting"</code></small>
+ *   The state when DataChannel is attempting to establish a connection.<br>
+ *   This is the initial state when a DataChannel connection is created.
+ * @param {String} OPEN <small>Value <code>"open"</code></small>
+ *   The state when DataChannel connection is established.<br>
+ *   This happens usually after <code>CONNECTING</code> state, or not when DataChannel connection
+ *   is from initializing Peer (the one who begins the DataChannel connection).
+ * @param {String} CLOSING <small>Value <code>"closing"</code></small>
+ *   The state when DataChannel connection is closing.<br>
+ *   This happens when DataChannel connection is closing and happens after <code>OPEN</code>.
+ * @param {String} CLOSED <small>Value <code>"closed"</code></small>
+ *   The state when DataChannel connection is closed.<br>
+ *   This happens when DataChannel connection has closed and happens after <code>CLOSING</code>
+ *   (or sometimes <code>OPEN</code> depending on the browser implementation).
+ * @param {String} ERROR <small>Value <code>"error"</code></small>
+ *   The state when DataChannel connection have met with an exception.<br>
+ *   This may happen during any state not after <code>CLOSED</code>.
+ * @readOnly
+ * @component DataChannel
+ * @for Skylink
+ * @since 0.1.0
+ */
 Skylink.prototype.DATA_CHANNEL_STATE = {
   CONNECTING: 'connecting',
   OPEN: 'open',
@@ -8641,16 +8817,856 @@ Skylink.prototype.DATA_CHANNEL_TYPE = {
 };
 
 /**
- * The flag that indicates if Peers connection should have any
- *   DataChannel connections.
- * @attribute _enableDataChannel
- * @type Boolean
- * @default true
- * @private
- * @component DataChannel
+ * The current version of the internal <u>Data Transfer (DT)</u> Protocol that Skylink is using.<br>
+ * - This is not a feature for developers to use but rather for SDK developers to
+ *   see the Protocol version used in this Skylink version.
+ * - In some cases, this information may be used for reporting issues with Skylink.
+ * - DT_PROTOCOL VERSION: <code>0.1.0</code>.
+ * @attribute DT_PROTOCOL_VERSION
+ * @type String
+ * @readOnly
+ * @component DataTransfer
  * @for Skylink
- * @since 0.3.0
+ * @since 0.5.10
  */
+Skylink.prototype.DT_PROTOCOL_VERSION = '0.1.0';
+
+/**
+ * These are the list of Peer connection ICE connection states that Skylink would trigger.
+ * - These states references the [w3c WebRTC Specification Draft](http://www.w3.org/TR/webrtc/#idl-def-RTCIceConnectionState),
+ *   except the <code>TRICKLE_FAILED</code> state, which is an addition provided state by Skylink
+ *   to inform that trickle ICE has failed.
+ * @attribute ICE_CONNECTION_STATE
+ * @type JSON
+ * @param {String} STARTING <small>Value <code>"starting"</code></small>
+ *   The state when the ICE agent is gathering addresses and/or waiting
+ *   for remote candidates to be supplied.<br>
+ * This state occurs when Peer connection has just been initialised.
+ * @param {String} CHECKING <small>Value <code>"checking"</code></small>
+ *   The state when the ICE agent has received remote candidates
+ *   on at least one component, and is checking candidate pairs but has
+ *   not yet found a connection. In addition to checking, it may also
+ *   still be gathering.<br>
+ * This state occurs after <code>STARTING</code> state.
+ * @param {String} CONNECTED <small>Value <code>"connected"</code></small>
+ *  The state when the ICE agent has found a usable connection
+ *   for all components but is still checking other candidate pairs to see
+ *   if there is a better connection. It may also still be gathering.<br>
+ * This state occurs after <code>CHECKING</code>.
+ * @param {String} COMPLETED <small>Value <code>"completed"</code></small>
+ *   The state when the ICE agent has finished gathering and
+ *   checking and found a connection for all components.<br>
+ * This state occurs after <code>CONNECTED</code> (or sometimes after <code>CHECKING</code>).
+ * @param {String} FAILED <small>Value <code>"failed"</code></small>
+ *   The state when the ICE agent is finished checking all
+ *   candidate pairs and failed to find a connection for at least one
+ *   component.<br>
+ * This state occurs during the ICE connection attempt after <code>STARTING</code> state.
+ * @param {String} DISCONNECTED <small>Value <code>"disconnected"</code></small>
+ *   The state when liveness checks have failed for one or
+ *   more components. This is more aggressive than "failed", and may
+ *   trigger intermittently (and resolve itself without action) on
+ *   a flaky network.<br>
+ * This state occurs after <code>CONNECTED</code> or <code>COMPLETED</code> state.
+ * @param {String} CLOSED <small>Value <code>"closed"</code></small>
+ *   The state when the ICE agent has shut down and is no
+ *   longer responding to STUN requests.<br>
+ * This state occurs after Peer connection has been disconnected <em>(closed)</em>.
+ * @param {String} TRICKLE_FAILED <small>Value <code>"trickeFailed"</code></small>
+ *   The state when attempting to connect successfully with ICE connection fails
+ *    with trickle ICE connections.<br>
+ * Trickle ICE would be disabled after <code>3</code> attempts to have a better
+ *   successful ICE connection.
+ * @readOnly
+ * @since 0.1.0
+ * @component ICE
+ * @for Skylink
+ */
+Skylink.prototype.ICE_CONNECTION_STATE = {
+  STARTING: 'starting',
+  CHECKING: 'checking',
+  CONNECTED: 'connected',
+  COMPLETED: 'completed',
+  CLOSED: 'closed',
+  FAILED: 'failed',
+  TRICKLE_FAILED: 'trickleFailed',
+  DISCONNECTED: 'disconnected'
+};
+
+/**
+ * These are the list of available transports that
+ *   Skylink would use to connect to the TURN servers with.
+ * - For example as explanation how these options works below, let's take that
+ *   these are list of TURN servers given by the platform signaling:<br>
+ *   <small><code>turn:turnurl:123?transport=tcp</code><br>
+ *   <code>turn:turnurl?transport=udp</code><br>
+ *   <code>turn:turnurl:1234</code><br>
+ *   <code>turn:turnurl</code></small>
+ * @attribute TURN_TRANSPORT
+ * @type JSON
+ * @param {String} TCP <small>Value <code>"tcp"</code></small>
+ *   The option to connect using only TCP transports.
+ *   <small>EXAMPLE OUTPUT<br>
+ *   <code>turn:turnurl:123?transport=tcp</code><br>
+ *   <code>turn:turnurl?transport=tcp</code><br>
+ *   <code>turn:turnurl:1234?transport=tcp</code></small>
+ * @param {String} UDP <small>Value <code>"udp"</code></small>
+ *   The option to connect using only UDP transports.
+ *   <small>EXAMPLE OUTPUT<br>
+ *   <code>turn:turnurl:123?transport=udp</code><br>
+ *   <code>turn:turnurl?transport=udp</code><br>
+ *   <code>turn:turnurl:1234?transport=udp</code></small>
+ * @param {String} ANY <small><b>DEFAULT</b> | Value <code>"any"</code></small>
+ *   This option to use any transports that is preconfigured by provided by the platform signaling.
+ *   <small>EXAMPLE OUTPUT<br>
+ *   <code>turn:turnurl:123?transport=tcp</code><br>
+ *   <code>turn:turnurl?transport=udp</code><br>
+ *   <code>turn:turnurl:1234</code><br>
+ *   <code>turn:turnurl</code></small>
+ * @param {String} NONE <small>Value <code>"none"</code></small>
+ *   This option to set no transports.
+ *   <small>EXAMPLE OUTPUT<br>
+ *   <code>turn:turnurl:123</code><br>
+ *   <code>turn:turnurl</code><br>
+ *   <code>turn:turnurl:1234</code></small>
+ * @param {String} ALL <small>Value <code>"all"</code></small>
+ *   This option to use both TCP and UDP transports.
+ *   <small>EXAMPLE OUTPUT<br>
+ *   <code>turn:turnurl:123?transport=tcp</code><br>
+ *   <code>turn:turnurl:123?transport=udp</code><br>
+ *   <code>turn:turnurl?transport=tcp</code><br>
+ *   <code>turn:turnurl?transport=udp</code><br>
+ *   <code>turn:turnurl:1234?transport=tcp</code><br>
+ *   <code>turn:turnurl:1234?transport=udp</code></small>
+ * @readOnly
+ * @since 0.5.4
+ * @component ICE
+ * @for Skylink
+ */
+Skylink.prototype.TURN_TRANSPORT = {
+  UDP: 'udp',
+  TCP: 'tcp',
+  ANY: 'any',
+  NONE: 'none',
+  ALL: 'all'
+};
+
+/**
+ * These are the list of Peer connection signaling states that Skylink would trigger.
+ * - Some of the state references the [w3c WebRTC Specification Draft](http://www.w3.org/TR/webrtc/#idl-def-RTCSignalingState).
+ * @attribute PEER_CONNECTION_STATE
+ * @type JSON
+ * @param {String} STABLE <small>Value <code>"stable"</code></small>
+ *   The state when there is no handshaking in progress and when
+ *   handshaking has just started or close.<br>
+ * This state occurs when Peer connection has just been initialised and after
+ *   <code>HAVE_LOCAL_OFFER</code> or <code>HAVE_REMOTE_OFFER</code>.
+ * @param {String} HAVE_LOCAL_OFFER <small>Value <code>"have-local-offer"</code></small>
+ *   The state when the local session description <code>"offer"</code> is generated and to be sent.<br>
+ * This state occurs after <code>STABLE</code> state.
+ * @param {String} HAVE_REMOTE_OFFER <small>Value <code>"have-remote-offer"</code></small>
+ *   The state when the remote session description <code>"offer"</code> is received.<br>
+ * At this stage, this indicates that the Peer connection signaling handshaking has been completed, and
+ *   likely would go back to <code>STABLE</code> after local <code>"answer"</code> is received by Peer.
+ * @param {String} CLOSED <small>Value <code>"closed"</code></small>
+ *   The state when the Peer connection is closed.<br>
+ * This state occurs when connection with Peer has been closed, usually when Peer leaves the room.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.PEER_CONNECTION_STATE = {
+  STABLE: 'stable',
+  HAVE_LOCAL_OFFER: 'have-local-offer',
+  HAVE_REMOTE_OFFER: 'have-remote-offer',
+  CLOSED: 'closed'
+};
+
+/**
+ * These are the types of server Peers that Skylink would connect with.
+ * - Different server Peers that serves different functionalities.
+ * - The server Peers functionalities are only available depending on the
+ *   Application Key configuration.
+ * - Eventually, this list will be populated as there are more server Peer
+ *   functionalities provided by the Skylink platform.
+ * @attribute SERVER_PEER_TYPE
+ * @param {String} MCU <small>Value <code>"mcu"</code></small>
+ *   This server Peer is a MCU server connection.
+ * @type JSON
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.SERVER_PEER_TYPE = {
+  MCU: 'mcu'
+  //SIP: 'sip'
+};
+
+/**
+ * These are the list of Peer connection handshake states that Skylink would trigger.
+ * - Do not be confused with {{#crossLink "Skylink/PEER_CONNECTION_STATE:attr"}}PEER_CONNECTION_STATE{{/crossLink}}.
+ *   This is the Peer recognition connection that is established with the platform signaling protocol, and not
+ *   the Peer connection signaling state itself.
+ * - In this case, this happens before the {{#crossLink "Skylink/PEER_CONNECTION_STATE:attr"}}PEER_CONNECTION_STATE
+ *   handshaking states. {{/crossLink}} The <code>OFFER</code> and <code>ANSWER</code> relates to the
+ *   {{#crossLink "Skylink/PEER_CONNECTION_STATE:attr"}}PEER_CONNECTION_STATE states{{/crossLink}}.
+ * - For example as explanation how these state works below, let's make self as the offerer and
+ *   the connecting Peer as the answerer.
+ * @attribute HANDSHAKE_PROGRESS
+ * @type JSON
+ * @param {String} ENTER <small>Value <code>"enter"</code></small>
+ *   The state when Peer have received <code>ENTER</code> from self,
+ *   and Peer connection with self is initialised with self.<br>
+ * This state will occur for both self and Peer as <code>ENTER</code>
+ *   message is sent to ping for Peers in the room.<br>
+ * At this state, Peer would sent <code>WELCOME</code> to the peer to
+ *   start the session description connection handshake.<br>
+ * <table class="table table-condensed">
+ *   <thead><tr><th class="col-md-1"></th><th class="col-md-5">Self</th><th>Peer</th></thead>
+ *   <tbody>
+ *     <tr><td class="col-md-1">1.</td>
+ *       <td class="col-md-5">Sends <code>ENTER</code></td><td>Sends <code>ENTER</code></td></tr>
+ *     <tr><td class="col-md-1">2.</td>
+ *       <td class="col-md-5">-</td><td>Receives self <code>ENTER</code></td></tr>
+ *     <tr><td class="col-md-1">3.</td>
+ *       <td class="col-md-5">-</td><td>Sends self <code>WELCOME</code></td></tr>
+ *   </tbody>
+ * </table>
+ * @param {String} WELCOME <small>Value <code>"welcome"</code></small>
+ *   The state when self have received <code>WELCOME</code> from Peer,
+ *   and Peer connection is initialised with Peer.<br>
+ * At this state, self would start the session description connection handshake and
+ *   send the local <code>OFFER</code> session description to Peer.
+ * <table class="table table-condensed">
+ *   <thead><tr><th class="col-md-1"></th><th class="col-md-5">Self</th><th>Peer</th></thead>
+ *   <tbody>
+ *     <tr><td class="col-md-1">4.</td>
+ *       <td class="col-md-5">Receives <code>WELCOME</code></td><td>-</td></tr>
+ *     <tr><td class="col-md-1">5.</td>
+ *       <td class="col-md-5">Generates <code>OFFER</code></td><td>-</td></tr>
+ *     <tr><td class="col-md-1">6.</td>
+ *       <td class="col-md-5">Sets local <code>OFFER</code><sup>REF</sup></td><td>-</td></tr>
+ *     <tr><td class="col-md-1">7.</td>
+ *       <td class="col-md-5">Sends <code>OFFER</code></td><td>-</td></tr>
+ *   </tbody>
+ * </table>
+ * <sup>REF</sup>: The will cause {{#crossLink "Skylink/PEER_CONNECTION_STATE:attr"}}PEER_CONNECTION_STATE{{/crossLink}}
+ *   state go to <code>HAVE_LOCAL_OFFER</code>.
+ * @param {String} OFFER <small>Value <code>"offer"</code></small>
+ *   The state when Peer received <code>OFFER</code> from self.
+ * At this state, Peer would set the remote <code>OFFER</code> session description and
+ *   start to send local <code>ANSWER</code> session description to self.<br>
+ * <table class="table table-condensed">
+ *   <thead><tr><th class="col-md-1"></th><th class="col-md-5">Self</th><th>Peer</th></thead>
+ *   <tbody>
+ *     <tr><td class="col-md-1">8.</td>
+ *        <td class="col-md-5">-</td><td>Receives <code>OFFER</code></td></tr>
+ *     <tr><td class="col-md-1">9.</td>
+ *        <td class="col-md-5">-</td><td>Sets remote <code>OFFER</code><sup>REF</sup></td></tr>
+ *     <tr><td class="col-md-1">10.</td>
+ *        <td class="col-md-5">-</td><td>Generates <code>ANSWER</code></td></tr>
+ *     <tr><td class="col-md-1">11.</td>
+ *        <td class="col-md-5">-</td><td>Sets local <code>ANSWER</code></td></tr>
+ *     <tr><td class="col-md-1">12.</td>
+ *        <td class="col-md-5">-</td><td>Sends <code>ANSWER</code></td></tr>
+ *   </tbody>
+ * </table>
+ * <sup>REF</sup>: The will cause {{#crossLink "Skylink/PEER_CONNECTION_STATE:attr"}}PEER_CONNECTION_STATE{{/crossLink}}
+ *   state go to <code>HAVE_REMOTE_OFFER</code>.
+ * @param {String} ANSWER <small>Value <code>"answer"</code></small>
+ *   The state when self received <code>ANSWER</code> from Peer.<br>
+ * At this state, self would set the remote <code>ANSWER</code> session description and
+ *   the connection handshaking progress has been completed.<br>
+ * <table class="table table-condensed">
+ *   <thead><tr><th class="col-md-1"></th><th class="col-md-5">Self</th><th>Peer</th></thead>
+ *   <tbody>
+ *     <tr><td class="col-md-1">13.</td>
+ *        <td class="col-md-5">Receives <code>ANSWER</code></td><td>-</td></tr>
+ *     <tr><td class="col-md-1">14.</td>
+ *        <td class="col-md-5">Sets remote <code>ANSWER</code></td><td>-</td></tr>
+ *   </tbody>
+ * </table>
+ * @param {String} ERROR <small>Value <code>"error"</code></small>
+ *   The state when connection handshake has occurred and exception,
+ *   in this which the connection handshake could have been aborted abruptly
+ *   and no Peer connection is established.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.1.0
+ */
+Skylink.prototype.HANDSHAKE_PROGRESS = {
+  ENTER: 'enter',
+  WELCOME: 'welcome',
+  OFFER: 'offer',
+  ANSWER: 'answer',
+  ERROR: 'error'
+};
+
+/**
+ * These are the list of Peer list retrieval states that Skylink would trigger.
+ * - This relates to and requires the Privileged Key feature where Peers using
+ *   that Privileged alias Key becomes a privileged Peer with privileged functionalities.
+ * @attribute GET_PEERS_STATE
+ * @type JSON
+ * @param {String} ENQUIRED <small>Value <code>"enquired"</code></small>
+ *   The state when the privileged Peer already enquired signaling for list of peers.
+ * @param {String} RECEIVED <small>Value <code>"received"</code></small>
+ *   The state when the privileged Peer received list of peers from signaling.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.GET_PEERS_STATE = {
+  ENQUIRED: 'enquired',
+  RECEIVED: 'received'
+};
+
+/**
+ * These are the list of Peer introduction states that Skylink would trigger.
+ * - This relates to and requires the Privileged Key feature where Peers using
+ *   that Privileged alias Key becomes a privileged Peer with privileged functionalities.
+ * @attribute INTRODUCE_STATE
+ * @type JSON
+ * @param {String} INTRODUCING <small>Value <code>"enquired"</code></small>
+ *   The state when the privileged Peer have sent the introduction signal.
+ * @param {String} ERROR <small>Value <code>"error"</code></small>
+ *   The state when the Peer introduction has occurred an exception.
+ * @readOnly
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.INTRODUCE_STATE = {
+  INTRODUCING: 'introducing',
+  ERROR: 'error'
+};
+
+/**
+ * These are the list of platform signaling system actions that Skylink would be given with.
+ * - Upon receiving from the signaling, the application has to reflect the
+ *   relevant actions given.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION_REASON:attribute"}}SYSTEM_ACTION_REASON{{/crossLink}}
+ *   for the types of system action reasons that would be given.
+ * @attribute SYSTEM_ACTION
+ * @type JSON
+ * @param {String} WARNING <small>Value <code>"warning"</code></small>
+ *   This action serves a warning to self. Usually if
+ *   warning is not heeded, it may result in an <code>REJECT</code> action.
+ * @param {String} REJECT <small>Value <code>"reject"</code></small>
+ *   This action means that self has been kicked out
+ *   of the current signaling room connection, and subsequent Peer connections
+ *   would be disconnected.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.1
+ */
+Skylink.prototype.SYSTEM_ACTION = {
+  WARNING: 'warning',
+  REJECT: 'reject'
+};
+
+/**
+ * These are the list of Skylink platform signaling codes as the reason
+ *   for the system action given by the platform signaling that Skylink would receive.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
+ *   for the types of system actions that would be given.
+ * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
+ *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
+ * @attribute SYSTEM_ACTION_REASON
+ * @type JSON
+ * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when room is locked and self is rejected from joining the room.
+ * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the credentials given is already in use, which the platform signaling
+ *   throws an exception for this error.<br>
+ * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
+ * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the connection with the platform signaling has an exception with self.<br>
+ * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
+ * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has expired so self is unable to join the room as
+ *   the end time of the meeting has ended.<br>
+ * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
+ *   from the room as the meeting is over.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
+ *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
+ *   users before self is rejected from the room.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.2
+ */
+Skylink.prototype.SYSTEM_ACTION_REASON = {
+  //FAST_MESSAGE: 'fastmsg',
+  ROOM_LOCKED: 'locked',
+  //ROOM_FULL: 'roomfull',
+  DUPLICATED_LOGIN: 'duplicatedLogin',
+  SERVER_ERROR: 'serverError',
+  //VERIFICATION: 'verification',
+  EXPIRED: 'expired',
+  ROOM_CLOSED: 'roomclose',
+  ROOM_CLOSING: 'toclose'
+};
+
+/**
+ * These are the logging levels that Skylink provides.
+ * - This manipulates the debugging messages sent to <code>console</code> object.
+ * - Refer to [Javascript Web Console](https://developer.mozilla.org/en/docs/Web/API/console).
+ * @attribute LOG_LEVEL
+ * @type JSON
+ * @param {Number} DEBUG <small>Value <code>4</code> | Level higher than <code>LOG</code></small>
+ *   Displays debugging logs from <code>LOG</code> level onwards with <code>DEBUG</code> logs.
+ * @param {Number} LOG <small>Value <code>3</code> | Level higher than <code>INFO</code></small>
+ *   Displays debugging logs from <code>INFO</code> level onwards with <code>LOG</code> logs.
+ * @param {Number} INFO <small>Value <code>2</code> | Level higher than <code>WARN</code></small>
+ *   Displays debugging logs from <code>WARN</code> level onwards with <code>INFO</code> logs.
+ * @param {Number} WARN <small>Value <code>1</code> | Level higher than <code>ERROR</code></small>
+ *   Displays debugging logs of <code>ERROR</code> level with <code>WARN</code> logs.
+ * @param {Number} ERROR <small><b>DEFAULT</b> | Value <code>0</code> | Lowest level</small>
+ *   Displays only <code>ERROR</code> logs.
+ * @readOnly
+ * @component Log
+ * @for Skylink
+ * @since 0.5.4
+ */
+Skylink.prototype.LOG_LEVEL = {
+  DEBUG: 4,
+  LOG: 3,
+  INFO: 2,
+  WARN: 1,
+  ERROR: 0
+};
+
+/**
+ * These are the list of socket connection error states that Skylink would trigger.
+ * - These error states references the [socket.io-client events](http://socket.io/docs/client-api/).
+ * @attribute SOCKET_ERROR
+ * @type JSON
+ * @param {Number} CONNECTION_FAILED <small>Value <code>0</code></small>
+ *   The error state when Skylink have failed to establish a socket connection with
+ *   platform signaling in the first attempt.
+ * @param {String} RECONNECTION_FAILED <small>Value <code>-1</code></small>
+ *   The error state when Skylink have failed to
+ *   reestablish a socket connection with platform signaling after the first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} CONNECTION_ABORTED <small>Value <code>-2</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after the failed first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ABORTED <small>Value <code>-3</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after several failed reattempts
+ *   <code>RECONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ATTEMPT <small>Value <code>-4</code></small>
+ *   The error state when Skylink is attempting to reestablish
+ *   a socket connection with platform signaling after a failed attempt
+ *   <code>CONNECTION_FAILED</code> or <code>RECONNECTION_FAILED</code>.
+ * @readOnly
+ * @component Socket
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.SOCKET_ERROR = {
+  CONNECTION_FAILED: 0,
+  RECONNECTION_FAILED: -1,
+  CONNECTION_ABORTED: -2,
+  RECONNECTION_ABORTED: -3,
+  RECONNECTION_ATTEMPT: -4
+};
+
+/**
+ * The current version of the internal <u>Signaling Message (SM)</u> Protocol that Skylink is using.<br>
+ * - This is not a feature for developers to use but rather for SDK developers to
+ *   see the Protocol version used in this Skylink version.
+ * - In some cases, this information may be used for reporting issues with Skylink.
+ * - SM_PROTOCOL VERSION: <code>0.1.</code>.
+ * @attribute SM_PROTOCOL_VERSION
+ * @type String
+ * @required
+ * @component Socket
+ * @for Skylink
+ * @since 0.6.0
+ */
+Skylink.prototype.SM_PROTOCOL_VERSION = '0.1.1';
+
+/**
+ * These are the list of available video codecs settings that Skylink would use
+ *   when streaming video stream with Peers.
+ * - The video codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>VP8</code> is
+ *   used by default.
+ * @attribute VIDEO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any video codec selected by the browser generated session description.
+ * @param {String} VP8 <small>Value <code>"VP8"</code></small>
+ *   The option to let Skylink use the [VP8](https://en.wikipedia.org/wiki/VP8) codec.<br>
+ *   This is the common and mandantory video codec used by most browsers.
+ * @param {String} H264 <small>Value <code>"H264"</code></small>
+ *   The option to let Skylink use the [H264](https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC) codec.<br>
+ *   This only works if the browser supports the H264 video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.VIDEO_CODEC = {
+  AUTO: 'auto',
+  VP8: 'VP8',
+  H264: 'H264'
+};
+
+/**
+ * These are the list of available audio codecs settings that Skylink would use
+ *   when streaming audio stream with Peers.
+ * - The audio codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>OPUS</code> is
+ *   used by default.
+ * @attribute AUDIO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any audio codec selected by the browser generated session description.
+ * @param {String} OPUS <small>Value <code>"opus"</code></small>
+ *   The option to let Skylink use the [OPUS](https://en.wikipedia.org/wiki/Opus_(audio_format)) codec.<br>
+ *   This is the common and mandantory audio codec used.
+ * @param {String} ISAC <small>Value <code>"ISAC"</code></small>
+ *   The option to let Skylink use the [iSAC](https://en.wikipedia.org/wiki/Internet_Speech_Audio_Codec).<br>
+ *   This only works if the browser supports the iSAC video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.AUDIO_CODEC = {
+  AUTO: 'auto',
+  ISAC: 'ISAC',
+  OPUS: 'opus'
+};
+
+/**
+ * These are the list of socket connection error states that Skylink would trigger.
+ * - These error states references the [socket.io-client events](http://socket.io/docs/client-api/).
+ * @attribute SOCKET_ERROR
+ * @type JSON
+ * @param {Number} CONNECTION_FAILED <small>Value <code>0</code></small>
+ *   The error state when Skylink have failed to establish a socket connection with
+ *   platform signaling in the first attempt.
+ * @param {String} RECONNECTION_FAILED <small>Value <code>-1</code></small>
+ *   The error state when Skylink have failed to
+ *   reestablish a socket connection with platform signaling after the first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} CONNECTION_ABORTED <small>Value <code>-2</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after the failed first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ABORTED <small>Value <code>-3</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after several failed reattempts
+ *   <code>RECONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ATTEMPT <small>Value <code>-4</code></small>
+ *   The error state when Skylink is attempting to reestablish
+ *   a socket connection with platform signaling after a failed attempt
+ *   <code>CONNECTION_FAILED</code> or <code>RECONNECTION_FAILED</code>.
+ * @readOnly
+ * @component Socket
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.SOCKET_ERROR = {
+  CONNECTION_FAILED: 0,
+  RECONNECTION_FAILED: -1,
+  CONNECTION_ABORTED: -2,
+  RECONNECTION_ABORTED: -3,
+  RECONNECTION_ATTEMPT: -4
+};
+
+/**
+ * These are the list of fallback attempt types that Skylink would attempt with.
+ * @attribute SOCKET_FALLBACK
+ * @type JSON
+ * @param {String} NON_FALLBACK <small>Value <code>"nonfallback"</code> | Protocol <code>"http:"</code>,
+ * <code>"https:"</code> | Transports <code>"WebSocket"</code>, <code>"Polling"</code></small>
+ *   The current socket connection attempt
+ *   is using the first selected socket connection port for
+ *   the current selected transport <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} FALLBACK_PORT <small>Value <code>"fallbackPortNonSSL"</code> | Protocol <code>"http:"</code>
+ *  | Transports <code>"WebSocket"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTP</code> protocol connection with the current selected transport
+ *   <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} FALLBACK_PORT_SSL <small>Value <code>"fallbackPortSSL"</code> | Protocol <code>"https:"</code>
+ *  | Transports <code>"WebSocket"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTPS</code> protocol connection with the current selected transport
+ *   <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} LONG_POLLING <small>Value <code>"fallbackLongPollingNonSSL"</code> | Protocol <code>"http:"</code>
+ *  | Transports <code>"Polling"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTP</code> protocol connection with <code>"Polling"</code> after
+ *   many attempts of <code>"WebSocket"</code> has failed.
+ *   This occurs only for socket connection that is originally using
+ *   <code>"WebSocket"</code> transports.
+ * @param {String} LONG_POLLING_SSL <small>Value <code>"fallbackLongPollingSSL"</code> | Protocol <code>"https:"</code>
+ *  | Transports <code>"Polling"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTPS</code> protocol connection with <code>"Polling"</code> after
+ *   many attempts of <code>"WebSocket"</code> has failed.
+ *   This occurs only for socket connection that is originally using
+ *   <code>"WebSocket"</code> transports.
+ * @readOnly
+ * @component Socket
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.SOCKET_FALLBACK = {
+  NON_FALLBACK: 'nonfallback',
+  FALLBACK_PORT: 'fallbackPortNonSSL',
+  FALLBACK_SSL_PORT: 'fallbackPortSSL',
+  LONG_POLLING: 'fallbackLongPollingNonSSL',
+  LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+};
+
+/**
+ * These are the list of platform signaling system actions that Skylink would be given with.
+ * - Upon receiving from the signaling, the application has to reflect the
+ *   relevant actions given.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION_REASON:attribute"}}SYSTEM_ACTION_REASON{{/crossLink}}
+ *   for the types of system action reasons that would be given.
+ * @attribute SYSTEM_ACTION
+ * @type JSON
+ * @param {String} WARNING <small>Value <code>"warning"</code></small>
+ *   This action serves a warning to self. Usually if
+ *   warning is not heeded, it may result in an <code>REJECT</code> action.
+ * @param {String} REJECT <small>Value <code>"reject"</code></small>
+ *   This action means that self has been kicked out
+ *   of the current signaling room connection, and subsequent Peer connections
+ *   would be disconnected.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.1
+ */
+Skylink.prototype.SYSTEM_ACTION = {
+  WARNING: 'warning',
+  REJECT: 'reject'
+};
+
+/**
+ * These are the list of Skylink platform signaling codes as the reason
+ *   for the system action given by the platform signaling that Skylink would receive.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
+ *   for the types of system actions that would be given.
+ * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
+ *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
+ * @attribute SYSTEM_ACTION_REASON
+ * @type JSON
+ * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when room is locked and self is rejected from joining the room.
+ * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the credentials given is already in use, which the platform signaling
+ *   throws an exception for this error.<br>
+ * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
+ * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the connection with the platform signaling has an exception with self.<br>
+ * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
+ * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has expired so self is unable to join the room as
+ *   the end time of the meeting has ended.<br>
+ * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
+ *   from the room as the meeting is over.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
+ *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
+ *   users before self is rejected from the room.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.2
+ */
+Skylink.prototype.SYSTEM_ACTION_REASON = {
+  //FAST_MESSAGE: 'fastmsg',
+  ROOM_LOCKED: 'locked',
+  //ROOM_FULL: 'roomfull',
+  DUPLICATED_LOGIN: 'duplicatedLogin',
+  SERVER_ERROR: 'serverError',
+  //VERIFICATION: 'verification',
+  EXPIRED: 'expired',
+  ROOM_CLOSED: 'roomclose',
+  ROOM_CLOSING: 'toclose'
+};
+
+/**
+ * The current version of the internal <u>Signaling Message (SM)</u> Protocol that Skylink is using.<br>
+ * - This is not a feature for developers to use but rather for SDK developers to
+ *   see the Protocol version used in this Skylink version.
+ * - In some cases, this information may be used for reporting issues with Skylink.
+ * - SM_PROTOCOL VERSION: <code>0.1.</code>.
+ * @attribute SM_PROTOCOL_VERSION
+ * @type String
+ * @required
+ * @component Socket
+ * @for Skylink
+ * @since 0.6.0
+ */
+Skylink.prototype.SM_PROTOCOL_VERSION = '0.1.1';
+
+/**
+ * These are the list of available video codecs settings that Skylink would use
+ *   when streaming video stream with Peers.
+ * - The video codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>VP8</code> is
+ *   used by default.
+ * @attribute VIDEO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any video codec selected by the browser generated session description.
+ * @param {String} VP8 <small>Value <code>"VP8"</code></small>
+ *   The option to let Skylink use the [VP8](https://en.wikipedia.org/wiki/VP8) codec.<br>
+ *   This is the common and mandantory video codec used by most browsers.
+ * @param {String} H264 <small>Value <code>"H264"</code></small>
+ *   The option to let Skylink use the [H264](https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC) codec.<br>
+ *   This only works if the browser supports the H264 video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.VIDEO_CODEC = {
+  AUTO: 'auto',
+  VP8: 'VP8',
+  H264: 'H264'
+};
+
+/**
+ * These are the list of available audio codecs settings that Skylink would use
+ *   when streaming audio stream with Peers.
+ * - The audio codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>OPUS</code> is
+ *   used by default.
+ * @attribute AUDIO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any audio codec selected by the browser generated session description.
+ * @param {String} OPUS <small>Value <code>"opus"</code></small>
+ *   The option to let Skylink use the [OPUS](https://en.wikipedia.org/wiki/Opus_(audio_format)) codec.<br>
+ *   This is the common and mandantory audio codec used.
+ * @param {String} ISAC <small>Value <code>"ISAC"</code></small>
+ *   The option to let Skylink use the [iSAC](https://en.wikipedia.org/wiki/Internet_Speech_Audio_Codec).<br>
+ *   This only works if the browser supports the iSAC video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.AUDIO_CODEC = {
+  AUTO: 'auto',
+  ISAC: 'ISAC',
+  OPUS: 'opus'
+};
+
+/**
+ * These are the list of suggested video resolutions that Skylink should configure
+ *   when retrieving self user media video stream.
+ * - Setting the resolution may not force set the resolution provided as it
+ *   depends on the how the browser handles the resolution.
+ * - It's recommended to use video resolution option to maximum <code>FHD</code>, as the other
+ *   resolution options may be unrealistic and create performance issues. However, we provide them
+ *   to allow developers to test with the browser capability, but do use it at your own risk.
+ * - The higher the resolution, the more CPU usage might be used, hence it's recommended to
+ *   use the default option <code>VGA</code>.
+ * - This follows the
+ *   [Wikipedia Graphics display resolution page](https://en.wikipedia.org/wiki/Graphics_display_resolution#Video_Graphics_Array)
+ * @param {JSON} QQVGA <small>Value <code>{ width: 160, height: 120 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use QQVGA resolution.
+ * @param {JSON} HQVGA <small>Value <code>{ width: 240, height: 160 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use HQVGA resolution.
+ * @param {JSON} QVGA <small>Value <code>{ width: 320, height: 240 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use QVGA resolution.
+ * @param {JSON} WQVGA <small>Value <code>{ width: 384, height: 240 }</code> | Aspect Ratio <code>16:10</code></small>
+ *   The option to use WQVGA resolution.
+ * @param {JSON} HVGA <small>Value <code>{ width: 480, height: 320 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use HVGA resolution.
+ * @param {JSON} VGA <small><b>DEFAULT</b> | Value <code>{ width: 640, height: 480 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use VGA resolution.
+ * @param {JSON} WVGA <small>Value <code>{ width: 768, height: 480 }</code> | Aspect Ratio <code>16:10</code></small>
+ *   The option to use WVGA resolution.
+ * @param {JSON} FWVGA <small>Value <code>{ width: 854, height: 480 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FWVGA resolution.
+ * @param {JSON} SVGA <small>Value <code>{ width: 800, height: 600 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use SVGA resolution.
+ * @param {JSON} DVGA <small>Value <code>{ width: 960, height: 640 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use DVGA resolution.
+ * @param {JSON} WSVGA <small>Value <code>{ width: 1024, height: 576 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use WSVGA resolution.
+ * @param {JSON} HD <small>Value <code>{ width: 1280, height: 720 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use HD resolution.
+ * @param {JSON} HDPLUS <small>Value <code>{ width: 1600, height: 900 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use HDPLUS resolution.
+ * @param {JSON} FHD <small>Value <code>{ width: 1920, height: 1080 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FHD resolution.
+ * @param {JSON} QHD <small>Value <code>{ width: 2560, height: 1440 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use QHD resolution.
+ * @param {JSON} WQXGAPLUS <small>Value <code>{ width: 3200, height: 1800 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use WQXGAPLUS resolution.
+ * @param {JSON} UHD <small>Value <code>{ width: 3840, height: 2160 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use UHD resolution.
+ * @param {JSON} UHDPLUS <small>Value <code>{ width: 5120, height: 2880 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use UHDPLUS resolution.
+ * @param {JSON} FUHD <small>Value <code>{ width: 7680, height: 4320 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FUHD resolution.
+ * @param {JSON} QUHD <small>Value <code>{ width: 15360, height: 8640 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use QUHD resolution.
+ * @attribute VIDEO_RESOLUTION
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.VIDEO_RESOLUTION = {
+  QQVGA: { width: 160, height: 120, aspectRatio: '4:3' },
+  HQVGA: { width: 240, height: 160, aspectRatio: '3:2' },
+  QVGA: { width: 320, height: 240, aspectRatio: '4:3' },
+  WQVGA: { width: 384, height: 240, aspectRatio: '16:10' },
+  HVGA: { width: 480, height: 320, aspectRatio: '3:2' },
+  VGA: { width: 640, height: 480, aspectRatio: '4:3' },
+  WVGA: { width: 768, height: 480, aspectRatio: '16:10' },
+  FWVGA: { width: 854, height: 480, aspectRatio: '16:9' },
+  SVGA: { width: 800, height: 600, aspectRatio: '4:3' },
+  DVGA: { width: 960, height: 640, aspectRatio: '3:2' },
+  WSVGA: { width: 1024, height: 576, aspectRatio: '16:9' },
+  HD: { width: 1280, height: 720, aspectRatio: '16:9' },
+  HDPLUS: { width: 1600, height: 900, aspectRatio: '16:9' },
+  FHD: { width: 1920, height: 1080, aspectRatio: '16:9' },
+  QHD: { width: 2560, height: 1440, aspectRatio: '16:9' },
+  WQXGAPLUS: { width: 3200, height: 1800, aspectRatio: '16:9' },
+  UHD: { width: 3840, height: 2160, aspectRatio: '16:9' },
+  UHDPLUS: { width: 5120, height: 2880, aspectRatio: '16:9' },
+  FUHD: { width: 7680, height: 4320, aspectRatio: '16:9' },
+  QUHD: { width: 15360, height: 8640, aspectRatio: '16:9' }
+};
+
+
+this.Skylink = Skylink;
+
 Skylink.prototype._enableDataChannel = true;
 
 /**
@@ -9210,21 +10226,6 @@ Skylink.prototype._assembleDataURL = function(dataURLArray) {
 
   return outputStr;
 };
-Skylink.prototype.DT_PROTOCOL_VERSION = '0.1.0';
-
-/**
- * The fixed delimiter that is used in Skylink to
- *   concat the DataChannel channelName and the actual
- *   transfer ID together based on the transfer ID provided in
- *   {{#crossLink "Skylink/dataTransferState:event"}}dataTransferState{{/crossLink}}.
- * @attribute _TRANSFER_DELIMITER
- * @type String
- * @final
- * @private
- * @component DataTransfer
- * @for Skylink
- * @since 0.5.10
- */
 Skylink.prototype._TRANSFER_DELIMITER = '_skylink__';
 
 /**
@@ -12208,33 +13209,3517 @@ Skylink.prototype._setIceServers = function(givenConfig) {
     iceServers: newIceServers
   };
 };
-Skylink.prototype.PEER_CONNECTION_STATE = {
-  STABLE: 'stable',
-  HAVE_LOCAL_OFFER: 'have-local-offer',
-  HAVE_REMOTE_OFFER: 'have-remote-offer',
-  CLOSED: 'closed'
+Skylink.prototype._messageConstructJoinRoom = function () {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'joinRoom',
+
+    // Room credentials
+    rid: _this._room.session.data.room_key,
+
+    // "joinRoom" information
+    uid: _this._room.session.data.username,
+    cid: _this._room.session.data.cid,
+    userCred: _this._room.session.data.userCred,
+    timeStamp: _this._room.session.data.timeStamp,
+    apiOwner: _this._room.session.data.apiOwner,
+    roomCred: _this._room.session.data.roomCred,
+    start: _this._room.session.data.start,
+    len: _this._room.session.data.len,
+    // Default to false if undefined
+    isPrivileged: _this._privileged.privileged,
+    // Default to true if undefined
+    autoIntroduce: _this._privileged.autoIntroduce
+
+  });
 };
 
 /**
- * These are the types of server Peers that Skylink would connect with.
- * - Different server Peers that serves different functionalities.
- * - The server Peers functionalities are only available depending on the
- *   Application Key configuration.
- * - Eventually, this list will be populated as there are more server Peer
- *   functionalities provided by the Skylink platform.
- * @attribute SERVER_PEER_TYPE
- * @param {String} MCU <small>Value <code>"mcu"</code></small>
- *   This server Peer is a MCU server connection.
+ * Constructs the message type "enter".
+ * @method _messageConstructEnter
+ * @param {String} peerId The target Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructEnter = function (peerId) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'enter',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "enter" information
+    user: {
+      agent: {
+        name: _this._user.agent.name,
+        version: _this._user.agent.version,
+        os: _this._user.agent.os
+      },
+      data: _this._user.data
+    },
+    stream: null,
+    connection: {
+      trickleICE: _this._room.config.current.enableIceTrickle,
+      dataChannel: _this._room.config.current.enableDataChannel,
+      stereo: _this._user.session.stereo
+    },
+    tieBreaker: _this._user.session.tieBreaker
+
+  });
+};
+
+/**
+ * Constructs the message type "welcome".
+ * @method _messageConstructWelcome
+ * @param {String} peerId The target Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructWelcome = function (peerId) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'welcome',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "welcome" information
+    user: {
+      agent: {
+        name: _this._user.agent.name,
+        version: _this._user.agent.version,
+        os: _this._user.agent.os
+      },
+      data: _this._user.data
+    },
+    stream: null,
+    connection: {
+      trickleICE: _this._room.config.current.enableIceTrickle,
+      dataChannel: _this._room.config.current.enableDataChannel,
+      stereo: _this._user.session.stereo
+    },
+    tieBreaker: _this._user.session.tieBreaker
+
+  });
+};
+
+/**
+ * Constructs the message type "restart".
+ * @method _messageConstructRestart
+ * @param {String} peerId The target Peer session ID.
+ * @param {Boolean} hardRestart The flag that indicates if Peer connection should
+ *   be constructed again.
+ * @param {Boolean} iceRestart The flag that indicates if Peer connection should
+ *   ICE restart.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructRestart = function (peerId, hardRestart, iceRestart) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'restart',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "restart" information
+    user: {
+      agent: {
+        name: _this._user.agent.name,
+        version: _this._user.agent.version,
+        os: _this._user.agent.os
+      },
+      data: _this._user.data
+    },
+    stream: null,
+    connection: {
+      trickleICE: _this._room.config.current.enableIceTrickle,
+      dataChannel: _this._room.config.current.enableDataChannel,
+      stereo: _this._user.session.stereo
+    },
+    tieBreaker: _this._user.session.tieBreaker,
+    hardRestart: hardRestart === true,
+    iceRestart: iceRestart === true
+
+  });
+};
+
+/**
+ * Constructs the message type "offer".
+ * @method _messageConstructOffer
+ * @param {String} peerId The target Peer session ID.
+ * @param {RTCSessionDescription} sessionDescription The local offer RTCSessionDescription object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructOffer = function (peerId, sessionDescription) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'offer',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "offer" information
+    sdp: sessionDescription.sdp
+
+  });
+};
+
+/**
+ * Constructs the message type "answer".
+ * @method _messageConstructOffer
+ * @param {String} peerId The target Peer session ID.
+ * @param {RTCSessionDescription} sessionDescription The local answer RTCSessionDescription object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructAnswer = function (peerId, sessionDescription) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'answer',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "offer" information
+    sdp: sessionDescription.sdp
+
+  });
+};
+
+/**
+ * Constructs the message type "candidate".
+ * @method _messageConstructCandidate
+ * @param {String} peerId The target Peer session ID.
+ * @param {RTCIceCandidate} candidate The local generated RTCIceCandidate object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructCandidate = function (peerId, candidate) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'candidate',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // Target Peer session ID
+    target: peerId,
+
+    // "candidate" information
+    sdpMLineIndex: candidate.sdpMLineIndex,
+    sdpMid: candidate.sdpMid,
+    candidate: candidate.candidate
+
+  });
+};
+
+/**
+ * Constructs the message type "updateUserEvent".
+ * @method _messageConstructUpdateUserEvent
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructUpdateUserEvent = function () {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'updateUserEvent',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // "updateUserEvent" information
+    data: _this._user.data
+
+  });
+};
+
+/**
+ * Constructs the message type "roomLockEvent".
+ * @method _messageConstructRoomLockEvent
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructRoomLockEvent = function () {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'roomLockEvent',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // "roomLockEvent" information
+    lock: _this._room.locked
+
+  });
+};
+
+/**
+ * Constructs the message type "public".
+ * @method _messageConstructPublic
+ * @param {Any} message The custom message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructPublic = function (message) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'public',
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // "public" information
+    message: message
+
+  });
+};
+
+/**
+ * Constructs the message type "private".
+ * @method _messageConstructPrivate
+ * @param {String} peerId The target Peer session ID.
+ * @param {Any} message The custom message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructPrivate = function (peerId, message) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'private',
+
+    // Target Peer session ID
+    target: peerId,
+
+    // Room credentials
+    mid: _this._user.session.id,
+    rid: _this._room.session.data.room_key,
+
+    // "public" information
+    message: message
+
+  });
+};
+
+/**
+ * Constructs the message type "getPeers".
+ * @method _messageConstructGetPeers
+ * @param {Boolean} showAll The flag that indicates if returned list should
+ *   also include privileged and standard in the list.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructGetPeers = function (showAll) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'getPeers',
+
+    // "getPeers" information
+    privilegedKey: _this._room.config.current.appKey,
+    parentKey: _this._privileged.parentKey,
+    showAll: showAll === true
+
+  });
+};
+
+/**
+ * Constructs the message type "introduce".
+ * @method _messageConstructIntroduce
+ * @param {String} sendingPeerId The Peer session ID who
+ *   initiates the connection with the introduced Peer.
+ * @param {String} receivingPeerId The Peer session ID of the
+ *   introduced peer who would be introduced to the initiator Peer.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageConstructIntroduce = function (sendingPeerId, receivingPeerId) {
+  var _this = this;
+
+  _this._socketSendMessage({
+
+    // Message type
+    type: 'introduce',
+
+    // "introduce" information
+    sendingPeerId: sendingPeerId,
+    receivingPeerId: receivingPeerId
+
+  });
+};
+
+/**
+ * Routes the message object received to the reactor.
+ * @method _messageReactRouter
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactRouter = function (message) {
+  var _this = this;
+
+  // For type -> "inRoom"
+  if (message.type === 'inRoom') {
+    _this._messageReactToInRoom(message);
+
+  // For type -> "enter"
+  } else if (message.type === 'enter') {
+    _this._messageReactToEnter(message);
+
+  // For type -> "welcome"
+  } else if (message.type === 'welcome') {
+    _this._messageReactToWelcome(message);
+
+  // For type -> "restart"
+  } else if (message.type === 'restart') {
+    _this._messageReactToRestart(message);
+
+  // For type -> "offer"
+  } else if (message.type === 'offer') {
+    _this._messageReactToOffer(message);
+
+  // For type -> "answer"
+  } else if (message.type === 'answer') {
+    _this._messageReactToAnswer(message);
+
+  // For type -> "candidate"
+  } else if (message.type === 'candidate') {
+    _this._messageReactToCandidate(message);
+
+  // For type -> "updateUserEvent"
+  } else if (message.type === 'updateUserEvent') {
+    _this._messageReactToUpdateUserEvent(message);
+
+  // For type -> "stream"
+  } else if (message.type === 'stream') {
+    _this._messageReactToStream(message);
+
+  // For type -> "roomLockEvent"
+  } else if (message.type === 'roomLockEvent') {
+    _this._messageReactToRoomLockEvent(message);
+
+  // For type -> "peerList"
+  } else if (message.type === 'peerList') {
+    _this._messageReactToPeerList(message);
+
+  // For type -> "introduceError"
+  } else if (message.type === 'introduceError') {
+    _this._messageReactToIntroduceError(message);
+
+  // For type -> "approach"
+  } else if (message.type === 'approach') {
+    _this._messageReactToApproach(message);
+
+  // For type -> "redirect"
+  } else if (message.type === 'redirect') {
+    _this._messageReactToRedirect(message);
+
+  // For type -> "bye"
+  } else if (message.type === 'bye') {
+    _this._messageReactToBye(message);
+
+  // For type that does not exists
+  } else {
+    log.warn([message.mid, 'Room', message.type, 'Ignoring message received as it is unknown ->'], message);
+  }
+};
+
+/**
+ * Reacts to the message type "inRoom".
+ * @method _messageReactToInRoom
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToInRoom = function (message) {
+  var _this = this;
+
+  _this._user.session.id = message.sid;
+  _this._user.session.tieBreaker = (new Date ()).getTime();
+  _this._user.session.ICE.useCandidates.current = _this._user.session.ICE.useCandidates.default;
+
+  if (typeof message.tieBreaker === 'number') {
+    _this._user.session.tieBreaker = message.tieBreaker;
+  }
+
+  // Firefox connections should always be the answerer with other types of agents
+  if (_this._user.agent.name === 'firefox') {
+    _this._user.session.tieBreaker -= 100000000000;
+  }
+
+  // Parse the ICE servers
+  if (message.pc_config && Array.isArray(message.pc_config.iceServers)) {
+    _this._user.session.ICE.servers = message.pc_config.iceServers;
+  }
+
+  // Set the ICE candidates if relay if force set
+  if (_this._room.config.current.forceTURN) {
+    _this._user.session.ICE.useCandidates.current = ['relay'];
+  }
+
+
+  _this._messageConstructEnter(null);
+};
+
+/**
+ * Reacts to message type "enter".
+ * @method _messageReactToEnter
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToEnter = function (message) {
+  var _this = this;
+
+  // Check if Peer session exists, if not create it
+  if (!_this._peers[message.mid]) {
+    // Construct the Peer session for this Peer
+    _this._peerCreate(message.mid, message);
+  }
+
+  // Send "welcome" message
+  _this._messageConstructWelcome(message.mid);
+};
+
+/**
+ * Reacts to message type "welcome".
+ * @method _messageReactToWelcome
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToWelcome = function (message) {
+  var _this = this;
+
+  // Check if Peer session exists, if not create it
+  if (!_this._peers[message.mid]) {
+    // Construct the Peer session for this Peer
+    _this._peerCreate(message.mid, message);
+  }
+
+  // Check if Peer should start offer first
+  if (_this._user.session.tieBreaker > message.tieBreaker) {
+    _this._peerConnectHandshakeOffer(message.mid, false);
+    return;
+  }
+
+  // Send the "welcome" message again because it's not meant to be
+  _this._messageConstructWelcome(message.mid);
+};
+
+/**
+ * Reacts to message type "restart".
+ * @method _messageReactToRestart
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToRestart = function (message) {
+  var _this = this;
+
+  // Check if Peer session exists, if not create it
+  if (!_this._peers[message.mid]) {
+    log.debug([message.mid, 'Peer', null, 'Ignoring reconnection request as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[message.mid].connection.dead) {
+    log.debug([message.mid, 'Peer', null, 'Ignoring reconnection request as session is dead']);
+    return;
+  }
+
+  // Check if Peer connection exists, if not create it
+  if (!_this._peers[message.mid].peer) {
+    log.debug([message.mid, 'Peer', null, 'Constructing connection for request as it does not exists']);
+    _this._peerConnect(message.mid);
+
+  // Check if Peer connection requires construction again
+  } else if (message.hardRestart) {
+    log.debug([message.mid, 'Peer', null, 'Reconstructing connection from request']);
+    _this._peerDisconnect(message.mid);
+    _this._peerConnect(message.mid);
+
+  }
+
+  // Check if Peer should start offer first
+  if (_this._user.session.tieBreaker > message.tieBreaker) {
+    _this._peerConnectHandshakeOffer(message.mid, message.iceRestart);
+    _this._peerConnectMonitor(message.mid);
+    return;
+  }
+
+  // Send the "restart" message again because it's not meant to be
+  _this._messageConstructRestart(message.mid, false, message.iceRestart);
+  _this._peerConnectMonitor(message.mid);
+};
+
+/**
+ * Reacts to message type "offer".
+ * @method _messageReactToOffer
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToOffer = function (message) {
+  var _this = this;
+  var offer = new RTCSessionDescription({
+    type: 'offer',
+    sdp: message.sdp
+  });
+
+  // Check if Peer session exists
+  if (!_this._peers[message.mid]) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote offer received as Peer does not have existing session ->'], offer);
+    return;
+  }
+
+  // Check if Peer connection exists
+  if (!_this._peers[message.mid].peer) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote offer received as Peer does not have existing connection ->'], offer);
+    return;
+  }
+
+  _this._peerConnectHandshakeAnswer(message.mid, offer);
+};
+
+/**
+ * Reacts to message type "answer".
+ * @method _messageReactToAnswer
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToAnswer = function (message) {
+  var _this = this;
+  var answer = new RTCSessionDescription({
+    type: 'answer',
+    sdp: message.sdp
+  });
+
+  // Check if Peer session exists
+  if (!_this._peers[message.mid]) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote answer received as Peer does not have existing session ->'], answer);
+    return;
+  }
+
+  // Check if Peer connection exists
+  if (!_this._peers[message.mid].peer) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote answer received as Peer does not have existing connection ->'], answer);
+    return;
+  }
+
+  _this._peerConnectHandshakeComplete(message.mid, answer);
+};
+
+/**
+ * Reacts to message type "candidate".
+ * @method _messageReactToCandidate
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToCandidate = function (message) {
+  var _this = this;
+  var candidate = new RTCIceCandidate({
+    sdpMid: message.sdpMid,
+    sdpMLineIndex: message.sdpMLineIndex,
+    candidate: message.candidate
+  });
+
+  // Check if Peer session exists
+  if (!_this._peers[message.mid]) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote candidate received as Peer does not have existing session ->'], candidate);
+    return;
+  }
+
+  // Check if Peer connection exists
+  if (!_this._peers[message.mid].peer) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring remote candidate received as Peer does not have existing connection ->'], candidate);
+    return;
+  }
+
+  _this._peerConnectAddCandidate(message.mid, candidate);
+};
+
+/**
+ * Reacts to message type "updateUserEvent".
+ * @method _messageReactToUpdateUserEvent
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToUpdateUserEvent = function (message) {
+  var _this = this;
+
+  // Check if Peer session exists
+  if (!_this._peers[message.mid]) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring updated data received as Peer does not have existing session ->'], message.data);
+    return;
+  }
+
+  log.debug([message.mid, 'Peer', null, 'Custom data has been updated ->'], message.data);
+
+  _this._peers[message.mid].data = message.data;
+
+  _this._trigger('peerUpdated', message.mid, _this.getPeerInfo(message.mid), false);
+};
+
+/**
+ * Reacts to message type "stream".
+ * @method _messageReactToStream
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToStream = function (message) {
+  var _this = this;
+
+  // Check if Peer session exists
+  if (!_this._peers[message.mid]) {
+    log.warn([message.mid, 'Peer', null,
+      'Ignoring updated stream received as Peer does not have existing session ->'], message.stream);
+    return;
+  }
+
+  log.debug([message.mid, 'Peer', null, 'Stream information has been updated ->'], message.stream);
+
+  _this._peers[message.mid].stream = message.stream;
+
+  //_this._trigger('streamEnded', message.mid, _this.getPeerInfo(message.mid), false);
+  //_this._trigger('streamMuted', message.mid, _this.getPeerInfo(message.mid), false);
+};
+
+/**
+ * Reacts to message type "roomLockEvent".
+ * @method _messageReactToRoomLockEvent
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToRoomLockEvent = function (message) {
+  var _this = this;
+
+  // Check if Room session exists
+  if (!_this._room.connected) {
+    log.warn([message.mid, 'Room', _this._room.name,
+      'Ignoring lock status received as user is not connected in Room ->'], message.lock);
+    return;
+  }
+
+  log.debug([message.mid, 'Room', _this._room.name, 'Lock status updated ->'], message.lock);
+
+  _this._room.locked = message.lock === true;
+
+  _this._trigger('roomLock', message.lock, message.mid, _this.getPeerInfo(message.mid), false);
+};
+
+/**
+ * Reacts to message type "public".
+ * @method _messageReactToPublic
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToPublic = function (message) {
+  var _this = this;
+
+  // Check if Room session exists
+  if (!_this._room.connected) {
+    log.warn([message.mid, 'Room', _this._room.name,
+      'Ignoring public message received as user is not connected in Room ->'], message.message);
+    return;
+  }
+
+  log.debug([message.mid, 'Room', _this._room.name, 'Received public message ->'], message.message);
+
+  this._trigger('incomingMessage', {
+
+    content: message.message,
+    isPrivate: false,
+    targetPeerId: null,
+    isDataChannel: false,
+    senderPeerId: message.mid
+
+  }, message.mid, this.getPeerInfo(message.mid), false);
+};
+
+/**
+ * Reacts to message type "private".
+ * @method _messageReactToPrivate
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToPrivate = function (message) {
+  var _this = this;
+
+  // Check if Room session exists
+  if (!_this._room.connected) {
+    log.warn([message.mid, 'Room', _this._room.name,
+      'Ignoring private message received as user is not connected in Room ->'], message.message);
+    return;
+  }
+
+  log.debug([message.mid, 'Room', _this._room.name, 'Received private message ->'], message.message);
+
+  this._trigger('incomingMessage', {
+
+    content: message.message,
+    isPrivate: true,
+    targetPeerId: message.target,
+    isDataChannel: false,
+    senderPeerId: message.mid
+
+  }, message.mid, this.getPeerInfo(message.mid), false);
+};
+
+/**
+ * Reacts to message type "peerList".
+ * @method _messageReactToPeerList
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToPeerList = function (message) {
+  var _this = this;
+
+  log.debug([null, 'Room', _this._room.name, 'Received list of rooms peers ->'], message.result);
+
+  _this._privileged.session.roomPeers = message.result;
+
+  _this._trigger('getPeersStateChange', _this.GET_PEERS_STATE.RECEIVED,
+    _this._user.session.id, message.result);
+};
+
+/**
+ * Reacts to message type "introduceError".
+ * @method _messageReactToIntroduceError
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToIntroduceError = function (message) {
+  var _this = this;
+  var introduceError = new Error(message.reason);
+
+  log.log([null, 'Room', _this._room.name, 'Failed introducing peer "' +
+    message.sendingPeerId + '" to "' + message.receivingPeerId + '" ->'], introduceError);
+
+  _this._trigger('introduceStateChange', _this.INTRODUCE_STATE.ERROR, _this._user.session.id,
+    message.sendingPeerId, message.receivingPeerId, introduceError);
+};
+
+/**
+ * Reacts to message type "approach".
+ * @method _messageReactToApproach
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToApproach = function (message) {
+  var _this = this;
+
+  log.debug([message.target, 'Peer', null, 'Received request to approach Peer']);
+
+  _this._trigger('handshakeProgress', _this.HANDSHAKE_PROGRESS.ENTER, _this._user.session.id);
+
+  _this._messageConstructEnter(message.target);
+};
+
+/**
+ * Reacts to message type "redirect".
+ * @method _messageReactToRedirect
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToRedirect = function (message) {
+  var _this = this;
+  var redirectError = new Error(message.info);
+
+  if (message.reason === _this.SYSTEM_ACTION_REASON.ROOM_LOCKED) {
+    _this._room.locked = true;
+  }
+
+  if (message.action === _this.SYSTEM_ACTION.REJECT) {
+    log.warn([null, 'Room', _this._room.name, 'Rejection from server ->'], redirectError);
+
+  } else {
+    log.warn([null, 'Room', _this._room.name, 'Warning from server ->'], redirectError);
+  }
+
+  _this._trigger('systemAction', message.action, redirectError, message.reason);
+
+  // Clear all connections
+  objForEach(_this._peers, function (peer, peerId) {
+    _this._peerDestroy(peerId);
+  });
+};
+
+/**
+ * Reacts to message type "bye".
+ * @method _messageReactToBye
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._messageReactToBye = function (message) {
+  var _this = this;
+
+  log.debug([message.mid, 'Peer', null, 'Destroying peer session']);
+
+  _this._peerDestroy(message.mid);
+};
+
+
+
+Skylink.prototype.init = function (passedOptions, passedCallback) {
+  var _this = this;
+
+  var options = {},
+      callback = function () {};
+
+  // init("appKey")
+  if (typeof passedOptions === 'string') {
+    options = { appKey: passedOptions };
+
+  // init({})
+  } else if (typeof passedOptions === 'object' && passedOptions !== null) {
+    options = clone(passedOptions);
+
+  // init(no options error)
+  } else {
+    var noOptionsError = new Error('Provided appKey is invalid');
+
+    // init(function () {})
+    if (typeof passedOptions === 'function') {
+      callback = passedOptions;
+    }
+
+    callback(noOptionsError, null);
+    //throw noOptionsError;
+  }
+
+  // init(.., function () {})
+  if (typeof passedCallback === 'function') {
+    callback = passedCallback;
+  }
+
+  _this._readyState = _this.READY_STATE_CHANGE.INIT;
+  _this._trigger('readyStateChange', _this.READY_STATE_CHANGE.INIT, null, null);
+
+  var handleErrorCase = function (error) {
+    log.error('init() failed ->', error);
+
+    _this._readyState = _this.READY_STATE_CHANGE.ERROR;
+    _this._trigger('readyStateChange', _this.READY_STATE_CHANGE.ERROR, error, _this._room.name);
+
+    callback({
+
+      error: error.content,
+      errorCode: error.errorCode,
+      status: error.status
+
+    }, null);
+  };
+
+  var handleSuccessCase = function (response) {
+    log.info('init() success ->', response);
+
+    _this._readyState = _this.READY_STATE_CHANGE.COMPLETED;
+    _this._trigger('readyStateChange', _this.READY_STATE_CHANGE.COMPLETED, null, _this._room.name);
+
+    callback(null, {
+
+      serverUrl: _this._room.session.path,
+      readyState: _this._readyState,
+      appKey: _this._room.config.current.appKey,
+      roomServer: _this._room.config.current.roomServer,
+      defaultRoom: _this._room.config.current.defaultRoom,
+      selectedRoom: _this._room.name,
+      serverRegion: _this._room.config.current.region,
+      enableDataChannel: _this._room.config.current.enableDataChannel,
+      enableIceTrickle: _this._room.config.current.enableIceTrickle,
+      enableTURNServer: _this._room.config.current.enableTURNServer,
+      enableSTUNServer: _this._room.config.current.enableSTUNServer,
+      TURNTransport: _this._room.config.current.TURNServerTransport,
+      audioFallback: _this._room.config.current.audioFallback,
+      forceSSL: _this._room.config.current.forceSSL,
+      socketTimeout: _this._room.config.current.socketTimeout,
+      forceTURNSSL: _this._room.config.current.forceTURNSSL,
+      audioCodec: _this._room.config.current.audioCodec,
+      videoCodec: _this._room.config.current.videoCodec,
+      forceTURN: _this._room.config.current.forceTURN,
+      usePublicSTUN: _this._room.config.current.usePublicSTUN
+
+    });
+  };
+
+  try {
+    // Parse init() configuration
+    _this._initParseConfig(options);
+    // Load dependencies
+    _this._initLoadDependencies(function (error) {
+      if (error) {
+        // Failure in loading dependencies
+        handleErrorCase(error);
+        return;
+      }
+
+      _this._readyState = _this.READY_STATE_CHANGE.LOADING;
+      _this._trigger('readyStateChange', _this.READY_STATE_CHANGE.LOADING, null, _this._room.name);
+
+      // Fetch room session
+      _this._roomFetchSession(function (error, success) {
+        if (error) {
+          // Failure in fetching room session
+          handleErrorCase(error);
+          return;
+        }
+        // Fetch room session success
+        handleSuccessCase(success);
+      });
+    });
+
+  } catch (error) {
+    handleErrorCase({
+
+      errorCode: _this.READY_STATE_CHANGE_ERROR.NO_PATH,
+      content: error,
+      status: null
+
+    });
+  }
+};
+
+/**
+ * Connects self to the selected room.
+ * By default, if room parameter is not provided, it will
+ *   connect to the default room provided in
+ *   {{#crossLink "Skylink/init:method"}}init() <code>defaultRoom</code> settings{{/crossLink}}.
+ * If any existing user media streams attached in Skylink, like for an example, calling
+ *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}} or
+ *   {{#crossLink "Skylink/sendStream:method"}}sendStream(){{/crossLink}} before
+ *   <code>joinRoom()</code>, self would actually send the current attached user media stream
+ *   attached. To stop the current attached Stream, please invoke
+ *   {{#crossLink "Skylink/stopStream:method"}}stopStream(){{/crossLink}} before
+ *   <code>joinRoom()</code> is invoked.
+ * @method joinRoom
+ * @param {String} [room] The room for
+ *   self to join to. If room is not provided, the room
+ *   would default to the the <code>defaultRoom</code> option set
+ *   in {{#crossLink "Skylink/init:method"}}init() settings{{/crossLink}}.
+ * @param {JSON} [options] The connection settings for self connection in the
+ *   room. If both audio and video
+ *   option is <code>false</code>, there should be no audio and video stream
+ *   sending from self connection.
+ * @param {String|JSON} [options.userData] The custom user data
+ *   information set by developer. This custom user data can also
+ *   be set in {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
+ * @param {Boolean|JSON} [options.audio=false] The self Stream streaming audio settings.
+ *   If <code>false</code>, it means that audio streaming is disabled in
+ *   the self Stream. If this option is set to <code>true</code> or is defined with
+ *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
+ *   will be invoked. Self will not connect to the room unless the Stream audio
+ *   user media access is given.
+ * @param {Boolean} [options.audio.stereo] The flag that indicates if
+ *   stereo should be enabled in self connection Stream
+ *   audio streaming.
+ * @param {Boolean} [options.audio.mute=false] The flag that
+ *   indicates if the self Stream object audio streaming is muted.
+ * @param {Array} [options.audio.optional] The optional constraints for audio streaming
+ *   in self user media Stream object. This follows the <code>optional</code>
+ *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
+ *   Tampering this may cause errors in retrieval of self user media Stream object.
+ *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
+ * @param {Boolean|JSON} [options.video=false] The self Stream streaming video settings.
+ *   If <code>false</code>, it means that video streaming is disabled in
+ *   the self Stream. If this option is set to <code>true</code> or is defined with
+ *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
+ *   will be invoked. Self will not connect to the room unless the Stream video
+ *   user media access is given.
+ * @param {Boolean} [options.video.mute=false] The flag that
+ *   indicates if the self Stream object video streaming is muted.
+ * @param {Array} [options.video.optional] The optional constraints for video streaming
+ *   in self user media Stream object. This follows the <code>optional</code>
+ *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
+ *   Tampering this may cause errors in retrieval of self user media Stream object.
+ *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
+ * @param {JSON} [options.video.resolution] The self Stream streaming video
+ *   resolution settings. Setting the resolution may
+ *   not force set the resolution provided as it depends on the how the
+ *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
+ * @param {Number} [options.video.resolution.width] The self
+ *   Stream streaming video resolution width.
+ * @param {Number} [options.video.resolution.height] The self
+ *   Stream streaming video resolution height.
+ * @param {Number} [options.video.frameRate=50] The self
+ *   Stream streaming video maximum frameRate.
+ * @param {String} [options.bandwidth] The self
+ *   streaming bandwidth settings. Setting the bandwidth flags may not
+ *   force set the bandwidth for each connection stream channels as it depends
+ *   on how the browser handles the bandwidth bitrate. Values are configured
+ *   in <var>kb/s</var>.
+ * @param {String} [options.bandwidth.audio=50] The configured
+ *   audio stream channel for the self Stream object bandwidth
+ *   that audio streaming should use in <var>kb/s</var>.
+ * @param {String} [options.bandwidth.video=256] The configured
+ *   video stream channel for the self Stream object bandwidth
+ *   that video streaming should use in <var>kb/s</var>.
+ * @param {String} [options.bandwidth.data=1638400] The configured
+ *   datachannel channel for the DataChannel connection bandwidth
+ *   that datachannel connection per packet should be able use in <var>kb/s</var>.
+ * @param {Boolean} [options.manualGetUserMedia] The flag that indicates if
+ *   <code>joinRoom()</code> should not invoke
+ *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
+ *   automatically but allow the developer's application to invoke
+ *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
+ *   manually in the application. When user media access is required, the
+ *   event {{#crossLink "Skylink/mediaAccessRequired:event"}}mediaAccessRequired{{/crossLink}}
+ *   will be triggered.
+ * @param {Function} [callback] The callback fired after self has
+ *   joined the room successfully with the provided media settings or
+ *   have met with an exception.
+ *   The callback signature is <code>function (error, success)</code>.
+ * @param {JSON} callback.error The error object received in the callback.
+ *   If received as <code>null</code>, it means that there is no errors.
+ * @param {Array} callback.error.error The exception thrown that caused the failure
+ *   for joining the room.
+ * @param {JSON} callback.error.errorCode The
+ *   <a href="#attr_READY_STATE_CHANGE_ERROR">READY_STATE_CHANGE_ERROR</a>
+ *   if there is an <a href="#event_readyStateChange">readyStateChange</a>
+ *   event error that caused the failure for joining the room.
+ *   [Rel: Skylink.READY_STATE_CHANGE_ERROR]
+ * @param {Object|String} callback.error.room The selected room that self is
+ *   trying to join to.
+ * @param {JSON} callback.success The success object received in the callback.
+ *   If received as <code>null</code>, it means that there are errors.
+ * @param {Array} callback.success.room The selected room that self has
+ *   succesfully joined to.
+ * @param {String} callback.success.peerId The self Peer ID that
+ *   would be reflected remotely to peers in the room.
+ * @param {JSON} callback.success.peerInfo The connection settings for self connection in the
+ *   room. If both audio and video option is <code>false</code>,
+ *   there should be no audio and video stream sending from self connection.
+  * @param {String|JSON} callback.success.peerInfo.userData The custom user data
+ *   information set by developer. This custom user data can also
+ *   be set in <a href="#method_setUserData">setUserData()</a>.
+ * @param {Boolean|JSON} [callback.success.peerInfo.audio=false] The self Stream
+ *   streaming audio settings. If <code>false</code>, it means that audio
+ *   streaming is disabled in the self Stream. If this option is set to
+ *   <code>true</code> or is defined with settings,
+ *   <a href="#method_getUserMedia">getUserMedia()</a>
+ *   will be invoked. Self will not connect to the room unless the Stream audio
+ *   user media access is given.
+ * @param {Boolean} [callback.success.peerInfo.audio.stereo] The flag that indicates if
+ *   stereo should be enabled in self connection Stream
+ *    audio streaming.
+ * @param {Boolean|JSON} [callback.success.peerInfo.video=false] The self Stream
+ *   streaming video settings. If <code>false</code>, it means that video
+ *   streaming is disabled in the self Stream. If this option is set to
+ *   <code>true</code> or is defined with settings,
+ *   <a href="#method_getUserMedia">getUserMedia()</a>
+ *   will be invoked. Self will not connect to the room unless the Stream video
+ *   user media access is given.
+ * @param {JSON} [callback.success.peerInfo.video.resolution] The self Stream streaming video
+ *   resolution settings. Setting the resolution may
+ *   not force set the resolution provided as it depends on the how the
+ *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
+ * @param {Number} [callback.success.peerInfo.video.resolution.width] The self
+ *   Stream streaming video resolution width.
+ * @param {Number} [callback.success.peerInfo.video.resolution.height] The self
+ *   Stream streaming video resolution height.
+ * @param {Number} [callback.success.peerInfo.video.frameRate=50] The self
+ *   Stream streaming video maximum frameRate.
+ * @param {Boolean} [callback.success.peerInfo.video.screenshare=false] The flag
+ *   that indicates if the self connection Stream object sent
+ *   is a screensharing stream or not.
+ * @param {String} [callback.success.peerInfo.bandwidth] The self
+ *   streaming bandwidth settings. Setting the bandwidth flags may not
+ *   force set the bandwidth for each connection stream channels as it depends
+ *   on how the browser handles the bandwidth bitrate. Values are configured
+ *   in <var>kb/s</var>.
+ * @param {String} [callback.success.peerInfo.bandwidth.audio=50] The configured
+ *   audio stream channel for the self Stream object bandwidth
+ *   that audio streaming should use in <var>kb/s</var>.
+ * @param {String} [callback.success.peerInfo.bandwidth.video=256] The configured
+ *   video stream channel for the self Stream object bandwidth
+ *   that video streaming should use in <var>kb/s</var>.
+ * @param {String} [callback.success.peerInfo.bandwidth.data=1638400] The configured
+ *   datachannel channel for the DataChannel connection bandwidth
+ *   that datachannel connection per packet should be able use in <var>kb/s</var>.
+ * @param {JSON} callback.success.peerInfo.mediaStatus The self Stream mute
+ *   settings for both audio and video streamings.
+ * @param {Boolean} [callback.success.peerInfo.mediaStatus.audioMuted=true] The flag that
+ *   indicates if the self Stream object audio streaming is muted. If
+ *   there is no audio streaming enabled for the self, by default,
+ *   it is set to <code>true</code>.
+ * @param {Boolean} [callback.success.peerInfo.mediaStatus.videoMuted=true] The flag that
+ *   indicates if the self Stream object video streaming is muted. If
+ *   there is no video streaming enabled for the Peer connection, by default,
+ *   it is set to <code>true</code>.
+ * @param {JSON} callback.success.peerInfo.agent The self platform agent information.
+ * @param {String} callback.success.peerInfo.agent.name The self platform browser or agent name.
+ * @param {Number} callback.success.peerInfo.agent.version The self platform browser or agent version.
+ * @param {Number} callback.success.peerInfo.agent.os The self platform name.
+ * @param {String} callback.success.peerInfo.room The current room that the self is in.
+ * @example
+ *   // To just join the default room without any video or audio
+ *   // Note that calling joinRoom without any parameters
+ *   // still sends any available existing MediaStreams allowed.
+ *   // See Examples 2, 3, 4 and 5 etc to prevent video or audio stream
+ *   SkylinkDemo.joinRoom();
+ *
+ *   // To just join the default room with bandwidth settings
+ *   SkylinkDemo.joinRoom({
+ *     bandwidth: {
+ *       data: 14440
+ *     }
+ *   });
+ *
+ *   // Example 1: To call getUserMedia and joinRoom seperately
+ *   SkylinkDemo.getUserMedia();
+ *   SkylinkDemo.on("mediaAccessSuccess", function (stream)) {
+ *     attachMediaStream($(".localVideo")[0], stream);
+ *     SkylinkDemo.joinRoom();
+ *   });
+ *
+ *   // Example 2: Join a room without any video or audio
+ *   SkylinkDemo.joinRoom("room_a");
+ *
+ *   // Example 3: Join a room with audio only
+ *   SkylinkDemo.joinRoom("room_b", {
+ *     audio: true,
+ *     video: false
+ *   });
+ *
+ *   // Example 4: Join a room with prefixed video width and height settings
+ *   SkylinkDemo.joinRoom("room_c", {
+ *     audio: true,
+ *     video: {
+ *       resolution: {
+ *         width: 640,
+ *         height: 320
+ *       }
+ *     }
+ *   });
+ *
+ *   // Example 5: Join a room with userData and settings with audio, video
+ *   // and bandwidth
+ *   SkylinkDemo.joinRoom({
+ *     userData: {
+ *       item1: "My custom data",
+ *       item2: "Put whatever, string or JSON or array"
+ *     },
+ *     audio: {
+ *        stereo: true
+ *     },
+ *     video: {
+ *        resolution: SkylinkDemo.VIDEO_RESOLUTION.VGA,
+ *        frameRate: 50
+ *     },
+ *     bandwidth: {
+ *       audio: 48,
+ *       video: 256,
+ *       data: 14480
+ *     }
+ *   });
+ *
+ *   //Example 6: joinRoom with callback
+ *   SkylinkDemo.joinRoom(function(error, success){
+ *     if (error){
+ *       console.log("Error happened. Can not join room");
+ *     }
+ *     else{
+ *       console.log("Successfully joined room");
+ *     }
+ *   });
+ * @trigger readyStateChange, peerJoined, mediaAccessRequired
+ * @component Room
+ * @for Skylink
+ * @since 0.5.5
+ */
+
+Skylink.prototype.joinRoom = function(passedRoom, passedMediaOptions, passedCallback) {
+  var _this = this;
+  var room = null,
+      mediaOptions = {},
+      callback = function () {};
+
+  // joinRoom("...")
+  if (typeof passedRoom === 'string') {
+    room = passedRoom;
+
+  // joinRoom({})
+  } else if (typeof passedRoom === 'object' && passedRoom !== null) {
+    mediaOptions = clone(passedRoom);
+
+  // joinRoom(function () {})
+  } else if (typeof passedRoom === 'function') {
+    callback = passedRoom;
+  }
+
+  // joinRoom(.. , {})
+  if (typeof passedMediaOptions === 'object' && passedMediaOptions !== null) {
+    mediaOptions = clone(passedMediaOptions);
+
+  // joinRoom(.. , function () {})
+  } else if (typeof passedMediaOptions === 'function') {
+    callback = passedMediaOptions;
+  }
+
+  // joinRoom(.. , .. , function () {})
+  if (typeof passedCallback === 'function') {
+    callback = passedCallback;
+  }
+
+  var handleErrorCase = function (error) {
+    log.error('joinRoom() failed ->', error);
+
+    callback({
+
+      room: room,
+      errorCode: _this._readyState,
+      error: error
+
+    }, null);
+
+    // throw error;
+  };
+
+  var handleSuccessCase = function () {
+    log.debug('joinRoom() success ->', _this._room.session.data.sid);
+
+    callback(null, {
+
+      room: self._selectedRoom,
+      peerId: _this._room.session.data.sid,
+      peerInfo: _this.getPeerInfo()
+
+    });
+  };
+
+  // NOTE: Should we add checks when room is the same as previous room?
+  if (passedRoom === null) {
+    handleErrorCase(new Error('Provided room name is invalid'));
+    return;
+  }
+
+  // Configure the room name based on selection
+  if (typeof room === 'string') {
+    _this._room.name = room;
+  } else {
+    _this._room.name = _this._room.config.current.defaultRoom;
+  }
+
+  // Handler when you can start fetching Room session and connecting to signaling server
+  var connectHandler = function () {
+    var channelOpenHandler = function () {
+      _this.off('channelClose', channelCloseHandler);
+      _this.off('socketError', socketErrorHandler);
+
+      // parse user data settings
+      _this._parseUserData(mediaOptions.userData || _this._userData);
+      _this._parseBandwidthSettings(mediaOptions.bandwidth || {});
+
+      _this._waitForLocalMediaStream(function () {
+        _this._messageConstructJoinRoom();
+      }, mediaOptions);
+    };
+
+    var channelCloseHandler = function () {
+      _this.off('channelOpen', channelOpenHandler);
+      _this.off('socketError', socketErrorHandler);
+
+      handleErrorCase(new Error('Failed joining room as socket connection was disconnected whilst joining room'));
+    };
+
+    var socketErrorHandler = function (state, error) {
+      _this.off('channelClose', channelCloseHandler);
+      _this.off('channelOpen', channelOpenHandler);
+
+      handleErrorCase(error);
+    };
+
+    // Fetch the new Room session based on provided room name
+    _this._roomFetchSession(function (error, success) {
+      if (error) {
+        handleErrorCase(error);
+        return;
+      }
+
+      // Hook these events and start socket connection
+      _this.once('channelOpen', channelOpenHandler);
+      _this.once('channelClose', channelCloseHandler);
+      _this.once('socketError', socketErrorHandler, function (state) {
+        return state === _this.SOCKET_ERROR.RECONNECTION_ABORTED;
+      });
+
+      // Start socket connection to signaling server
+      _this._socketConnect();
+    });
+  };
+
+  // User is in room, close all current connections
+  if (_this._room.connected) {
+    _this.leaveRoom(false, function (error, success) {
+      if (error) {
+        handleErrorCase(error);
+        return;
+      }
+
+      connectHandler();
+    });
+
+  // Socket is just connected, close current connection
+  } else if (_this._socket.connected) {
+    _this.once('channelClose', connectHandler);
+    _this._socketDisconnect();
+
+  // There is no current connections yet
+  } else {
+    connectHandler();
+  }
+};
+
+
+/**
+ * Disconnects self from current connected room.
+ * @method leaveRoom
+ * @param {Boolean|JSON} [stopMediaOptions=true] The stop attached Stream options for
+ *   Skylink when leaving the room. If provided options is a
+ *   <var>typeof</var> <code>boolean</code>, it will be interpreted as both
+ *   <code>userMedia</code> and <code>screenshare</code> Streams would be stopped.
+ * @param {Boolean} [stopMediaOptions.userMedia=true]  The flag that indicates if leaving the room
+ *   should automatically stop and clear the existing user media stream attached to skylink.
+ *   This would trigger <code>mediaAccessStopped</code> for this Stream if available.
+ * @param {Boolean} [stopMediaOptions.screenshare=true] The flag that indicates if leaving the room
+ *   should automatically stop and clear the existing screensharing stream attached to skylink.
+ *   This would trigger <code>mediaAccessStopped</code> for this Stream if available.
+ * @param {Function} [callback] The callback fired after self has
+ *   left the room successfully or have met with an exception.
+ *   The callback signature is <code>function (error, success)</code>.
+ * @param {Object} callback.error The error object received in the callback.
+ *   If received as <code>null</code>, it means that there is no errors.
+ * @param {JSON} callback.success The success object received in the callback.
+ *   If received as <code>null</code>, it means that there are errors.
+ * @param {String} callback.success.peerId The assigned previous Peer ID
+ *   to self given when self was still connected to the room.
+ * @param {String} callback.success.previousRoom The room self was disconnected
+ *   from.
+ * @example
+ *   //Example 1: Just leaveRoom
+ *   SkylinkDemo.leaveRoom();
+ *
+ *   //Example 2: leaveRoom with callback
+ *   SkylinkDemo.leaveRoom(function(error, success){
+ *     if (error){
+ *       console.log("Error happened");
+ *     }
+ *     else{
+ *       console.log("Successfully left room");
+ *     }
+ *   });
+ * @trigger peerLeft, channelClose, streamEnded
+ * @component Room
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype.leaveRoom = function(stopMediaOptions, callback) {
+  var self = this;
+  var error; // j-shint !!!
+  var stopUserMedia = true;
+  var stopScreenshare = true;
+
+  // shift parameters
+  if (typeof stopMediaOptions === 'function') {
+    callback = stopMediaOptions;
+    stopMediaOptions = true;
+  } else if (typeof stopMediaOptions === 'undefined') {
+    stopMediaOptions = true;
+  }
+
+  // stopMediaOptions === null or {} ?
+  if (typeof stopMediaOptions === 'object' && stopMediaOptions !== null) {
+    stopUserMedia = stopMediaOptions.userMedia !== false;
+    stopScreenshare = stopMediaOptions.screenshare !== false;
+
+  } else if (typeof stopMediaOptions !== 'boolean') {
+    error = 'stopMediaOptions parameter provided is not a boolean or valid object';
+    log.error(error, stopMediaOptions);
+    if (typeof callback === 'function') {
+      log.log([null, 'Socket', self._selectedRoom, 'Error occurred. ' +
+        'Firing callback with error -> '
+      ], error);
+      callback(new Error(error), null);
+    }
+    return;
+
+  } else if (stopMediaOptions === false) {
+    stopUserMedia = false;
+    stopScreenshare = false;
+  }
+
+  if (!self._inRoom) {
+    error = 'Unable to leave room as user is not in any room';
+    log.error(error);
+    if (typeof callback === 'function') {
+      log.log([null, 'Socket', self._selectedRoom, 'Error occurred. ' +
+        'Firing callback with error -> '
+      ], error);
+      callback(new Error(error), null);
+    }
+    return;
+  }
+
+  // NOTE: ENTER/WELCOME made but no peerconnection...
+  // which may result in peerLeft not triggered..
+  // WHY? but to ensure clear all
+  var peers = Object.keys(self._peerInformations);
+  var conns = Object.keys(self._peerConnections);
+  var i;
+  for (i = 0; i < conns.length; i++) {
+    if (peers.indexOf(conns[i]) === -1) {
+      peers.push(conns[i]);
+    }
+  }
+  for (i = 0; i < peers.length; i++) {
+    self._removePeer(peers[i]);
+  }
+  self._inRoom = false;
+  self._closeChannel();
+
+  self._stopLocalMediaStreams({
+    userMedia: stopUserMedia,
+    screenshare: stopScreenshare
+  });
+
+  self._wait(function() {
+    log.log([null, 'Socket', self._selectedRoom, 'User left the room. Callback fired.']);
+    self._trigger('peerLeft', self._user.sid, self.getPeerInfo(), true);
+
+    if (typeof callback === 'function') {
+      callback(null, {
+        peerId: self._user.sid,
+        previousRoom: self._selectedRoom
+      });
+    }
+  }, function() {
+    return (Object.keys(self._peerConnections).length === 0 &&
+      self._channelOpen === false); // &&
+      //self._readyState === self.READY_STATE_CHANGE.COMPLETED);
+  }, false);
+};
+
+/**
+ * Locks the currently connected room to prevent other peers
+ *   from joining the room.
+ * @method lockRoom
+ * @example
+ *   SkylinkDemo.lockRoom();
+ * @trigger roomLock
+ * @component Room
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.lockRoom = function() {
+  log.log('Update to isRoomLocked status ->', true);
+  this._sendChannelMessage({
+    type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
+    mid: this._user.sid,
+    rid: this._room.id,
+    lock: true
+  });
+  this._roomLocked = true;
+  this._trigger('roomLock', true, this._user.sid,
+    this.getPeerInfo(), true);
+};
+
+/**
+ * Unlocks the currently connected room to allow other peers
+ *   to join the room.
+ * @method unlockRoom
+ * @example
+ *   SkylinkDemo.unlockRoom();
+ * @trigger roomLock
+ * @component Room
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype.unlockRoom = function() {
+  log.log('Update to isRoomLocked status ->', false);
+  this._sendChannelMessage({
+    type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
+    mid: this._user.sid,
+    rid: this._room.id,
+    lock: false
+  });
+  this._roomLocked = false;
+  this._trigger('roomLock', false, this._user.sid,
+    this.getPeerInfo(), true);
+};
+
+/**
+ * Send a message object or string using the platform signaling socket connection
+ *   to the list of targeted PeerConnections.
+ * To send message objects with DataChannel connections, see
+ *   {{#crossLink "Skylink/sendP2PMessage:method"}}sendP2PMessage(){{/crossLink}}.
+ * @method sendMessage
+ * @param {String|JSON} message The message object.
+ * @param {String|Array} [targetPeerId] The array of targeted PeerConnections to
+ *   transfer the message object to. Alternatively, you may provide this parameter
+ *   as a string to a specific targeted Peer to transfer the message object.
+ * @example
+ *   // Example 1: Send to all peers
+ *   SkylinkDemo.sendMessage("Hi there!"");
+ *
+ *   // Example 2: Send to a targeted peer
+ *   SkylinkDemo.sendMessage("Hi there peer!", targetPeerId);
+ * @trigger incomingMessage
+ * @component Message
+ * @for Skylink
+ * @since 0.4.0
+ */
+Skylink.prototype.sendMessage = function(message, targetPeerId) {
+  var params = {
+    cid: this._key,
+    data: message,
+    mid: this._user.sid,
+    rid: this._room.id,
+    type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
+  };
+
+  var listOfPeers = Object.keys(this._peerConnections);
+  var isPrivate = false;
+  var i;
+
+  if(Array.isArray(targetPeerId)) {
+    listOfPeers = targetPeerId;
+    isPrivate = true;
+
+  } else if (typeof targetPeerId === 'string') {
+    listOfPeers = [targetPeerId];
+    isPrivate = true;
+  }
+
+  if (!isPrivate) {
+    log.log([null, 'Socket', null, 'Broadcasting message to peers']);
+
+    this._sendChannelMessage({
+      cid: this._key,
+      data: message,
+      mid: this._user.sid,
+      rid: this._room.id,
+      type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
+    });
+  }
+
+  for (i = 0; i < listOfPeers.length; i++) {
+    var peerId = listOfPeers[i];
+
+    // Ignore MCU peer
+    if (peerId === 'MCU') {
+      continue;
+    }
+
+    if (isPrivate) {
+      log.log([peerId, 'Socket', null, 'Sending message to peer']);
+
+      this._sendChannelMessage({
+        cid: this._key,
+        data: message,
+        mid: this._user.sid,
+        rid: this._room.id,
+        target: peerId,
+        type: this._SIG_MESSAGE_TYPE.PRIVATE_MESSAGE
+      });
+    }
+  }
+
+  this._trigger('incomingMessage', {
+    content: message,
+    isPrivate: isPrivate,
+    targetPeerId: targetPeerId,
+    isDataChannel: false,
+    senderPeerId: this._user.sid
+  }, this._user.sid, this.getPeerInfo(), true);
+};
+
+Skylink.prototype._peerInformations = {};
+
+/**
+ * Stores the custom user data information set by developer for self.
+ * By default, if no custom user data is set, it is an empty string <code>""</code>.
+ * @attribute _userData
+ * @type JSON|String
+ * @default ""
+ * @required
+ * @private
+ * @component User
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype._userData = '';
+
+/**
+ * Sets the current custom user data information for self.
+ * This sets and overwrites the <code>peerInfo.userData</code> value for self.
+ * If self is in the room and connected with other peers, the peers will be notified
+ *   with the {{#crossLink "Skylink/peerUpdated:event"}}peerUpdated{{/crossLink}} event.
+ * You may get the current customer user data information for self in
+ *   {{#crossLink "Skylink/getUserData:method"}}getUserData(){{/crossLink}}.
+ * @method setUserData
+ * @param {JSON|String} userData The custom (or updated) user data information
+ *   for self provided.
+ * @example
+ *   // Example 1: Intial way of setting data before user joins the room
+ *   SkylinkDemo.setUserData({
+ *     displayName: "Bobby Rays",
+ *     fbUserId: "1234"
+ *   });
+ *
+ *   // Example 2: Way of setting data after user joins the room
+ *   var userData = SkylinkDemo.getUserData();
+ *   userData.displayName = "New Name";
+ *   userData.fbUserId = "1234";
+ *   SkylinkDemo.setUserData(userData);
+ * @trigger peerUpdated
+ * @component User
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype.setUserData = function(userData) {
+  var self = this;
+  // NOTE ALEX: be smarter and copy fields and only if different
+  self._parseUserData(userData);
+
+  if (self._inRoom) {
+    log.log('Updated userData -> ', userData);
+    self._sendChannelMessage({
+      type: self._SIG_MESSAGE_TYPE.UPDATE_USER,
+      mid: self._user.sid,
+      rid: self._room.id,
+      userData: self._userData
+    });
+    self._trigger('peerUpdated', self._user.sid, self.getPeerInfo(), true);
+  } else {
+    log.warn('User is not in the room. Broadcast of updated information will be dropped');
+  }
+};
+
+/**
+ * Gets the current custom user data information for self.
+ * You may set the current customer user data information for self in
+ *   {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
+ * @method getUserData
+ * @return {JSON|String} The custom (or updated) user data information
+ *   for self set.
+ * @example
+ *   // Example 1: To get other peer's userData
+ *   var peerData = SkylinkDemo.getUserData(peerId);
+ *
+ *   // Example 2: To get own userData
+ *   var userData = SkylinkDemo.getUserData();
+ * @component User
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.getUserData = function(peerId) {
+  if (peerId && peerId !== this._user.sid) {
+    // peer info
+    var peerInfo = this._peerInformations[peerId];
+
+    if (typeof peerInfo === 'object') {
+      return peerInfo.userData;
+    }
+
+    return null;
+  }
+  return this._userData;
+};
+
+/**
+ * Parses the custom user data information for self provided.
+ * @method _parseUserData
+ * @param {JSON} [userData] The custom (or updated) user data information
+ *   for self provided.
+ * @private
+ * @component User
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype._parseUserData = function(userData) {
+  log.debug('Parsing user data:', userData);
+
+  this._userData = userData || '';
+};
+
+/**
+ * Gets the Peer information.
+ * If an invalid Peer ID is provided, or no Peer ID is provided,
+ *   the method will return the self peer information.
+ * @method getPeerInfo
+ * @param {String} [peerId] The Peer information to retrieve the
+ *   data from. If the Peer ID is not provided, it will return
+ *   the self Peer information.
+ * @return {JSON} The Peer information. The parameters relates to the
+ *   <code>peerInfo</code> payload given in the
+ *   {{#crossLink "Skylink/peerJoined:event"}}peerJoined{{/crossLink}} event.
+ * @example
+ *   // Example 1: To get other peer's information
+ *   var peerInfo = SkylinkDemo.getPeerInfo(peerId);
+ *
+ *   // Example 2: To get own information
+ *   var userInfo = SkylinkDemo.getPeerInfo();
+ * @component Peer
+ * @for Skylink
+ * @since 0.4.0
+ */
+Skylink.prototype.getPeerInfo = function(peerId) {
+  var isNotSelf = this._user && this._user.sid ? peerId !== this._user.sid : false;
+
+  if (typeof peerId === 'string' && isNotSelf) {
+    // peer info
+    var peerInfo = this._peerInformations[peerId];
+
+    if (typeof peerInfo === 'object') {
+      return peerInfo;
+    }
+
+    return null;
+  } else {
+
+    var mediaSettings = {};
+
+    // add screensharing information
+    if (!!this._mediaScreen && this._mediaScreen !== null) {
+      mediaSettings = clone(this._screenSharingStreamSettings);
+      mediaSettings.bandwidth = clone(this._streamSettings.bandwidth);
+    } else {
+      mediaSettings = clone(this._streamSettings);
+    }
+
+    return {
+      userData: clone(this._userData) || '',
+      settings: mediaSettings || {},
+      mediaStatus: clone(this._mediaStreamsStatus) || {},
+      agent: {
+        name: window.webrtcDetectedBrowser,
+        version: window.webrtcDetectedVersion
+      },
+      room: clone(this._selectedRoom)
+    };
+  }
+};
+
+Skylink.prototype.HANDSHAKE_PROGRESS = {
+  ENTER: 'enter',
+  WELCOME: 'welcome',
+  OFFER: 'offer',
+  ANSWER: 'answer',
+  ERROR: 'error'
+};
+
+/**
+ * Stores the list of Peer connection health timeout objects that
+ *   waits for any existing Peer "healthy" state in successful
+ *   {{#crossLink "Skylink/_peerConnectionHealth:attr"}}_peerConnectionHealth{{/crossLink}}.
+ *   If timeout has reached it's limit and does not have any "healthy" connection state
+ *   with Peer connection, it will restart the connection again with
+ *   {{#crossLink "Skylink/_restartPeerConnection:method"}}_restartPeerConnection(){{/crossLink}}.
+ * @attribute _peerConnectionHealthTimers
+ * @param {Object} (#peerId) The timeout object set using <code>setTimeout()</code> that
+ *   does the wait for any "healthy" state connection associated with the Peer connection.
+ *   This will be removed when the Peer connection has ended or when the Peer
+ *   connection has been met with a "healthy" state.
  * @type JSON
- * @readOnly
+ * @private
+ * @required
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype._peerConnectionHealthTimers = {};
+
+/**
+ * Stores the list of Peer connections that has connection
+ *   established successfully. When the Peer connection has a
+ *   successful ICE connection state of <code>"completed"</code>,
+ *   it stores the Peer connection as "healthy".
+ * @attribute _peerConnectionHealth
+ * @param {Boolean} (#peerId) The flag that indicates if the associated Peer
+ *   connection is in a "healthy" state. If the value is <code>true</code>, it means
+ *   that the Peer connectin is in a "healthy" state.
+ * @type JSON
+ * @private
+ * @required
+ * @component Peer
+ * @since 0.5.5
+ */
+Skylink.prototype._peerConnectionHealth = {};
+
+/**
+ * Stores the peer connection priority weight.
+ * @attribute _peerPriorityWeight
+ * @type Number
+ * @private
+ * @required
+ * @for Skylink
+ * @since 0.5.0
+ */
+Skylink.prototype._peerPriorityWeight = 0;
+
+/**
+ * Starts to initiate the WebRTC layer of handshake connection by
+ *   creating the <code>OFFER</code> session description and then
+ *   sending it to the associated Peer.
+ * The offerer status may be shifted to the other peer depending on
+ *   when version of browser that is initiating the connection
+ *   to what version of browser to.
+ * @method _doOffer
+ * @param {String} targetMid The Peer ID to send the <code>OFFER</code> to.
+ * @param {JSON} peerBrowser The Peer platform agent information.
+ * @param {String} peerBrowser.name The Peer platform browser or agent name.
+ * @param {Number} peerBrowser.version The Peer platform browser or agent version.
+ * @param {Number} peerBrowser.os The Peer platform name.
+ * @param {Function} renegoCallback The callback function that triggers after
+ *   the offer has been created or responsed.
+ * @private
+ * @for Skylink
+ * @component Peer
+ * @since 0.5.2
+ */
+Skylink.prototype._doOffer = function(targetMid, peerBrowser) {
+  var self = this;
+  var pc = self._peerConnections[targetMid] || self._addPeer(targetMid, peerBrowser);
+  log.log([targetMid, null, null, 'Checking caller status'], peerBrowser);
+  // NOTE ALEX: handle the pc = 0 case, just to be sure
+  var inputConstraints = self._room.connection.offerConstraints;
+  var sc = self._room.connection.sdpConstraints;
+  for (var name in sc.mandatory) {
+    if (sc.mandatory.hasOwnProperty(name)) {
+      inputConstraints.mandatory[name] = sc.mandatory[name];
+    }
+  }
+  inputConstraints.optional.concat(sc.optional);
+  checkMediaDataChannelSettings(peerBrowser.agent, peerBrowser.version,
+    function(beOfferer, unifiedOfferConstraints) {
+    // attempt to force make firefox not to offer datachannel.
+    // we will not be using datachannel in MCU
+    if (window.webrtcDetectedType === 'moz' && peerBrowser.agent === 'MCU') {
+      unifiedOfferConstraints.mandatory = unifiedOfferConstraints.mandatory || {};
+      unifiedOfferConstraints.mandatory.MozDontOfferDataChannel = true;
+      beOfferer = true;
+    }
+
+    unifiedOfferConstraints.mandatory.iceRestart = true;
+    peerBrowser.os = peerBrowser.os || '';
+
+    if (peerBrowser.agent !== 'MCU') {
+      /*
+       // for windows firefox to mac chrome interopability
+      if (window.webrtcDetectedBrowser === 'firefox' &&
+        window.navigator.platform.indexOf('Win') === 0 &&
+        peerBrowser.agent !== 'firefox' &&
+        peerBrowser.agent !== 'MCU' &&
+        peerBrowser.os.indexOf('Mac') === 0) {
+        beOfferer = false;
+      }*/
+      if (window.webrtcDetectedBrowser === 'firefox' && peerBrowser.agent !== 'firefox') {
+        beOfferer = false;
+      }
+    }
+
+    if (beOfferer) {
+      if (window.webrtcDetectedBrowser === 'firefox' && window.webrtcDetectedVersion >= 32) {
+        unifiedOfferConstraints = {
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true
+        };
+
+        /*if (window.webrtcDetectedVersion > 37) {
+          unifiedOfferConstraints = {};
+        }*/
+      }
+
+      log.debug([targetMid, null, null, 'Creating offer with config:'], unifiedOfferConstraints);
+
+      pc.createOffer(function(offer) {
+        log.debug([targetMid, null, null, 'Created offer'], offer);
+        self._setLocalAndSendMessage(targetMid, offer);
+      }, function(error) {
+        self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR,
+          targetMid, error);
+        log.error([targetMid, null, null, 'Failed creating an offer:'], error);
+      }, unifiedOfferConstraints);
+    } else {
+      log.debug([targetMid, null, null, 'User\'s browser is not eligible to create ' +
+        'the offer to the other peer. Requesting other peer to create the offer instead'
+        ], peerBrowser);
+
+      self._sendChannelMessage({
+        type: self._SIG_MESSAGE_TYPE.WELCOME,
+        mid: self._user.sid,
+        rid: self._room.id,
+        agent: window.webrtcDetectedBrowser,
+        version: window.webrtcDetectedVersion,
+        os: window.navigator.platform,
+        userInfo: self.getPeerInfo(),
+        target: targetMid,
+        weight: -1,
+        sessionType: !!self._mediaScreen ? 'screensharing' : 'stream'
+      });
+    }
+  }, inputConstraints);
+};
+
+/**
+ * Responses to the <code>OFFER</code> session description received and
+ *    creates an <code>ANSWER</code> session description to sent
+ *   to the associated Peer to complete the WebRTC handshake layer.
+ * @method _doAnswer
+ * @param {String} targetMid The Peer ID to send the <code>ANSWER</code> to.
+ * @private
+ * @for Skylink
+ * @component Peer
+ * @since 0.1.0
+ */
+Skylink.prototype._doAnswer = function(targetMid) {
+  var self = this;
+  log.log([targetMid, null, null, 'Creating answer with config:'],
+    self._room.connection.sdpConstraints);
+  var pc = self._peerConnections[targetMid];
+  if (pc) {
+    // No ICE restart constraints for createAnswer as it fails in chrome 48
+    // { iceRestart: true }
+    pc.createAnswer(function(answer) {
+      log.debug([targetMid, null, null, 'Created answer'], answer);
+      self._setLocalAndSendMessage(targetMid, answer);
+    }, function(error) {
+      log.error([targetMid, null, null, 'Failed creating an answer:'], error);
+      self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
+    });//, self._room.connection.sdpConstraints);
+  } else {
+    /* Houston ..*/
+    log.error([targetMid, null, null, 'Requested to create an answer but user ' +
+      'does not have any existing connection to peer']);
+    return;
+  }
+};
+
+/**
+ * Starts the waiting timeout for a "healthy" connection
+ *   with associated Peer connection.
+ * It waits for any existing Peer "healthy" state in successful
+ *   {{#crossLink "Skylink/_peerConnectionHealth:attr"}}_peerConnectionHealth{{/crossLink}}.
+ * If timeout has reached it's limit and does not have any "healthy" connection state
+ *   with Peer connection, it will restart the connection again with
+ *   {{#crossLink "Skylink/_restartPeerConnection:method"}}_restartPeerConnection(){{/crossLink}}.
+ * This sets the timeout object associated with the Peer into
+ *   {{#crossLink "Skylink/_peerConnectionHealthTimers"}}_peerConnectionHealthTimers(){{/crossLink}}.
+ * @method _startPeerConnectionHealthCheck
+ * @param {String} peerId The Peer ID to start a waiting timeout for a "healthy" connection.
+ * @param {Boolean} [toOffer=false] The flag that indicates if Peer connection
+ *   is an offerer or an answerer for an accurate timeout waiting time.
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype._startPeerConnectionHealthCheck = function (peerId, toOffer) {
+  var self = this;
+  var timer = (self._enableIceTrickle && !self._peerIceTrickleDisabled[peerId]) ?
+    (toOffer ? 12500 : 10000) : 50000;
+  timer = (self._hasMCU) ? 105000 : timer;
+
+  // increase timeout for android/ios
+  /*var agent = self.getPeerInfo(peerId).agent;
+  if (['Android', 'iOS'].indexOf(agent.name) > -1) {
+    timer = 105000;
+  }*/
+
+  timer += self._retryCount*10000;
+
+  log.log([peerId, 'PeerConnectionHealth', null,
+    'Initializing check for peer\'s connection health']);
+
+  if (self._peerConnectionHealthTimers[peerId]) {
+    // might be a re-handshake again
+    self._stopPeerConnectionHealthCheck(peerId);
+  }
+
+  self._peerConnectionHealthTimers[peerId] = setTimeout(function () {
+    // re-handshaking should start here.
+    var connectionStable = false;
+    var pc = self._peerConnections[peerId];
+
+    if (pc) {
+      var dc = (self._dataChannels[peerId] || {}).main;
+
+      var dcConnected = pc.hasMainChannel ? dc && dc.readyState === self.DATA_CHANNEL_STATE.OPEN : true;
+      var iceConnected = pc.iceConnectionState === self.ICE_CONNECTION_STATE.CONNECTED ||
+        pc.iceConnectionState === self.ICE_CONNECTION_STATE.COMPLETED;
+      var signalingConnected = pc.signalingState === self.PEER_CONNECTION_STATE.STABLE;
+
+      connectionStable = dcConnected && iceConnected && signalingConnected;
+
+      log.debug([peerId, 'PeerConnectionHealth', null, 'Connection status'], {
+        dcConnected: dcConnected,
+        iceConnected: iceConnected,
+        signalingConnected: signalingConnected
+      });
+    }
+
+    log.debug([peerId, 'PeerConnectionHealth', null, 'Require reconnection?'], connectionStable);
+
+    if (!connectionStable) {
+      log.warn([peerId, 'PeerConnectionHealth', null, 'Peer\'s health timer ' +
+      'has expired'], 10000);
+
+      // clear the loop first
+      self._stopPeerConnectionHealthCheck(peerId);
+
+      log.debug([peerId, 'PeerConnectionHealth', null,
+        'Ice connection state time out. Re-negotiating connection']);
+
+      //Maximum increament is 5 minutes
+      if (self._retryCount<30){
+        //Increase after each consecutive connection failure
+        self._retryCount++;
+      }
+
+      // do a complete clean
+      if (!self._hasMCU) {
+        self._restartPeerConnection(peerId, true, true, null, false);
+      } else {
+        self._restartMCUConnection();
+      }
+    } else {
+      self._peerConnectionHealth[peerId] = true;
+    }
+  }, timer);
+};
+
+/**
+ * Stops the waiting timeout for a "healthy" connection associated
+ *   with the Peer.
+ * @method _stopPeerConnectionHealthCheck
+ * @param {String} peerId The Peer ID to stop a waiting
+ *   timeout for a "healthy" connection.
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.5
+ */
+Skylink.prototype._stopPeerConnectionHealthCheck = function (peerId) {
+  var self = this;
+
+  if (self._peerConnectionHealthTimers[peerId]) {
+    log.debug([peerId, 'PeerConnectionHealth', null,
+      'Stopping peer connection health timer check']);
+
+    clearTimeout(self._peerConnectionHealthTimers[peerId]);
+    delete self._peerConnectionHealthTimers[peerId];
+
+  } else {
+    log.debug([peerId, 'PeerConnectionHealth', null,
+      'Peer connection health does not have a timer check']);
+  }
+};
+
+/**
+ * Sets the WebRTC handshake layer session description into the
+ *   Peer <code>RTCPeerConnection</code> object <i><code>
+ *   RTCPeerConnection.setLocalDescription()</code></i> associated
+ *   with the Peer connection.
+ * @method _setLocalAndSendMessage
+ * @param {String} targetMid The Peer ID to send the session description to
+ *   after setting into the associated <code>RTCPeerConnection</code> object.
+ * @param {JSON} sessionDescription The <code>OFFER</code> or an <code>ANSWER</code>
+ *   session description to set to the associated Peer after setting into
+ *   the <code>RTCPeerConnection</code> object.
+ * @trigger handshakeProgress
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.5.2
+ */
+Skylink.prototype._setLocalAndSendMessage = function(targetMid, sessionDescription) {
+  var self = this;
+  var pc = self._peerConnections[targetMid];
+
+  /*if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER && pc.setAnswer) {
+    log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
+      'Ignoring session description. User has already set local answer'], sessionDescription);
+    return;
+  }
+  if (sessionDescription.type === self.HANDSHAKE_PROGRESS.OFFER && pc.setOffer) {
+    log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
+      'Ignoring session description. User has already set local offer'], sessionDescription);
+    return;
+  }*/
+
+  // NOTE ALEX: handle the pc = 0 case, just to be sure
+  var sdpLines = sessionDescription.sdp.split('\r\n');
+
+  // remove h264 invalid pref
+  sdpLines = self._removeSDPFirefoxH264Pref(sdpLines);
+  // Check if stereo was enabled
+  if (self._streamSettings.hasOwnProperty('audio')) {
+    if (self._streamSettings.audio.stereo) {
+      self._addSDPStereo(sdpLines);
+    }
+  }
+
+  log.info([targetMid, null, null, 'Requested stereo:'], (self._streamSettings.audio ?
+    (self._streamSettings.audio.stereo ? self._streamSettings.audio.stereo : false) :
+    false));
+
+  // set sdp bitrate
+  if (self._streamSettings.hasOwnProperty('bandwidth')) {
+    var peerSettings = (self._peerInformations[targetMid] || {}).settings || {};
+
+    sdpLines = self._setSDPBitrate(sdpLines, peerSettings);
+  }
+
+  // set sdp resolution
+  /*if (self._streamSettings.hasOwnProperty('video')) {
+    sdpLines = self._setSDPVideoResolution(sdpLines, self._streamSettings.video);
+  }*/
+
+  self._streamSettings.bandwidth = self._streamSettings.bandwidth || {};
+
+  self._streamSettings.video = self._streamSettings.video || false;
+
+  log.info([targetMid, null, null, 'Custom bandwidth settings:'], {
+    audio: (self._streamSettings.bandwidth.audio || 'Not set') + ' kB/s',
+    video: (self._streamSettings.bandwidth.video || 'Not set') + ' kB/s',
+    data: (self._streamSettings.bandwidth.data || 'Not set') + ' kB/s'
+  });
+
+  if (self._streamSettings.video.hasOwnProperty('frameRate') &&
+    self._streamSettings.video.hasOwnProperty('resolution')){
+    log.info([targetMid, null, null, 'Custom resolution settings:'], {
+      frameRate: (self._streamSettings.video.frameRate || 'Not set') + ' fps',
+      width: (self._streamSettings.video.resolution.width || 'Not set') + ' px',
+      height: (self._streamSettings.video.resolution.height || 'Not set') + ' px'
+    });
+  }
+
+  // set video codec
+  if (self._selectedVideoCodec !== self.VIDEO_CODEC.AUTO) {
+    sdpLines = self._setSDPVideoCodec(sdpLines);
+  } else {
+    log.log([targetMid, null, null, 'Not setting any video codec']);
+  }
+
+  // set audio codec
+  if (self._selectedAudioCodec !== self.AUDIO_CODEC.AUTO) {
+    sdpLines = self._setSDPAudioCodec(sdpLines);
+  } else {
+    log.log([targetMid, null, null, 'Not setting any audio codec']);
+  }
+
+  sessionDescription.sdp = sdpLines.join('\r\n');
+
+  // NOTE ALEX: opus should not be used for mobile
+  // Set Opus as the preferred codec in SDP if Opus is present.
+  //sessionDescription.sdp = preferOpus(sessionDescription.sdp);
+  // limit bandwidth
+  //sessionDescription.sdp = this._limitBandwidth(sessionDescription.sdp);
+  log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
+    'Updated session description:'], sessionDescription);
+
+  pc.setLocalDescription(sessionDescription, function() {
+    log.debug([targetMid, sessionDescription.type, 'Local description set']);
+    self._trigger('handshakeProgress', sessionDescription.type, targetMid);
+    if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER) {
+      pc.setAnswer = 'local';
+    } else {
+      pc.setOffer = 'local';
+    }
+    var shouldWaitForCandidates = false;
+
+    if (!(self._enableIceTrickle && !self._peerIceTrickleDisabled[targetMid])) {
+      shouldWaitForCandidates = true;
+      // there is no sessiondescription created at first go
+      if (pc.setOffer === 'remote' || pc.setAnswer === 'remote') {
+        shouldWaitForCandidates = false;
+      }
+    }
+    if (!shouldWaitForCandidates) {
+      // make checks for firefox session description
+      if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER && window.webrtcDetectedBrowser === 'firefox') {
+        sessionDescription.sdp = self._addSDPSsrcFirefoxAnswer(targetMid, sessionDescription.sdp);
+      }
+
+      self._sendChannelMessage({
+        type: sessionDescription.type,
+        sdp: sessionDescription.sdp,
+        mid: self._user.sid,
+        target: targetMid,
+        rid: self._room.id
+      });
+    } else {
+      log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
+        'Waiting for Ice gathering to complete to prevent Ice trickle']);
+    }
+  }, function(error) {
+    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
+    log.error([targetMid, 'RTCSessionDescription', sessionDescription.type,
+      'Failed setting local description: '], error);
+  });
+};
+
+Skylink.prototype._privileged = {
+	privileged: false,
+	autoIntroduce: true,
+	parentKey: null,
+	session: {
+		roomPeers: {},
+		introduceHistory: {}
+	}
+};
+
+/**
+ * Whether this user automatically introduce to other peers.
+ * @attribute _autoIntroduce
+ * @type Boolean
+ * @default true
+ * @private
  * @component Peer
  * @for Skylink
  * @since 0.6.1
  */
-Skylink.prototype.SERVER_PEER_TYPE = {
-  MCU: 'mcu'
-  //SIP: 'sip'
+Skylink.prototype._autoIntroduce = true;
+
+/**
+ * Whether this user is a privileged user.
+ * @attribute isPrivileged
+ * @type Boolean
+ * @default false
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._isPrivileged = false;
+
+/**
+ * Parent key in case the current key is alias.
+ * If the current key is not alias, this is the same as _appKey
+ * @attribute _parentKey
+ * @type String
+ * @default null
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._parentKey = null;
+
+/**
+ * List of peers retrieved from signaling
+ * @attribute _peerList
+ * @type Object
+ * @default null
+ * @private
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype._peerList = null;
+
+/**
+ * Retrieves the list of rooms and peers under the same realm based
+ *   on the Application Key configured in {{#crossLink "Skylink/init:method"}}init(){{/crossLink}}
+ *   from the platform signaling.
+ * This will only work if self is a privileged Peer.
+ * @method getPeers
+ * @param {Boolean} [showAll=false] The flag that indicates if returned list should
+ *   also include privileged and standard in the list. By default, the value is <code>false</code>.
+ *   Which means only unprivileged peers' ID (isPrivileged = autoIntroduce = false) is included.
+ * @param {Function} [callback] The callback fired after the receiving the current
+ *   list of Peers from platform signaling or have met with an exception.
+ *   The callback signature is <code>function (error, success)</code>.
+ * @param {Object} callback.error The error object received in the callback.
+ *   This is the exception thrown that caused the failure for getting self user media.
+ *   If received as <code>null</code>, it means that there is no errors.
+ * @param {JSON} callback.success The success object received in the callback.
+ *   If received as <code>null</code>, it means that there are errors.
+ * @example
+ *
+ *   // To get list of unprivileged peers only
+ *   SkylinkDemo.getPeers();
+ *
+ *   // To get list of all peers, including other privileged peers
+ *   SkylinkDemo.getPeers(true);
+ *
+ *   // To get a list of unprivileged peers then invoke the callback
+ *   SkylinkDemo.getPeers(function(error, success){
+ *     if (error){
+ *       console.log("Error happened. Can not retrieve list of peers");
+ *     }
+ *     else{
+ *       console.log("Success fully retrieved list of peers", success);
+ *     }
+ *   });
+ *
+ *   // To get a list of all peers then invoke the callback
+ *   SkylinkDemo.getPeers(true, function(error, success){
+ *     if (error){
+ *       console.log("Error happened. Can not retrieve list of peers");
+ *     }
+ *     else{
+ *       console.log("Success fully retrieved list of peers", success);
+ *     }
+ *   });
+ *
+ * @trigger getPeersStateChange
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.getPeers = function(showAll, callback){
+	var self = this;
+	if (!self._isPrivileged){
+		log.warn('Please upgrade your key to privileged to use this function');
+		return;
+	}
+	if (!self._appKey){
+		log.warn('App key is not defined. Please authenticate again.');
+		return;
+	}
+	if (!self._parentKey){
+		log.warn('Parent key is not defined. Please authenticate again.');
+		return;
+	}
+
+	// Only callback is provided
+	if (typeof showAll === 'function'){
+		callback = showAll;
+		showAll = false;
+	}
+
+	self._sendChannelMessage({
+		type: self._SIG_MESSAGE_TYPE.GET_PEERS,
+		privilegedKey: self._appKey,
+		parentKey: self._parentKey,
+		showAll: showAll || false
+	});
+	self._trigger('getPeersStateChange',self.GET_PEERS_STATE.ENQUIRED, self._user.sid, null);
+
+	log.log('Enquired server for peers within the realm');
+
+	if (typeof callback === 'function'){
+		self.once('getPeersStateChange', function(state, privilegedPeerId, peerList){
+			callback(null, peerList);
+		}, function(state, privilegedPeerId, peerList){
+			return state === self.GET_PEERS_STATE.RECEIVED;
+		});
+	}
+
 };
+
+/**
+ * Introduces two Peers to each other to start a connection with each other.
+ * This will only work if self is a privileged Peer.
+ * @method introducePeer
+ * @param {String} sendingPeerId The Peer ID of the peer
+ *   that initiates the connection with the introduced Peer.
+ * @param {String} receivingPeerId The Peer ID of the
+ *   introduced peer who would be introduced to the initiator Peer.
+ * @trigger introduceStateChange
+ * @component Peer
+ * @for Skylink
+ * @since 0.6.1
+ */
+Skylink.prototype.introducePeer = function(sendingPeerId, receivingPeerId){
+	var self = this;
+	if (!self._isPrivileged){
+		log.warn('Please upgrade your key to privileged to use this function');
+		self._trigger('introduceStateChange', self.INTRODUCE_STATE.ERROR, self._user.sid, sendingPeerId, receivingPeerId, 'notPrivileged');
+		return;
+	}
+	self._sendChannelMessage({
+		type: self._SIG_MESSAGE_TYPE.INTRODUCE,
+		sendingPeerId: sendingPeerId,
+		receivingPeerId: receivingPeerId
+	});
+	self._trigger('introduceStateChange', self.INTRODUCE_STATE.INTRODUCING, self._user.sid, sendingPeerId, receivingPeerId, null);
+	log.log('Introducing',sendingPeerId,'to',receivingPeerId);
+};
+
+
+Skylink.prototype._peers = {};
+
+/**
+ * Stores the Peer session information.
+ * @method _peerCreate
+ * @param {String} peerId The Peer session ID.
+ * @param {JSON} config The message object that contains the Peer session information.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerCreate = function (peerId, config) {
+  var _this = this;
+
+  // Construct the peer object
+  _this._peers[peerId] = {
+    // The RTCPeerConnection object
+    peer: null,
+    // The agent information
+    agent: {
+      name: config.user.agent.name,
+      version: config.user.agent.version,
+      os: config.user.agent.os
+    },
+    // The custom data
+    data: config.user.data,
+    // The stream information
+    stream: config.stream,
+    // The connection information
+    connection: {
+      // Dead status when destroying session
+      dead: false,
+      // ICE connection
+      ICE: {
+        trickle: config.connection.trickleICE && _this._room.config.current.enableIceTrickle,
+        failures: 0,
+        candidates: {
+          completed: false,
+          incoming: {
+            queue: [],
+            failed: [],
+            success: []
+          },
+          outgoing: []
+        }
+      },
+      // The flag if should allow RTCDataChannel connections
+      datachannel: config.connection.datachannel && _this._room.config.current.enableDataChannel,
+      // The flag if should allow stereo for OPUS connections
+      stereo: config.connection.stereo && _this._user.session.stereo,
+      // Health timer
+      health: {
+        timer: null,
+        ok: false,
+        retries: 0
+      },
+      tieBreaker: config.tieBreaker
+    },
+    // The RTCDataChannels
+    channels: {}
+  };
+
+  _this._peerConnect(peerId);
+  _this._peerConnectMonitor(peerId);
+
+  // RTCPeerConnection.onremovestream
+  // RTCPeerConnection.ontrack - not implemented yet
+
+  log.debug([peerId, 'Peer', null, 'Session information has been initialized']);
+};
+
+/**
+ * Starts the Peer connection.
+ * @method _peerConnect
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnect = function (peerId) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring starting of connection as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.debug([peerId, 'Peer', null, 'Ignoring starting of connection as session is dead']);
+    return;
+  }
+
+  // Construct RTCPeerConnection object
+  _this._peers[peerId].peer = new RTCPeerConnection({
+    iceServers: _this._user.session.ICE.servers,
+    // iceTransportPolicy: "all",
+    // bundlePolicy: "balanced",
+    // rtcpMuxPolicy: "require",
+    // iceCandidatePoolSize: 0,
+    // certificates: []
+  } , {
+    optional: [{
+      DtlsSrtpKeyAgreement: true
+    }]
+  });
+
+  // Reset to defaults
+  _this._peers[peerId].connection.ICE.failures = 0;
+  _this._peers[peerId].connection.ICE.candidates.completed = false;
+  _this._peers[peerId].connection.ICE.candidates.outgoing = [];
+  _this._peers[peerId].connection.ICE.candidates.incoming.queue = [];
+  _this._peers[peerId].connection.ICE.candidates.incoming.failed = [];
+  _this._peers[peerId].connection.ICE.candidates.incoming.success = [];
+  _this._peers[peerId].connection.health.timer = null;
+  _this._peers[peerId].connection.health.ok = false;
+
+
+  // RTCPeerConnection.onconnectionstatechange - not implemented yet
+  // RTCPeerConnection.onicecandidateerror - not implemented yet
+  // RTCPeerConnection.onicecandidate
+  _this._peers[peerId].peer.onicecandidate =
+    _this._peerConnectReactToOnicecandidate(peerId);
+
+  // RTCPeerConnection.oniceconnectionstatechange
+  _this._peers[peerId].peer.oniceconnectionstatechange =
+    _this._peerConnectReactToOniceconnectionstatechange(peerId);
+
+  // RTCPeerConnection.onsignalingstatechange
+  _this._peers[peerId].peer.onsignalingstatechange =
+    _this._peerConnectReactToOnsignalingstatechange(peerId);
+
+  // RTCPeerConnection.onicegatheringstatechange
+  _this._peers[peerId].peer.onicegatheringstatechange =
+    _this._peerConnectReactToOnicegatheringstatechange(peerId);
+
+  // RTCPeerConnection.onnegotiationneeded
+  _this._peers[peerId].peer.onnegotiationneeded =
+    _this._peerConnectReactToOnnegotiationneeded(peerId);
+
+  // RTCPeerConnection.ondatachannel
+  _this._peers[peerId].peer.ondatachannel =
+    _this._peerConnectReactToOndatachannel(peerId);
+
+  // RTCPeerConnection.onaddstream
+  _this._peers[peerId].peer.onaddstream =
+    _this._peerConnectReactToOnaddstream(peerId);
+
+  // RTCPeerConnection.onremovestream
+  _this._peers[peerId].peer.onremovestream =
+    _this._peerConnectReactToOnremovestream(peerId);
+
+
+  log.debug([peerId, 'Peer', null, 'Connection is ready for handshaking']);
+};
+
+/**
+ * Monitors the Peer connection.
+ * @method _peerConnectMonitor
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectMonitor = function (peerId) {
+  var _this = this;
+  var healthTimeout = 10000;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring configuring connection monitor as session does not exsits']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.debug([peerId, 'Peer', null, 'Ignoring configuring connection monitor as session is dead']);
+    return;
+  }
+
+  // Check if Peer is offerer, and configure the unit if required
+  if (_this._peers[peerId].connection.tieBreaker > _this._user.session.tieBreaker) {
+    healthTimeout = 12500;
+  }
+
+  // Check if trickle ICE is disabled and increment as it takes longer
+  if (!_this._peers[peerId].connection.ICE.trickle) {
+    healthTimeout += 40000;
+  }
+
+  // Increment the timer for every retry
+  healthTimeout += _this._peers[peerId].connection.health.retries * 10000;
+
+  // Start the monitor
+  _this._peers[peerId].connection.health.timer = setTimeout(function () {
+    if (!_this._peers[peerId]) {
+      log.warn([peerId, 'Peer', null, 'Ignoring monitor expiration as session does not exists']);
+      return;
+    }
+
+    // Check if ICE connection is successful
+    var iceConnectionStateStable = ['connected', 'completed'].indexOf(_this._peers[peerId].peer.iceConnectionState) > -1;
+    // Check if signaling state is "stable"
+    var signalingStateStable = _this._peers[peerId].peer.signalingState === 'stable';
+    // Check if "main" RTCDataChannel is connected
+    var dataChannelStateStable = _this._peers[peerId].connection.datachannel ?
+    // Check if RTCDataChannel is required, else return as true
+      _this._peers[peerId].channels.main && _this._peers[peerId].channels.main.channel &&
+      _this._peers[peerId].channels.main.channel.readyState === 'open' : true;
+
+    // Check if connection is stable
+    if (iceConnectionStateStable && signalingStateStable && dataChannelStateStable) {
+      _this._peers[peerId].connection.health.timer = null;
+      _this._peers[peerId].connection.health.ok = true;
+
+      log.debug([peerId, 'Peer', null, 'Connection health is healthy']);
+      return;
+    }
+
+    log.debug([peerId, 'Peer', null, 'Connection status is not healthy, reconnecting ->'], {
+      iceConnectionState: iceConnectionStateStable,
+      signalingState: signalingStateStable,
+      dataChannelState: dataChannelStateStable
+    });
+
+    _this._peerReconnect(peerId, false, false);
+
+  }, healthTimeout);
+
+  log.debug([peerId, 'Peer', null, 'Monitoring connection health with timeout ->'], healthTimeout);
+};
+
+/**
+ * Stops the Peer connection.
+ * @method _peerDisconnect
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerDisconnect = function (peerId) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring destroying of connection as session does not exists']);
+    return;
+  }
+
+  // Close all RTCDataChannel connections
+  objForEach(_this._peers[peerId].channels, function (channel, id) {
+    log.debug([peerId, 'Peer', null, 'Closing RTCDataChannel connection ->'], id);
+
+    channel.channel.close();
+    channel.transfer = {};
+  });
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring destroying of connection as connection does not exists']);
+    return;
+  }
+
+  log.debug([peerId, 'Peer', null, 'Closing connection']);
+
+  // Close RTCPeerConnection connection
+  _this._peers[peerId].peer.close();
+};
+
+/**
+ * Handshake step 1.
+ * Generates a local offer RTCSessionDescription for Peer connection.
+ * @method _peerConnectHandshakeOffer
+ * @param {String} peerId The Peer session ID.
+ * @param {Boolean} [iceRestart=false] The flag that indicates if connection should restart ICE.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectHandshakeOffer = function (peerId, iceRestart) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking offer as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking offer as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking offer as connection does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].peer.signalingState !== 'stable') {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking offer as connection signalingState is not "stable" ->'],
+      _this._peers[peerId].peer.signalingState);
+    return;
+  }
+
+  // Generate local offer RTCSessionDescription
+  _this._peers[peerId].peer.createOffer(function (offer) {
+    log.debug([peerId, 'Peer', null, 'Generated local offer ->'], offer);
+
+    // Set local offer RTCSessionDescription
+    _this._peerConnectHandshakeSetLocal(peerId, offer);
+
+  }, function (error) {
+    log.error([peerId, 'Peer', null, 'Failed generating local offer ->'], error);
+
+    _this._trigger('handshakeProgress', _this.HANDSHAKE_PROGRESS.ERROR, peerId, error);
+
+  }, {
+    mandatory: {
+      OfferToReceiveAudio: true,
+      OfferToReceiveVideo: true,
+      iceRestart: iceRestart === true
+    }
+  });
+};
+
+/**
+ * Handshake step 2.
+ * Generates a local answer RTCSessionDescription for Peer connection based on
+ *   remote offer RTCSessionDescription received.
+ * @method _peerConnectHandshakeOffer
+ * @param {String} peerId The Peer session ID.
+ * @param {RTCSessionDescription} offer The remote offer RTCSessionDescription received.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectHandshakeAnswer = function (peerId, offer) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking answer as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking answer as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking answer as connection does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].peer.signalingState !== 'stable') {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking answer as connection signalingState is not "stable" ->'],
+      _this._peers[peerId].peer.signalingState);
+    return;
+  }
+
+  _this._peerConnectHandshakeSetRemote(peerId, offer, function () {
+    // Generate local answer RTCSessionDescription
+    _this._peers[peerId].peer.createAnswer(function (answer) {
+      log.debug([peerId, 'Peer', null, 'Generated local answer ->'], answer);
+
+      // Set local answer RTCSessionDescription
+      _this._peerConnectHandshakeSetLocal(peerId, answer);
+
+    }, function (error) {
+      log.error([peerId, 'Peer', null, 'Failed generating local answer ->'], error);
+
+      _this._trigger('handshakeProgress', _this.HANDSHAKE_PROGRESS.ERROR, peerId, error);
+    });
+  });
+};
+
+/**
+ * Handshake step 3.
+ * Sets the remote answer RTCSessionDescription received.
+ * @method _peerConnectHandshakeComplete
+ * @param {String} peerId The Peer session ID.
+ * @param {RTCSessionDescription} answer The answer offer RTCSessionDescription received.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectHandshakeComplete = function (peerId, answer) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking complete as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking complete as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking complete as connection does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].peer.signalingState !== 'have-local-offer') {
+    log.warn([peerId, 'Peer', null, 'Ignoring handshaking complete as connection signalingState is not "have-local-offer" ->'],
+      _this._peers[peerId].peer.signalingState);
+    return;
+  }
+
+  _this._peerConnectHandshakeSetRemote(peerId, answer, function () {
+    log.debug([peerId, 'Peer', null, 'Connection handshake has completed']);
+  });
+};
+
+/**
+ * Sets the local RTCSessionDescription generated.
+ * @method _peerConnectHandshakeSetLocal
+ * @param {String} peerId The Peer session ID.
+ * @param {RTCSessionDescription} sessionDescription The local RTCSessionDescription generated.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectHandshakeSetLocal = function (peerId, sessionDescription) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting local ' + sessionDescription.type +
+      ' as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting local ' + sessionDescription.type +
+      ' as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting local ' + sessionDescription.type +
+      ' as connection does not exists']);
+    return;
+  }
+
+  // Start modifications here
+
+  log.debug([peerId, 'Peer', null, 'Setting local ' + sessionDescription.type + ' ->'], sessionDescription);
+
+  _this._peers[peerId].peer.setLocalDescription(sessionDescription, function () {
+    log.debug([peerId, 'Peer', null, 'Set local ' + sessionDescription.type + ' successfully']);
+
+    if (!_this._peers[peerId].connection.ICE.trickle) {
+      log.debug([peerId, 'Peer', null, 'Awaiting for ICE candidates generation to complete before sending ' +
+        'local ' + sessionDescription.type]);
+      return;
+    }
+
+    if (sessionDescription.type === 'offer') {
+      _this._messageConstructOffer(peerId, sessionDescription);
+    } else {
+      _this._messageConstructAnswer(peerId, sessionDescription);
+    }
+
+  }, function (error) {
+    log.error([peerId, 'Peer', null, 'Failed setting local ' + sessionDescription.type + ' ->'], error);
+
+    _this._trigger('handshakeProgress', _this.HANDSHAKE_PROGRESS.ERROR, peerId, error);
+  });
+};
+
+/**
+ * Sets the remote RTCSessionDescription received.
+ * @method _peerConnectHandshakeSetRemote
+ * @param {String} peerId The Peer session ID.
+ * @param {RTCSessionDescription} sessionDescription The remote RTCSessionDescription received.
+ * @param {Function} callback The callback triggered after setRemoteDescription is successful
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectHandshakeSetRemote = function (peerId, sessionDescription, callback) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting remote ' + sessionDescription.type +
+      ' as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting local ' + sessionDescription.type +
+      ' as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', null, 'Ignoring setting remote ' + sessionDescription.type +
+      ' as connection does not exists']);
+    return;
+  }
+
+  // Start modifications here
+
+  log.debug([peerId, 'Peer', null, 'Setting remote ' + sessionDescription.type + ' ->'], sessionDescription);
+
+  _this._peers[peerId].peer.setRemoteDescription(sessionDescription, function () {
+    log.debug([peerId, 'Peer', null, 'Set remote ' + sessionDescription.type + ' successfully']);
+
+    // Add queued remote ICE candidates
+    _this._peers[peerId].connection.ICE.candidates.incoming.queue.forEach(function (candidate) {
+      var candidateId = candidate.candidate.split(' ')[0];
+
+      log.debug([peerId, 'Peer', candidateId, 'Adding queued remote candidate ->'], candidate);
+
+      _this._peers[peerId].peer.addIceCandidate(candidate, function () {
+        log.debug([peerId, 'Peer', candidateId, 'Added queued remote candidate successfully']);
+        _this._peers[peerId].connection.ICE.candidates.incoming.success.push(candidate);
+      }, function (error) {
+        log.debug([peerId, 'Peer', candidateId, 'Failed queued adding remote candidate ->'], error);
+        _this._peers[peerId].connection.ICE.candidates.incoming.failed.push(candidate);
+      });
+    });
+
+    _this._peers[peerId].connection.ICE.candidates.incoming.queue = [];
+
+    callback();
+
+  }, function (error) {
+    log.error([peerId, 'Peer', null, 'Failed setting remote ' + sessionDescription.type + ' ->'], error);
+
+    _this._trigger('handshakeProgress', _this.HANDSHAKE_PROGRESS.ERROR, peerId, error);
+  });
+};
+
+/**
+ * Adds the remote RTCIceCandidate received.
+ * @method _peerConnectAddCandidate
+ * @param {String} peerId The Peer session ID.
+ * @param {RTCIceCandidate} candidate The remote RTCIceCandidate received.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectAddCandidate = function (peerId, candidate) {
+  var _this = this;
+  var candidateId = candidate.candidate.split(' ')[0];
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', candidateId, 'Ignoring setting remote ' + sessionDescription.type +
+      ' as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.warn([peerId, 'Peer', candidateId, 'Ignoring setting local ' + sessionDescription.type +
+      ' as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.warn([peerId, 'Peer', candidateId, 'Ignoring setting remote ' + sessionDescription.type +
+      ' as connection does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].peer.remoteDescription && !!_this._peers[peerId].peer.remoteDescription.sdp) {
+    log.debug([peerId, 'Peer', candidateId, 'Queueing remote candidate as remoteDescription is not present yet']);
+    _this._peers[peerId].connection.ICE.candidates.incoming.queue.push(candidate);
+    return;
+  }
+
+  var shouldAddCandidate = false;
+
+  _this._user.session.ICE.useCandidates.current.forEach(function (candidateType) {
+    if (candidate.candidate.indexOf(candidateType) > -1) {
+      shouldAddCandidate = true;
+    }
+  });
+
+  if (!shouldAddCandidate) {
+    log.warn([peerId, 'Peer', candidateId, 'Dropping remote candidate as it does not match candidate types filter ->'], candidate);
+    return;
+  }
+
+  log.debug([peerId, 'Peer', candidateId, 'Adding remote candidate ->'], candidate);
+
+  _this._peers[peerId].peer.addIceCandidate(candidate, function () {
+    log.debug([peerId, 'Peer', candidateId, 'Added remote candidate successfully']);
+    _this._peers[peerId].connection.ICE.candidates.incoming.success.push(candidate);
+  }, function (error) {
+    log.debug([peerId, 'Peer', candidateId, 'Failed adding remote candidate ->'], error);
+    _this._peers[peerId].connection.ICE.candidates.incoming.failed.push(candidate);
+  });
+};
+
+/*
+ANSWER SDP for MCU
+// if firefox and peer is mcu, replace the sdp to suit mcu needs
+  if (window.webrtcDetectedType === 'moz' && targetMid === 'MCU') {
+    answer.sdp = answer.sdp.replace(/ generation 0/g, '');
+    answer.sdp = answer.sdp.replace(/ udp /g, ' UDP ');
+  }
+  */
+
+/**
+ * Restarts the Peer connection.
+ * @method _peerReconnect
+ * @param {String} peerId The Peer session ID.
+ * @param {Boolean} [hardRestart=false] The flag that indicates if connection should be re-created.
+ * @param {Boolean} [iceRestart=false] The flag that indicates if connection should restart ICE.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerReconnect = function (peerId, passedHardRestart, iceRestart) {
+  var _this = this;
+  var hardRestart = passedHardRestart === true;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring reconnection as session does not exists']);
+    return;
+  }
+
+  if (_this._peers[peerId].connection.dead) {
+    log.debug([peerId, 'Peer', null, 'Ignoring reconnection as session is dead']);
+    return;
+  }
+
+  if (!_this._peers[peerId].peer) {
+    log.debug([peerId, 'Peer', null, 'Constructing connection as it does not exists']);
+    _this._peerConnect(peerId);
+    hardRestart = true;
+  }
+
+  // Check if we have to do a complete restart
+  if (hardRestart) {
+    // Only hard restarts can be made with P2P only connections
+    if (!_this._room.MCU) {
+      log.debug([peerId, 'Peer', null, 'Reconstructing connection']);
+      _this._peerDisconnect(peerId);
+      _this._peerConnect(peerId);
+    // Do not do hard restarts for MCU
+    } else {
+      log.warn([peerId, 'Peer', null, 'Not doing any reconstruction of connection for MCU environment']);
+      hardRestart = false;
+    }
+  }
+
+  if (!hardRestart) {
+    var sessionDescription = _this._peers[peerId].peer.localDescription;
+
+    // Check if local RTCSessionDescription exists first
+    if (sessionDescription && !!sessionDescription.sdp) {
+      // When other Peer connection does not receive our local offer RTCSessionDescription yet
+      if (_this._peers[peerId].peer.signalingState === 'have-local-offer') {
+        _this._messageConstructOffer(peerId, sessionDescription);
+        _this._peerConnectMonitor(peerId);
+        return;
+      // When other Peer connection does not receive our local answer RTCPeerConnection yet
+      } else if (_this._peers[peerId].peer.signalingState === 'have-remote-offer') {
+        _this._messageConstructAnswer(peerId, sessionDescription);
+        _this._peerConnectMonitor(peerId);
+        return;
+      }
+    }
+  }
+
+  // Send the "restart" message scenario
+  _this._messageConstructRestart(peerId, hardRestart, iceRestart);
+  _this._peerConnectMonitor(peerId);
+};
+
+/**
+ * Destroys the Peer session information.
+ * @method _peerDestroy
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerDestroy = function (peerId) {
+  var _this = this;
+
+  if (!_this._peers[peerId]) {
+    log.warn([peerId, 'Peer', null, 'Ignoring destroying of session as it does not exists']);
+    return;
+  }
+
+  log.debug([peerId, 'Peer', null, 'Session is closed. Destroying..']);
+
+  _this._peerDisconnect(peerId);
+
+  // Configure as session dead
+  _this._peers[peerId].connection.dead = true;
+
+  if (peerId !== 'MCU') {
+    this._trigger('peerLeft', peerId, _this.getPeerInfo(peerId), false);
+
+  } else {
+    _this._room.MCU = false;
+
+    this._trigger('serverPeerLeft', peerId, _this.SERVER_PEER_TYPE.MCU);
+  }
+
+  // Our "garbage collector"
+  // To ensure all the "closed" events gets triggered
+  // NOTE: We don't know if this is the best solution though ...
+  var dustbin = setInterval(function () {
+    var cleanup = function () {
+      clearInterval(dustbin);
+      delete _this._peers[peerId];
+
+      log.debug([peerId, 'Peer', null, 'Session is destroyed']);
+    };
+
+    if (!_this._peers[peerId]) {
+      cleanup();
+      return;
+    }
+
+    if (!_this._peers[peerId].peer) {
+      cleanup();
+      return;
+    }
+
+    // No matter if it's current state is "failed" or "disconnected",
+    //   as long as RTCPeerConnection.close() is invoked, it always goes to "closed"
+    var iceConnectionStateClosed = _this._peers[peerId].peer.iceConnectionState === 'closed';
+    // Should always be "closed" when RTCPeerConnection.close() is invoked
+    var signalingStateClosed = _this._peers[peerId].peer.signalingState === 'closed';
+    var dataChannelClosed = false;
+
+    if (!_this._peers[peerId].connection.datachannel) {
+      dataChannelClosed = true;
+
+    } else {
+      objForEach(_this._peers[peerId].channels, function (channel) {
+        // No matter what state -> "connecting", "open", when RTCDataChannel.close() is invoked,
+        //   it always goes to "closed"
+        // Plugin 0.8.863 version readyState is empty "" when invoking .close()
+        dataChannelClosed = channel.channel.readyState === 'closed' || !channel.channel.readyState;
+      });
+    }
+
+    if (iceConnectionStateClosed && signalingStateClosed && dataChannelClosed) {
+      cleanup();
+    }
+  }, 100);
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onicecandidate event.
+ * @method _peerConnectReactToOnicecandidate
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnicecandidate = function (peerId) {
+  var _this = this;
+
+  return function (event) {
+    var candidate = event.candidate || event;
+
+    // Check if candidate has generation is complete yet
+    if (!candidate.candidate) {
+      log.debug([peerId, 'Peer', null, 'Generation of local candidates has been completed']);
+
+      _this._peers[peerId].connection.ICE.candidates.completed = true;
+
+      // If ICE trickle is disabled, then send the local RTCSessionDescription object
+      if (!_this._peers[peerId].connection.ICE.trickle) {
+        var sessionDescription = _this._peers[peerId].peer.localDescription;
+
+        log.debug([peerId, 'Peer', null, 'Sending delayed local sessionDescription ->'], sessionDescription);
+
+        if (sessionDescription.type === 'offer') {
+          _this._messageConstructOffer(peerId, sessionDescription);
+        } else {
+          _this._messageConstructAnswer(peerId, sessionDescription);
+        }
+      }
+      return;
+    }
+
+    var shouldSendCandidate = false;
+    var candidateId = candidate.candidate.split(' ')[0];
+
+    log.debug([peerId, 'Peer', candidateId, 'Generated local candidate ->'], candidate);
+
+    _this._user.session.ICE.useCandidates.current.forEach(function (candidateType) {
+      if (candidate.candidate.indexOf(candidateType) > -1) {
+        shouldSendCandidate = true;
+      }
+    });
+
+    if (!shouldSendCandidate) {
+      log.warn([peerId, 'Peer', candidateId, 'Dropping local candidate as it does not match candidate types filter ->'], candidate);
+      return;
+    }
+
+    _this._peers[peerId].connection.ICE.candidates.outgoing.push(candidate);
+    _this._messageConstructCandidate(peerId, candidate);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.oniceconnectionstatechange event.
+ * @method _peerConnectReactToOniceconnectionstatechange
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOniceconnectionstatechange = function (peerId) {
+  var _this = this;
+
+  return function () {
+    var state = _this._peers[peerId].peer.iceConnectionState;
+
+    log.debug([peerId, 'Peer', null, 'Connection ICE connection state ->'], state);
+
+    _this._trigger('iceConnectionState', state, peerId);
+
+    // Restart ICE connection state is "failed" or "disconnected"
+    if (['failed', 'disconnected'].indexOf(state) > -1) {
+      var hardRestart = false;
+
+      // When iceConnectionState -> "failed"
+      if (state === 'failed') {
+        // Increment the failure counter
+        _this._peers[peerId].connection.ICE.failures++;
+
+        // Disable trickle ICE if failures counter is 3
+        if (_this._peers[peerId].connection.ICE.failures === 3) {
+          _this._peers[peerId].connection.ICE.trickle = false;
+
+          // Check if MCU and do a hard restart if MCU
+          if (!_this._room.MCU) {
+            hardRestart = true;
+          }
+
+          _this._trigger('iceConnectionState', _this.ICE_CONNECTION_STATE.TRICKLE_FAILED, peerId);
+        }
+      }
+
+      _this._peerReconnect(peerId, hardRestart, true);
+    }
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onsignalingstatechange event.
+ * @method _peerConnectReactToOnsignalingstatechange
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnsignalingstatechange = function (peerId) {
+  var _this = this;
+
+  return function () {
+    var state = _this._peers[peerId].peer.signalingState;
+
+    log.debug([peerId, 'Peer', null, 'Connection signaling state ->'], state);
+
+    _this._trigger('peerConnectionState', state, peerId);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onicegatheringstatechange event.
+ * @method _peerConnectReactToOnicegatheringstatechange
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnicegatheringstatechange = function (peerId) {
+  var _this = this;
+
+  return function () {
+    var state = _this._peers[peerId].peer.iceGatheringState;
+
+    log.debug([peerId, 'Peer', null, 'Connection ICE gathering state ->'], state);
+
+    _this._trigger('iceGatheringState', state, peerId);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.ondatachannel event.
+ * @method _peerConnectReactToOndatachannel
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOndatachannel = function (peerId) {
+  var _this = this;
+
+  return function (event) {
+    var channel = event.channel || event;
+
+    log.debug([peerId, 'Peer', null, 'Connection received RTCDataChannel ->'], channel);
+
+    _this._createChannel(peerId, channel);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onaddstream event.
+ * @method _peerConnectReactToOnaddstream
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnaddstream = function (peerId) {
+  var _this = this;
+
+  return function (event) {
+    var stream = event.stream || event;
+    // The timeout that somehow allows rendering to work
+    var magicalTimeout = 0;
+
+    log.debug([peerId, 'Peer', null, 'Connection received remote MediaStream ->'], stream);
+
+
+    if (_this._peers[peerId].agent.name === 'firefox' && _this._user.agent.name !== 'firefox') {
+      magicalTimeout = 1500;
+    }
+
+    // NOTE: Add timeouts to the firefox stream received because it seems to have some sort of black stream rendering at first
+    // This may not be advisable but that it seems to work after 1500s. (tried with ICE established but it does not work and getStats)
+    setTimeout(function () {
+      _this._trigger('incomingStream', peerId, stream, false, _this.getPeerInfo(peerId));
+    }, magicalTimeout);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onnegotiationneeded event.
+ * @method _peerConnectReactToOnnegotiationneeded
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnnegotiationneeded = function (peerId) {
+  var _this = this;
+
+  return function () {
+    log.debug([peerId, 'Peer', null, 'Connection received negotiation request']);
+  };
+};
+
+/**
+ * Reacts to the RTCPeerConnection.onremovestream event.
+ * @method _peerConnectReactToOnremovestream
+ * @param {String} peerId The Peer session ID.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._peerConnectReactToOnremovestream = function (peerId) {
+  var _this = this;
+
+  return function (event) {
+    var stream = event.stream || event;
+    log.debug([peerId, 'Peer', null, 'Connection removed MediaStream ->'], stream);
+  };
+};
+
+
 
 /**
  * Stores the timestamp of the moment when the last Peers connection
@@ -13100,2964 +17585,501 @@ Skylink.prototype._restartMCUConnection = function(callback) {
     }
   });
 };
-Skylink.prototype._peerInformations = {};
+Skylink.prototype._room = {
+  connected: false,
+  locked: false,
+  name: null,
+  MCU: false,
+  session: {
+    path: null,
+    protocol: null,
+    random: null,
+    data: null,
+    useXDomainRequest: typeof window.XDomainRequest === 'function' ||
+      typeof window.XDomainRequest === 'object'
+  },
+  config: {
+    default: {
+      appKey: null,
+      defaultRoom: null,
+      roomServer: '//api.temasys.com.sg',
+      region: null,
+      credentials: null,
+      forceSSL: false,
+      socketTimeout: 20000,
+      enableIceTrickle: true,
+      enableDataChannel: true,
+      enableTURNServer: true,
+      enableSTUNServer: true,
+      usePublicSTUN: true,
+      forceTURN: false,
+      forceTURNSSL: false,
+      TURNServerTransport: 'any',
+      audioFallback: false,
+      audioCodec: 'auto',
+      videoCodec: 'auto'
+    },
+    current: {}
+  }
+};
 
 /**
- * Stores the self credentials that is required to connect to
- *   Skylink platform signalling and identification in the
- *   signalling socket connection.
+ * Contains the user session information.
  * @attribute _user
  * @type JSON
- * @param {String} uid The self session ID.
- * @param {String} sid The self session socket connection ID. This
- *   is used by the signalling socket connection as ID to target
- *   self and the peers Peer ID.
- * @param {String} timeStamp The self session timestamp.
- * @param {String} token The self session access token.
- * @required
  * @private
- * @component User
+ * @since 0.6.8
  * @for Skylink
- * @since 0.5.6
  */
-Skylink.prototype._user = null;
-
-/**
- * Stores the custom user data information set by developer for self.
- * By default, if no custom user data is set, it is an empty string <code>""</code>.
- * @attribute _userData
- * @type JSON|String
- * @default ""
- * @required
- * @private
- * @component User
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype._userData = '';
-
-/**
- * Sets the current custom user data information for self.
- * This sets and overwrites the <code>peerInfo.userData</code> value for self.
- * If self is in the room and connected with other peers, the peers will be notified
- *   with the {{#crossLink "Skylink/peerUpdated:event"}}peerUpdated{{/crossLink}} event.
- * You may get the current customer user data information for self in
- *   {{#crossLink "Skylink/getUserData:method"}}getUserData(){{/crossLink}}.
- * @method setUserData
- * @param {JSON|String} userData The custom (or updated) user data information
- *   for self provided.
- * @example
- *   // Example 1: Intial way of setting data before user joins the room
- *   SkylinkDemo.setUserData({
- *     displayName: "Bobby Rays",
- *     fbUserId: "1234"
- *   });
- *
- *   // Example 2: Way of setting data after user joins the room
- *   var userData = SkylinkDemo.getUserData();
- *   userData.displayName = "New Name";
- *   userData.fbUserId = "1234";
- *   SkylinkDemo.setUserData(userData);
- * @trigger peerUpdated
- * @component User
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype.setUserData = function(userData) {
-  var self = this;
-  // NOTE ALEX: be smarter and copy fields and only if different
-  self._parseUserData(userData);
-
-  if (self._inRoom) {
-    log.log('Updated userData -> ', userData);
-    self._sendChannelMessage({
-      type: self._SIG_MESSAGE_TYPE.UPDATE_USER,
-      mid: self._user.sid,
-      rid: self._room.id,
-      userData: self._userData
-    });
-    self._trigger('peerUpdated', self._user.sid, self.getPeerInfo(), true);
-  } else {
-    log.warn('User is not in the room. Broadcast of updated information will be dropped');
-  }
-};
-
-/**
- * Gets the current custom user data information for self.
- * You may set the current customer user data information for self in
- *   {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
- * @method getUserData
- * @return {JSON|String} The custom (or updated) user data information
- *   for self set.
- * @example
- *   // Example 1: To get other peer's userData
- *   var peerData = SkylinkDemo.getUserData(peerId);
- *
- *   // Example 2: To get own userData
- *   var userData = SkylinkDemo.getUserData();
- * @component User
- * @for Skylink
- * @since 0.5.10
- */
-Skylink.prototype.getUserData = function(peerId) {
-  if (peerId && peerId !== this._user.sid) {
-    // peer info
-    var peerInfo = this._peerInformations[peerId];
-
-    if (typeof peerInfo === 'object') {
-      return peerInfo.userData;
-    }
-
-    return null;
-  }
-  return this._userData;
-};
-
-/**
- * Parses the custom user data information for self provided.
- * @method _parseUserData
- * @param {JSON} [userData] The custom (or updated) user data information
- *   for self provided.
- * @private
- * @component User
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype._parseUserData = function(userData) {
-  log.debug('Parsing user data:', userData);
-
-  this._userData = userData || '';
-};
-
-/**
- * Gets the Peer information.
- * If an invalid Peer ID is provided, or no Peer ID is provided,
- *   the method will return the self peer information.
- * @method getPeerInfo
- * @param {String} [peerId] The Peer information to retrieve the
- *   data from. If the Peer ID is not provided, it will return
- *   the self Peer information.
- * @return {JSON} The Peer information. The parameters relates to the
- *   <code>peerInfo</code> payload given in the
- *   {{#crossLink "Skylink/peerJoined:event"}}peerJoined{{/crossLink}} event.
- * @example
- *   // Example 1: To get other peer's information
- *   var peerInfo = SkylinkDemo.getPeerInfo(peerId);
- *
- *   // Example 2: To get own information
- *   var userInfo = SkylinkDemo.getPeerInfo();
- * @component Peer
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype.getPeerInfo = function(peerId) {
-  var isNotSelf = this._user && this._user.sid ? peerId !== this._user.sid : false;
-
-  if (typeof peerId === 'string' && isNotSelf) {
-    // peer info
-    var peerInfo = this._peerInformations[peerId];
-
-    if (typeof peerInfo === 'object') {
-      return peerInfo;
-    }
-
-    return null;
-  } else {
-
-    var mediaSettings = {};
-
-    // add screensharing information
-    if (!!this._mediaScreen && this._mediaScreen !== null) {
-      mediaSettings = clone(this._screenSharingStreamSettings);
-      mediaSettings.bandwidth = clone(this._streamSettings.bandwidth);
-    } else {
-      mediaSettings = clone(this._streamSettings);
-    }
-
-    return {
-      userData: clone(this._userData) || '',
-      settings: mediaSettings || {},
-      mediaStatus: clone(this._mediaStreamsStatus) || {},
-      agent: {
-        name: window.webrtcDetectedBrowser,
-        version: window.webrtcDetectedVersion
-      },
-      room: clone(this._selectedRoom)
-    };
-  }
-};
-
-Skylink.prototype.HANDSHAKE_PROGRESS = {
-  ENTER: 'enter',
-  WELCOME: 'welcome',
-  OFFER: 'offer',
-  ANSWER: 'answer',
-  ERROR: 'error'
-};
-
-/**
- * Stores the list of Peer connection health timeout objects that
- *   waits for any existing Peer "healthy" state in successful
- *   {{#crossLink "Skylink/_peerConnectionHealth:attr"}}_peerConnectionHealth{{/crossLink}}.
- *   If timeout has reached it's limit and does not have any "healthy" connection state
- *   with Peer connection, it will restart the connection again with
- *   {{#crossLink "Skylink/_restartPeerConnection:method"}}_restartPeerConnection(){{/crossLink}}.
- * @attribute _peerConnectionHealthTimers
- * @param {Object} (#peerId) The timeout object set using <code>setTimeout()</code> that
- *   does the wait for any "healthy" state connection associated with the Peer connection.
- *   This will be removed when the Peer connection has ended or when the Peer
- *   connection has been met with a "healthy" state.
- * @type JSON
- * @private
- * @required
- * @component Peer
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._peerConnectionHealthTimers = {};
-
-/**
- * Stores the list of Peer connections that has connection
- *   established successfully. When the Peer connection has a
- *   successful ICE connection state of <code>"completed"</code>,
- *   it stores the Peer connection as "healthy".
- * @attribute _peerConnectionHealth
- * @param {Boolean} (#peerId) The flag that indicates if the associated Peer
- *   connection is in a "healthy" state. If the value is <code>true</code>, it means
- *   that the Peer connectin is in a "healthy" state.
- * @type JSON
- * @private
- * @required
- * @component Peer
- * @since 0.5.5
- */
-Skylink.prototype._peerConnectionHealth = {};
-
-/**
- * Stores the peer connection priority weight.
- * @attribute _peerPriorityWeight
- * @type Number
- * @private
- * @required
- * @for Skylink
- * @since 0.5.0
- */
-Skylink.prototype._peerPriorityWeight = 0;
-
-/**
- * Starts to initiate the WebRTC layer of handshake connection by
- *   creating the <code>OFFER</code> session description and then
- *   sending it to the associated Peer.
- * The offerer status may be shifted to the other peer depending on
- *   when version of browser that is initiating the connection
- *   to what version of browser to.
- * @method _doOffer
- * @param {String} targetMid The Peer ID to send the <code>OFFER</code> to.
- * @param {JSON} peerBrowser The Peer platform agent information.
- * @param {String} peerBrowser.name The Peer platform browser or agent name.
- * @param {Number} peerBrowser.version The Peer platform browser or agent version.
- * @param {Number} peerBrowser.os The Peer platform name.
- * @param {Function} renegoCallback The callback function that triggers after
- *   the offer has been created or responsed.
- * @private
- * @for Skylink
- * @component Peer
- * @since 0.5.2
- */
-Skylink.prototype._doOffer = function(targetMid, peerBrowser) {
-  var self = this;
-  var pc = self._peerConnections[targetMid] || self._addPeer(targetMid, peerBrowser);
-  log.log([targetMid, null, null, 'Checking caller status'], peerBrowser);
-  // NOTE ALEX: handle the pc = 0 case, just to be sure
-  var inputConstraints = self._room.connection.offerConstraints;
-  var sc = self._room.connection.sdpConstraints;
-  for (var name in sc.mandatory) {
-    if (sc.mandatory.hasOwnProperty(name)) {
-      inputConstraints.mandatory[name] = sc.mandatory[name];
-    }
-  }
-  inputConstraints.optional.concat(sc.optional);
-  checkMediaDataChannelSettings(peerBrowser.agent, peerBrowser.version,
-    function(beOfferer, unifiedOfferConstraints) {
-    // attempt to force make firefox not to offer datachannel.
-    // we will not be using datachannel in MCU
-    if (window.webrtcDetectedType === 'moz' && peerBrowser.agent === 'MCU') {
-      unifiedOfferConstraints.mandatory = unifiedOfferConstraints.mandatory || {};
-      unifiedOfferConstraints.mandatory.MozDontOfferDataChannel = true;
-      beOfferer = true;
-    }
-
-    unifiedOfferConstraints.mandatory.iceRestart = true;
-    peerBrowser.os = peerBrowser.os || '';
-
-    if (peerBrowser.agent !== 'MCU') {
-      /*
-       // for windows firefox to mac chrome interopability
-      if (window.webrtcDetectedBrowser === 'firefox' &&
-        window.navigator.platform.indexOf('Win') === 0 &&
-        peerBrowser.agent !== 'firefox' &&
-        peerBrowser.agent !== 'MCU' &&
-        peerBrowser.os.indexOf('Mac') === 0) {
-        beOfferer = false;
-      }*/
-      if (window.webrtcDetectedBrowser === 'firefox' && peerBrowser.agent !== 'firefox') {
-        beOfferer = false;
+Skylink.prototype._user = {
+  agent: {
+    name: window.webrtcDetectedBrowser,
+    version: window.webrtcDetectedVersion,
+    os: window.navigator.platform
+  },
+  data: null,
+  session: {
+    id: null,
+    tieBreaker: null,
+    ICE: {
+      servers: [],
+      useCandidates: {
+        default: ['relay', 'host', 'srflx'],
+        current: []
       }
-    }
-
-    if (beOfferer) {
-      if (window.webrtcDetectedBrowser === 'firefox' && window.webrtcDetectedVersion >= 32) {
-        unifiedOfferConstraints = {
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true
-        };
-
-        /*if (window.webrtcDetectedVersion > 37) {
-          unifiedOfferConstraints = {};
-        }*/
-      }
-
-      log.debug([targetMid, null, null, 'Creating offer with config:'], unifiedOfferConstraints);
-
-      pc.createOffer(function(offer) {
-        log.debug([targetMid, null, null, 'Created offer'], offer);
-        self._setLocalAndSendMessage(targetMid, offer);
-      }, function(error) {
-        self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR,
-          targetMid, error);
-        log.error([targetMid, null, null, 'Failed creating an offer:'], error);
-      }, unifiedOfferConstraints);
-    } else {
-      log.debug([targetMid, null, null, 'User\'s browser is not eligible to create ' +
-        'the offer to the other peer. Requesting other peer to create the offer instead'
-        ], peerBrowser);
-
-      self._sendChannelMessage({
-        type: self._SIG_MESSAGE_TYPE.WELCOME,
-        mid: self._user.sid,
-        rid: self._room.id,
-        agent: window.webrtcDetectedBrowser,
-        version: window.webrtcDetectedVersion,
-        os: window.navigator.platform,
-        userInfo: self.getPeerInfo(),
-        target: targetMid,
-        weight: -1,
-        sessionType: !!self._mediaScreen ? 'screensharing' : 'stream'
-      });
-    }
-  }, inputConstraints);
-};
-
-/**
- * Responses to the <code>OFFER</code> session description received and
- *    creates an <code>ANSWER</code> session description to sent
- *   to the associated Peer to complete the WebRTC handshake layer.
- * @method _doAnswer
- * @param {String} targetMid The Peer ID to send the <code>ANSWER</code> to.
- * @private
- * @for Skylink
- * @component Peer
- * @since 0.1.0
- */
-Skylink.prototype._doAnswer = function(targetMid) {
-  var self = this;
-  log.log([targetMid, null, null, 'Creating answer with config:'],
-    self._room.connection.sdpConstraints);
-  var pc = self._peerConnections[targetMid];
-  if (pc) {
-    // No ICE restart constraints for createAnswer as it fails in chrome 48
-    // { iceRestart: true }
-    pc.createAnswer(function(answer) {
-      log.debug([targetMid, null, null, 'Created answer'], answer);
-      self._setLocalAndSendMessage(targetMid, answer);
-    }, function(error) {
-      log.error([targetMid, null, null, 'Failed creating an answer:'], error);
-      self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
-    });//, self._room.connection.sdpConstraints);
-  } else {
-    /* Houston ..*/
-    log.error([targetMid, null, null, 'Requested to create an answer but user ' +
-      'does not have any existing connection to peer']);
-    return;
+    },
+    stereo: true
   }
 };
 
 /**
- * Starts the waiting timeout for a "healthy" connection
- *   with associated Peer connection.
- * It waits for any existing Peer "healthy" state in successful
- *   {{#crossLink "Skylink/_peerConnectionHealth:attr"}}_peerConnectionHealth{{/crossLink}}.
- * If timeout has reached it's limit and does not have any "healthy" connection state
- *   with Peer connection, it will restart the connection again with
- *   {{#crossLink "Skylink/_restartPeerConnection:method"}}_restartPeerConnection(){{/crossLink}}.
- * This sets the timeout object associated with the Peer into
- *   {{#crossLink "Skylink/_peerConnectionHealthTimers"}}_peerConnectionHealthTimers(){{/crossLink}}.
- * @method _startPeerConnectionHealthCheck
- * @param {String} peerId The Peer ID to start a waiting timeout for a "healthy" connection.
- * @param {Boolean} [toOffer=false] The flag that indicates if Peer connection
- *   is an offerer or an answerer for an accurate timeout waiting time.
+ * Fetches for the Room session information.
+ * @method _roomFetchSession
+ * @param {Function} callback The callback triggered upon error or success.
  * @private
- * @component Peer
+ * @since 0.6.8
  * @for Skylink
- * @since 0.5.5
  */
-Skylink.prototype._startPeerConnectionHealthCheck = function (peerId, toOffer) {
-  var self = this;
-  var timer = (self._enableIceTrickle && !self._peerIceTrickleDisabled[peerId]) ?
-    (toOffer ? 12500 : 10000) : 50000;
-  timer = (self._hasMCU) ? 105000 : timer;
+Skylink.prototype._roomFetchSession = function (callback) {
+  var _this = this;
+  var xhr = null;
 
-  // increase timeout for android/ios
-  /*var agent = self.getPeerInfo(peerId).agent;
-  if (['Android', 'iOS'].indexOf(agent.name) > -1) {
-    timer = 105000;
-  }*/
+  _this._roomConstructSessionPath();
 
-  timer += self._retryCount*10000;
-
-  log.log([peerId, 'PeerConnectionHealth', null,
-    'Initializing check for peer\'s connection health']);
-
-  if (self._peerConnectionHealthTimers[peerId]) {
-    // might be a re-handshake again
-    self._stopPeerConnectionHealthCheck(peerId);
-  }
-
-  self._peerConnectionHealthTimers[peerId] = setTimeout(function () {
-    // re-handshaking should start here.
-    var connectionStable = false;
-    var pc = self._peerConnections[peerId];
-
-    if (pc) {
-      var dc = (self._dataChannels[peerId] || {}).main;
-
-      var dcConnected = pc.hasMainChannel ? dc && dc.readyState === self.DATA_CHANNEL_STATE.OPEN : true;
-      var iceConnected = pc.iceConnectionState === self.ICE_CONNECTION_STATE.CONNECTED ||
-        pc.iceConnectionState === self.ICE_CONNECTION_STATE.COMPLETED;
-      var signalingConnected = pc.signalingState === self.PEER_CONNECTION_STATE.STABLE;
-
-      connectionStable = dcConnected && iceConnected && signalingConnected;
-
-      log.debug([peerId, 'PeerConnectionHealth', null, 'Connection status'], {
-        dcConnected: dcConnected,
-        iceConnected: iceConnected,
-        signalingConnected: signalingConnected
-      });
-    }
-
-    log.debug([peerId, 'PeerConnectionHealth', null, 'Require reconnection?'], connectionStable);
-
-    if (!connectionStable) {
-      log.warn([peerId, 'PeerConnectionHealth', null, 'Peer\'s health timer ' +
-      'has expired'], 10000);
-
-      // clear the loop first
-      self._stopPeerConnectionHealthCheck(peerId);
-
-      log.debug([peerId, 'PeerConnectionHealth', null,
-        'Ice connection state time out. Re-negotiating connection']);
-
-      //Maximum increament is 5 minutes
-      if (self._retryCount<30){
-        //Increase after each consecutive connection failure
-        self._retryCount++;
-      }
-
-      // do a complete clean
-      if (!self._hasMCU) {
-        self._restartPeerConnection(peerId, true, true, null, false);
-      } else {
-        self._restartMCUConnection();
-      }
-    } else {
-      self._peerConnectionHealth[peerId] = true;
-    }
-  }, timer);
-};
-
-/**
- * Stops the waiting timeout for a "healthy" connection associated
- *   with the Peer.
- * @method _stopPeerConnectionHealthCheck
- * @param {String} peerId The Peer ID to stop a waiting
- *   timeout for a "healthy" connection.
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._stopPeerConnectionHealthCheck = function (peerId) {
-  var self = this;
-
-  if (self._peerConnectionHealthTimers[peerId]) {
-    log.debug([peerId, 'PeerConnectionHealth', null,
-      'Stopping peer connection health timer check']);
-
-    clearTimeout(self._peerConnectionHealthTimers[peerId]);
-    delete self._peerConnectionHealthTimers[peerId];
-
-  } else {
-    log.debug([peerId, 'PeerConnectionHealth', null,
-      'Peer connection health does not have a timer check']);
-  }
-};
-
-/**
- * Sets the WebRTC handshake layer session description into the
- *   Peer <code>RTCPeerConnection</code> object <i><code>
- *   RTCPeerConnection.setLocalDescription()</code></i> associated
- *   with the Peer connection.
- * @method _setLocalAndSendMessage
- * @param {String} targetMid The Peer ID to send the session description to
- *   after setting into the associated <code>RTCPeerConnection</code> object.
- * @param {JSON} sessionDescription The <code>OFFER</code> or an <code>ANSWER</code>
- *   session description to set to the associated Peer after setting into
- *   the <code>RTCPeerConnection</code> object.
- * @trigger handshakeProgress
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._setLocalAndSendMessage = function(targetMid, sessionDescription) {
-  var self = this;
-  var pc = self._peerConnections[targetMid];
-
-  /*if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER && pc.setAnswer) {
-    log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
-      'Ignoring session description. User has already set local answer'], sessionDescription);
-    return;
-  }
-  if (sessionDescription.type === self.HANDSHAKE_PROGRESS.OFFER && pc.setOffer) {
-    log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
-      'Ignoring session description. User has already set local offer'], sessionDescription);
-    return;
-  }*/
-
-  // NOTE ALEX: handle the pc = 0 case, just to be sure
-  var sdpLines = sessionDescription.sdp.split('\r\n');
-
-  // remove h264 invalid pref
-  sdpLines = self._removeSDPFirefoxH264Pref(sdpLines);
-  // Check if stereo was enabled
-  if (self._streamSettings.hasOwnProperty('audio')) {
-    if (self._streamSettings.audio.stereo) {
-      self._addSDPStereo(sdpLines);
-    }
-  }
-
-  log.info([targetMid, null, null, 'Requested stereo:'], (self._streamSettings.audio ?
-    (self._streamSettings.audio.stereo ? self._streamSettings.audio.stereo : false) :
-    false));
-
-  // set sdp bitrate
-  if (self._streamSettings.hasOwnProperty('bandwidth')) {
-    var peerSettings = (self._peerInformations[targetMid] || {}).settings || {};
-
-    sdpLines = self._setSDPBitrate(sdpLines, peerSettings);
-  }
-
-  // set sdp resolution
-  /*if (self._streamSettings.hasOwnProperty('video')) {
-    sdpLines = self._setSDPVideoResolution(sdpLines, self._streamSettings.video);
-  }*/
-
-  self._streamSettings.bandwidth = self._streamSettings.bandwidth || {};
-
-  self._streamSettings.video = self._streamSettings.video || false;
-
-  log.info([targetMid, null, null, 'Custom bandwidth settings:'], {
-    audio: (self._streamSettings.bandwidth.audio || 'Not set') + ' kB/s',
-    video: (self._streamSettings.bandwidth.video || 'Not set') + ' kB/s',
-    data: (self._streamSettings.bandwidth.data || 'Not set') + ' kB/s'
-  });
-
-  if (self._streamSettings.video.hasOwnProperty('frameRate') &&
-    self._streamSettings.video.hasOwnProperty('resolution')){
-    log.info([targetMid, null, null, 'Custom resolution settings:'], {
-      frameRate: (self._streamSettings.video.frameRate || 'Not set') + ' fps',
-      width: (self._streamSettings.video.resolution.width || 'Not set') + ' px',
-      height: (self._streamSettings.video.resolution.height || 'Not set') + ' px'
-    });
-  }
-
-  // set video codec
-  if (self._selectedVideoCodec !== self.VIDEO_CODEC.AUTO) {
-    sdpLines = self._setSDPVideoCodec(sdpLines);
-  } else {
-    log.log([targetMid, null, null, 'Not setting any video codec']);
-  }
-
-  // set audio codec
-  if (self._selectedAudioCodec !== self.AUDIO_CODEC.AUTO) {
-    sdpLines = self._setSDPAudioCodec(sdpLines);
-  } else {
-    log.log([targetMid, null, null, 'Not setting any audio codec']);
-  }
-
-  sessionDescription.sdp = sdpLines.join('\r\n');
-
-  // NOTE ALEX: opus should not be used for mobile
-  // Set Opus as the preferred codec in SDP if Opus is present.
-  //sessionDescription.sdp = preferOpus(sessionDescription.sdp);
-  // limit bandwidth
-  //sessionDescription.sdp = this._limitBandwidth(sessionDescription.sdp);
-  log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
-    'Updated session description:'], sessionDescription);
-
-  pc.setLocalDescription(sessionDescription, function() {
-    log.debug([targetMid, sessionDescription.type, 'Local description set']);
-    self._trigger('handshakeProgress', sessionDescription.type, targetMid);
-    if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER) {
-      pc.setAnswer = 'local';
-    } else {
-      pc.setOffer = 'local';
-    }
-    var shouldWaitForCandidates = false;
-
-    if (!(self._enableIceTrickle && !self._peerIceTrickleDisabled[targetMid])) {
-      shouldWaitForCandidates = true;
-      // there is no sessiondescription created at first go
-      if (pc.setOffer === 'remote' || pc.setAnswer === 'remote') {
-        shouldWaitForCandidates = false;
-      }
-    }
-    if (!shouldWaitForCandidates) {
-      // make checks for firefox session description
-      if (sessionDescription.type === self.HANDSHAKE_PROGRESS.ANSWER && window.webrtcDetectedBrowser === 'firefox') {
-        sessionDescription.sdp = self._addSDPSsrcFirefoxAnswer(targetMid, sessionDescription.sdp);
-      }
-
-      self._sendChannelMessage({
-        type: sessionDescription.type,
-        sdp: sessionDescription.sdp,
-        mid: self._user.sid,
-        target: targetMid,
-        rid: self._room.id
-      });
-    } else {
-      log.log([targetMid, 'RTCSessionDescription', sessionDescription.type,
-        'Waiting for Ice gathering to complete to prevent Ice trickle']);
-    }
-  }, function(error) {
-    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
-    log.error([targetMid, 'RTCSessionDescription', sessionDescription.type,
-      'Failed setting local description: '], error);
-  });
-};
-
-Skylink.prototype.GET_PEERS_STATE = {
-	ENQUIRED: 'enquired',
-	RECEIVED: 'received'
-};
-
-/**
- * These are the list of Peer introduction states that Skylink would trigger.
- * - This relates to and requires the Privileged Key feature where Peers using
- *   that Privileged alias Key becomes a privileged Peer with privileged functionalities.
- * @attribute INTRODUCE_STATE
- * @type JSON
- * @param {String} INTRODUCING <small>Value <code>"enquired"</code></small>
- *   The state when the privileged Peer have sent the introduction signal.
- * @param {String} ERROR <small>Value <code>"error"</code></small>
- *   The state when the Peer introduction has occurred an exception.
- * @readOnly
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype.INTRODUCE_STATE = {
-	INTRODUCING: 'introducing',
-	ERROR: 'error'
-};
-
-/**
- * Whether this user automatically introduce to other peers.
- * @attribute _autoIntroduce
- * @type Boolean
- * @default true
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._autoIntroduce = true;
-
-/**
- * Whether this user is a privileged user.
- * @attribute isPrivileged
- * @type Boolean
- * @default false
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._isPrivileged = false;
-
-/**
- * Parent key in case the current key is alias.
- * If the current key is not alias, this is the same as _appKey
- * @attribute _parentKey
- * @type String
- * @default null
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._parentKey = null;
-
-/**
- * List of peers retrieved from signaling
- * @attribute _peerList
- * @type Object
- * @default null
- * @private
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._peerList = null;
-
-/**
- * Retrieves the list of rooms and peers under the same realm based
- *   on the Application Key configured in {{#crossLink "Skylink/init:method"}}init(){{/crossLink}}
- *   from the platform signaling.
- * This will only work if self is a privileged Peer.
- * @method getPeers
- * @param {Boolean} [showAll=false] The flag that indicates if returned list should
- *   also include privileged and standard in the list. By default, the value is <code>false</code>.
- *   Which means only unprivileged peers' ID (isPrivileged = autoIntroduce = false) is included.
- * @param {Function} [callback] The callback fired after the receiving the current
- *   list of Peers from platform signaling or have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {Object} callback.error The error object received in the callback.
- *   This is the exception thrown that caused the failure for getting self user media.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @example
- *
- *   // To get list of unprivileged peers only
- *   SkylinkDemo.getPeers();
- *
- *   // To get list of all peers, including other privileged peers
- *   SkylinkDemo.getPeers(true);
- *
- *   // To get a list of unprivileged peers then invoke the callback
- *   SkylinkDemo.getPeers(function(error, success){
- *     if (error){
- *       console.log("Error happened. Can not retrieve list of peers");
- *     }
- *     else{
- *       console.log("Success fully retrieved list of peers", success);
- *     }
- *   });
- *
- *   // To get a list of all peers then invoke the callback
- *   SkylinkDemo.getPeers(true, function(error, success){
- *     if (error){
- *       console.log("Error happened. Can not retrieve list of peers");
- *     }
- *     else{
- *       console.log("Success fully retrieved list of peers", success);
- *     }
- *   });
- *
- * @trigger getPeersStateChange
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype.getPeers = function(showAll, callback){
-	var self = this;
-	if (!self._isPrivileged){
-		log.warn('Please upgrade your key to privileged to use this function');
-		return;
-	}
-	if (!self._appKey){
-		log.warn('App key is not defined. Please authenticate again.');
-		return;
-	}
-	if (!self._parentKey){
-		log.warn('Parent key is not defined. Please authenticate again.');
-		return;
-	}
-
-	// Only callback is provided
-	if (typeof showAll === 'function'){
-		callback = showAll;
-		showAll = false;
-	}
-
-	self._sendChannelMessage({
-		type: self._SIG_MESSAGE_TYPE.GET_PEERS,
-		privilegedKey: self._appKey,
-		parentKey: self._parentKey,
-		showAll: showAll || false
-	});
-	self._trigger('getPeersStateChange',self.GET_PEERS_STATE.ENQUIRED, self._user.sid, null);
-
-	log.log('Enquired server for peers within the realm');
-
-	if (typeof callback === 'function'){
-		self.once('getPeersStateChange', function(state, privilegedPeerId, peerList){
-			callback(null, peerList);
-		}, function(state, privilegedPeerId, peerList){
-			return state === self.GET_PEERS_STATE.RECEIVED;
-		});
-	}
-
-};
-
-/**
- * Introduces two Peers to each other to start a connection with each other.
- * This will only work if self is a privileged Peer.
- * @method introducePeer
- * @param {String} sendingPeerId The Peer ID of the peer
- *   that initiates the connection with the introduced Peer.
- * @param {String} receivingPeerId The Peer ID of the
- *   introduced peer who would be introduced to the initiator Peer.
- * @trigger introduceStateChange
- * @component Peer
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype.introducePeer = function(sendingPeerId, receivingPeerId){
-	var self = this;
-	if (!self._isPrivileged){
-		log.warn('Please upgrade your key to privileged to use this function');
-		self._trigger('introduceStateChange', self.INTRODUCE_STATE.ERROR, self._user.sid, sendingPeerId, receivingPeerId, 'notPrivileged');
-		return;
-	}
-	self._sendChannelMessage({
-		type: self._SIG_MESSAGE_TYPE.INTRODUCE,
-		sendingPeerId: sendingPeerId,
-		receivingPeerId: receivingPeerId
-	});
-	self._trigger('introduceStateChange', self.INTRODUCE_STATE.INTRODUCING, self._user.sid, sendingPeerId, receivingPeerId, null);
-	log.log('Introducing',sendingPeerId,'to',receivingPeerId);
-};
-
-
-Skylink.prototype.SYSTEM_ACTION = {
-  WARNING: 'warning',
-  REJECT: 'reject'
-};
-
-/**
- * These are the list of Skylink platform signaling codes as the reason
- *   for the system action given by the platform signaling that Skylink would receive.
- * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
- *   for the types of system actions that would be given.
- * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
- *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
- * @attribute SYSTEM_ACTION_REASON
- * @type JSON
- * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when room is locked and self is rejected from joining the room.
- * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the credentials given is already in use, which the platform signaling
- *   throws an exception for this error.<br>
- * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
- * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the connection with the platform signaling has an exception with self.<br>
- * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
- * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the persistent room meeting has expired so self is unable to join the room as
- *   the end time of the meeting has ended.<br>
- * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
- *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
- *   from the room as the meeting is over.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
- *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
- *   users before self is rejected from the room.<br>
- * This relates to the persistent room feature configured in the Application Key.
- * @readOnly
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype.SYSTEM_ACTION_REASON = {
-  //FAST_MESSAGE: 'fastmsg',
-  ROOM_LOCKED: 'locked',
-  //ROOM_FULL: 'roomfull',
-  DUPLICATED_LOGIN: 'duplicatedLogin',
-  SERVER_ERROR: 'serverError',
-  //VERIFICATION: 'verification',
-  EXPIRED: 'expired',
-  ROOM_CLOSED: 'roomclose',
-  ROOM_CLOSING: 'toclose'
-};
-
-/**
- * Stores the current room self is joined to.
- * The selected room will be usually defaulted to
- *   {{#crossLink "Skylink/_defaultRoom:attribute"}}_defaultRoom{{/crossLink}}
- *   if there is no selected room in
- *   {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}}.
- * @attribute _selectedRoom
- * @type String
- * @default Skylink._defaultRoom
- * @private
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._selectedRoom = null;
-
-/**
- * The flag that indicates if the currently joined room is locked.
- * @attribute _roomLocked
- * @type Boolean
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._roomLocked = false;
-
-/**
- * The flag that indicates if self is currently joined in a room.
- * @attribute _inRoom
- * @type Boolean
- * @private
- * @component Room
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype._inRoom = false;
-
-/**
- * Connects self to the selected room.
- * By default, if room parameter is not provided, it will
- *   connect to the default room provided in
- *   {{#crossLink "Skylink/init:method"}}init() <code>defaultRoom</code> settings{{/crossLink}}.
- * If any existing user media streams attached in Skylink, like for an example, calling
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}} or
- *   {{#crossLink "Skylink/sendStream:method"}}sendStream(){{/crossLink}} before
- *   <code>joinRoom()</code>, self would actually send the current attached user media stream
- *   attached. To stop the current attached Stream, please invoke
- *   {{#crossLink "Skylink/stopStream:method"}}stopStream(){{/crossLink}} before
- *   <code>joinRoom()</code> is invoked.
- * @method joinRoom
- * @param {String} [room] The room for
- *   self to join to. If room is not provided, the room
- *   would default to the the <code>defaultRoom</code> option set
- *   in {{#crossLink "Skylink/init:method"}}init() settings{{/crossLink}}.
- * @param {JSON} [options] The connection settings for self connection in the
- *   room. If both audio and video
- *   option is <code>false</code>, there should be no audio and video stream
- *   sending from self connection.
- * @param {String|JSON} [options.userData] The custom user data
- *   information set by developer. This custom user data can also
- *   be set in {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
- * @param {Boolean|JSON} [options.audio=false] The self Stream streaming audio settings.
- *   If <code>false</code>, it means that audio streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream audio
- *   user media access is given.
- * @param {Boolean} [options.audio.stereo] The flag that indicates if
- *   stereo should be enabled in self connection Stream
- *   audio streaming.
- * @param {Boolean} [options.audio.mute=false] The flag that
- *   indicates if the self Stream object audio streaming is muted.
- * @param {Array} [options.audio.optional] The optional constraints for audio streaming
- *   in self user media Stream object. This follows the <code>optional</code>
- *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
- *   Tampering this may cause errors in retrieval of self user media Stream object.
- *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
- * @param {Boolean|JSON} [options.video=false] The self Stream streaming video settings.
- *   If <code>false</code>, it means that video streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream video
- *   user media access is given.
- * @param {Boolean} [options.video.mute=false] The flag that
- *   indicates if the self Stream object video streaming is muted.
- * @param {Array} [options.video.optional] The optional constraints for video streaming
- *   in self user media Stream object. This follows the <code>optional</code>
- *   setting in the <code>MediaStreamConstraints</code> when <code>getUserMedia()</code> is invoked.
- *   Tampering this may cause errors in retrieval of self user media Stream object.
- *   Refer to this [site for more reference](http://www.sitepoint.com/introduction-getusermedia-api/).
- * @param {JSON} [options.video.resolution] The self Stream streaming video
- *   resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [options.video.resolution.width] The self
- *   Stream streaming video resolution width.
- * @param {Number} [options.video.resolution.height] The self
- *   Stream streaming video resolution height.
- * @param {Number} [options.video.frameRate=50] The self
- *   Stream streaming video maximum frameRate.
- * @param {String} [options.bandwidth] The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [options.bandwidth.audio=50] The configured
- *   audio stream channel for the self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.video=256] The configured
- *   video stream channel for the self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.data=1638400] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {Boolean} [options.manualGetUserMedia] The flag that indicates if
- *   <code>joinRoom()</code> should not invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   automatically but allow the developer's application to invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   manually in the application. When user media access is required, the
- *   event {{#crossLink "Skylink/mediaAccessRequired:event"}}mediaAccessRequired{{/crossLink}}
- *   will be triggered.
- * @param {Function} [callback] The callback fired after self has
- *   joined the room successfully with the provided media settings or
- *   have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {JSON} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {Array} callback.error.error The exception thrown that caused the failure
- *   for joining the room.
- * @param {JSON} callback.error.errorCode The
- *   <a href="#attr_READY_STATE_CHANGE_ERROR">READY_STATE_CHANGE_ERROR</a>
- *   if there is an <a href="#event_readyStateChange">readyStateChange</a>
- *   event error that caused the failure for joining the room.
- *   [Rel: Skylink.READY_STATE_CHANGE_ERROR]
- * @param {Object|String} callback.error.room The selected room that self is
- *   trying to join to.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {Array} callback.success.room The selected room that self has
- *   succesfully joined to.
- * @param {String} callback.success.peerId The self Peer ID that
- *   would be reflected remotely to peers in the room.
- * @param {JSON} callback.success.peerInfo The connection settings for self connection in the
- *   room. If both audio and video option is <code>false</code>,
- *   there should be no audio and video stream sending from self connection.
-  * @param {String|JSON} callback.success.peerInfo.userData The custom user data
- *   information set by developer. This custom user data can also
- *   be set in <a href="#method_setUserData">setUserData()</a>.
- * @param {Boolean|JSON} [callback.success.peerInfo.audio=false] The self Stream
- *   streaming audio settings. If <code>false</code>, it means that audio
- *   streaming is disabled in the self Stream. If this option is set to
- *   <code>true</code> or is defined with settings,
- *   <a href="#method_getUserMedia">getUserMedia()</a>
- *   will be invoked. Self will not connect to the room unless the Stream audio
- *   user media access is given.
- * @param {Boolean} [callback.success.peerInfo.audio.stereo] The flag that indicates if
- *   stereo should be enabled in self connection Stream
- *    audio streaming.
- * @param {Boolean|JSON} [callback.success.peerInfo.video=false] The self Stream
- *   streaming video settings. If <code>false</code>, it means that video
- *   streaming is disabled in the self Stream. If this option is set to
- *   <code>true</code> or is defined with settings,
- *   <a href="#method_getUserMedia">getUserMedia()</a>
- *   will be invoked. Self will not connect to the room unless the Stream video
- *   user media access is given.
- * @param {JSON} [callback.success.peerInfo.video.resolution] The self Stream streaming video
- *   resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [callback.success.peerInfo.video.resolution.width] The self
- *   Stream streaming video resolution width.
- * @param {Number} [callback.success.peerInfo.video.resolution.height] The self
- *   Stream streaming video resolution height.
- * @param {Number} [callback.success.peerInfo.video.frameRate=50] The self
- *   Stream streaming video maximum frameRate.
- * @param {Boolean} [callback.success.peerInfo.video.screenshare=false] The flag
- *   that indicates if the self connection Stream object sent
- *   is a screensharing stream or not.
- * @param {String} [callback.success.peerInfo.bandwidth] The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.audio=50] The configured
- *   audio stream channel for the self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.video=256] The configured
- *   video stream channel for the self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [callback.success.peerInfo.bandwidth.data=1638400] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {JSON} callback.success.peerInfo.mediaStatus The self Stream mute
- *   settings for both audio and video streamings.
- * @param {Boolean} [callback.success.peerInfo.mediaStatus.audioMuted=true] The flag that
- *   indicates if the self Stream object audio streaming is muted. If
- *   there is no audio streaming enabled for the self, by default,
- *   it is set to <code>true</code>.
- * @param {Boolean} [callback.success.peerInfo.mediaStatus.videoMuted=true] The flag that
- *   indicates if the self Stream object video streaming is muted. If
- *   there is no video streaming enabled for the Peer connection, by default,
- *   it is set to <code>true</code>.
- * @param {JSON} callback.success.peerInfo.agent The self platform agent information.
- * @param {String} callback.success.peerInfo.agent.name The self platform browser or agent name.
- * @param {Number} callback.success.peerInfo.agent.version The self platform browser or agent version.
- * @param {Number} callback.success.peerInfo.agent.os The self platform name.
- * @param {String} callback.success.peerInfo.room The current room that the self is in.
- * @example
- *   // To just join the default room without any video or audio
- *   // Note that calling joinRoom without any parameters
- *   // still sends any available existing MediaStreams allowed.
- *   // See Examples 2, 3, 4 and 5 etc to prevent video or audio stream
- *   SkylinkDemo.joinRoom();
- *
- *   // To just join the default room with bandwidth settings
- *   SkylinkDemo.joinRoom({
- *     bandwidth: {
- *       data: 14440
- *     }
- *   });
- *
- *   // Example 1: To call getUserMedia and joinRoom seperately
- *   SkylinkDemo.getUserMedia();
- *   SkylinkDemo.on("mediaAccessSuccess", function (stream)) {
- *     attachMediaStream($(".localVideo")[0], stream);
- *     SkylinkDemo.joinRoom();
- *   });
- *
- *   // Example 2: Join a room without any video or audio
- *   SkylinkDemo.joinRoom("room_a");
- *
- *   // Example 3: Join a room with audio only
- *   SkylinkDemo.joinRoom("room_b", {
- *     audio: true,
- *     video: false
- *   });
- *
- *   // Example 4: Join a room with prefixed video width and height settings
- *   SkylinkDemo.joinRoom("room_c", {
- *     audio: true,
- *     video: {
- *       resolution: {
- *         width: 640,
- *         height: 320
- *       }
- *     }
- *   });
- *
- *   // Example 5: Join a room with userData and settings with audio, video
- *   // and bandwidth
- *   SkylinkDemo.joinRoom({
- *     userData: {
- *       item1: "My custom data",
- *       item2: "Put whatever, string or JSON or array"
- *     },
- *     audio: {
- *        stereo: true
- *     },
- *     video: {
- *        resolution: SkylinkDemo.VIDEO_RESOLUTION.VGA,
- *        frameRate: 50
- *     },
- *     bandwidth: {
- *       audio: 48,
- *       video: 256,
- *       data: 14480
- *     }
- *   });
- *
- *   //Example 6: joinRoom with callback
- *   SkylinkDemo.joinRoom(function(error, success){
- *     if (error){
- *       console.log("Error happened. Can not join room");
- *     }
- *     else{
- *       console.log("Successfully joined room");
- *     }
- *   });
- * @trigger readyStateChange, peerJoined, mediaAccessRequired
- * @component Room
- * @for Skylink
- * @since 0.5.5
- */
-
-Skylink.prototype.joinRoom = function(room, mediaOptions, callback) {
-  var self = this;
-  var error;
-  var stopStream = false;
-  var previousRoom = self._selectedRoom;
-
-  if (room === null) {
-    error = 'Invalid room name is provided';
-    log.error(error, room);
-
-    if (typeof mediaOptions === 'function') {
-      callback = mediaOptions;
-      mediaOptions = undefined;
-    }
-
-    if (typeof callback === 'function') {
-      callback({
-        room: room,
-        errorCode: self._readyState,
-        error: new Error(error)
-      }, null);
-    }
-    return;
-  }
-  else if (typeof room === 'string') {
-    //joinRoom(room+); - skip
-
-    //joinRoom(room+,mediaOptions+) - skip
-
-    // joinRoom(room+,callback+)
-    if (typeof mediaOptions === 'function') {
-      callback = mediaOptions;
-      mediaOptions = undefined;
-
-    // joinRoom(room+, mediaOptions-)
-    } else if (typeof mediaOptions !== 'undefined') {
-      if (mediaOptions === null || typeof mediaOptions !== 'object') {
-        error = 'Invalid mediaOptions is provided';
-        log.error(error, mediaOptions);
-
-        // joinRoom(room+,mediaOptions-,callback+)
-        if (typeof callback === 'function') {
-          callback({
-            room: room,
-            errorCode: self._readyState,
-            error: new Error(error)
-          }, null);
-        }
-        return;
-      }
-    }
-
-  } else if (typeof room === 'object') {
-    //joinRoom(mediaOptions+, callback);
-    if (typeof mediaOptions === 'function') {
-      callback = mediaOptions;
-    }
-
-    //joinRoom(mediaOptions);
-    mediaOptions = room;
-    room = undefined;
-
-  } else if (typeof room === 'function') {
-    //joinRoom(callback);
-    callback = room;
-    room = undefined;
-    mediaOptions = undefined;
-
-  } else if (typeof room !== 'undefined') {
-    //joinRoom(mediaOptions-,callback?);
-    error = 'Invalid mediaOptions is provided';
-    log.error(error, mediaOptions);
-
-    if (typeof mediaOptions === 'function') {
-      callback = mediaOptions;
-      mediaOptions = undefined;
-    }
-
-    if (typeof callback === 'function') {
-      callback({
-        room: self._defaultRoom,
-        errorCode: self._readyState,
-        error: new Error(error)
-      }, null);
-      return;
-    }
-  }
-
-  // If no room provided, join the default room
-  if (!room) {
-    room = self._defaultRoom;
-  }
-
-  //if none of the above is true --> joinRoom()
-  var channelCallback = function (error, success) {
-    if (error) {
-      if (typeof callback === 'function') {
-        callback({
-          error: error,
-          errorCode: null,
-          room: self._selectedRoom
-        }, null);
-      }
-    } else {
-      if (typeof callback === 'function') {
-        self.once('peerJoined', function(peerId, peerInfo, isSelf) {
-          // keep returning _inRoom false, so do a wait
-          self._wait(function () {
-            log.log([null, 'Socket', self._selectedRoom, 'Peer joined. Firing callback. ' +
-              'PeerId ->'
-            ], peerId);
-            callback(null, {
-              room: self._selectedRoom,
-              peerId: peerId,
-              peerInfo: peerInfo
-            });
-          }, function () {
-            return self._inRoom;
-          }, false);
-        }, function(peerId, peerInfo, isSelf) {
-          return isSelf;
-        }, false);
-      }
-
-      self._sendChannelMessage({
-        type: self._SIG_MESSAGE_TYPE.JOIN_ROOM,
-        uid: self._user.uid,
-        cid: self._key,
-        rid: self._room.id,
-        userCred: self._user.token,
-        timeStamp: self._user.timeStamp,
-        apiOwner: self._appKeyOwner,
-        roomCred: self._room.token,
-        start: self._room.startDateTime,
-        len: self._room.duration,
-        isPrivileged: self._isPrivileged === true, // Default to false if undefined
-        autoIntroduce: self._autoIntroduce!== false // Default to true if undefined
-      });
-    }
-  };
-
-  if (self._inRoom) {
-    if (typeof mediaOptions === 'object') {
-      if (mediaOptions.audio === false && mediaOptions.video === false) {
-        stopStream = true;
-        log.warn([null, 'MediaStream', self._selectedRoom, 'Stopping current MediaStream ' +
-          'as provided settings for audio and video is false (' + stopStream + ')'], mediaOptions);
-      }
-    }
-
-    log.log([null, 'Socket', previousRoom, 'Leaving room before joining new room'], self._selectedRoom);
-
-    self.leaveRoom(stopStream, function(error, success) {
-      log.log([null, 'Socket', previousRoom, 'Leave room callback result'], {
-        error: error,
-        success: success
-      });
-      log.log([null, 'Socket', self._selectedRoom, 'Joining room. Media options:'], mediaOptions);
-      if (typeof room === 'string' ? room !== self._selectedRoom : false) {
-        self._initSelectedRoom(room, function(errorObj) {
-          if (errorObj) {
-            if (typeof callback === 'function') {
-              callback({
-                room: self._selectedRoom,
-                errorCode: self._readyState,
-                error: new Error(errorObj)
-              }, null);
-            }
-          } else {
-            self._waitForOpenChannel(mediaOptions, channelCallback);
-          }
-        });
-      } else {
-        self._waitForOpenChannel(mediaOptions, channelCallback);
-      }
-    });
-
-  } else {
-    log.log([null, 'Socket', self._selectedRoom, 'Joining room. Media options:'],
-      mediaOptions);
-
-    var isNotSameRoom = typeof room === 'string' ? room !== self._selectedRoom : false;
-
-    if (isNotSameRoom) {
-      self._initSelectedRoom(room, function(errorObj) {
-        if (errorObj) {
-          if (typeof callback === 'function') {
-            callback({
-              room: self._selectedRoom,
-              errorCode: self._readyState,
-              error: new Error(errorObj)
-            }, null);
-          }
-        } else {
-          self._waitForOpenChannel(mediaOptions, channelCallback);
-        }
-      });
-    } else {
-      self._waitForOpenChannel(mediaOptions, channelCallback);
-    }
-  }
-};
-
-/**
- * Waits for the signaling socket channel connection to be ready before
- *   starting the room connection with the Skylink signaling platform.
- * @method _waitForOpenChannel
- * @param {JSON} [options] The connection settings for self connection in the
- *   room. If both audio and video
- *   option is <code>false</code>, there should be no audio and video stream
- *   sending from self connection.
-  * @param {String|JSON} [options.userData] The custom user data
- *   information set by developer. This custom user data can also
- *   be set in {{#crossLink "Skylink/setUserData:method"}}setUserData(){{/crossLink}}.
- * @param {Boolean|JSON} [options.audio=false] The self Stream streaming audio settings.
- *   If <code>false</code>, it means that audio streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream audio
- *   user media access is given.
- * @param {Boolean} [options.audio.stereo] The flag that indicates if
- *   stereo should be enabled in self connection Stream
- *   audio streaming.
- * @param {Boolean} [options.audio.mute=false] The flag that
- *   indicates if the self Stream object audio streaming is muted.
- * @param {Boolean|JSON} [options.video=false] The self Stream streaming video settings.
- *   If <code>false</code>, it means that video streaming is disabled in
- *   the self Stream. If this option is set to <code>true</code> or is defined with
- *   settings, {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   will be invoked. Self will not connect to the room unless the Stream video
- *   user media access is given.
- * @param {Boolean} [options.video.mute=false] The flag that
- *   indicates if the self Stream object video streaming is muted.
- * @param {JSON} [options.video.resolution] The self Stream streaming video
- *   resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [options.video.resolution.width] The self
- *   Stream streaming video resolution width.
- * @param {Number} [options.video.resolution.height] The self
- *   Stream streaming video resolution height.
- * @param {Number} [options.video.frameRate=50] The self
- *   Stream streaming video maximum frameRate.
- * @param {String} [options.bandwidth] The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [options.bandwidth.audio=50] The configured
- *   audio stream channel for the self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.video=256] The configured
- *   video stream channel for the self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [options.bandwidth.data=1638400] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {Boolean} [options.manualGetUserMedia] The flag that indicates if
- *   <code>joinRoom()</code> should not invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   automatically but allow the developer's application to invoke
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}
- *   manually in the application. When user media access is required, the
- *   event {{#crossLink "Skylink/mediaAccessRequired:event"}}mediaAccessRequired{{/crossLink}}
- *   will be triggered.
- * @param {Function} callback The callback fired after signaling socket channel connection
- *   has opened successfully with relevant user media being available according to the
- *   settings or met with an exception. The callback signature is <code>function (error)</code>.
- * @param {Object} callback.error The error object received in the callback.
- *   If received as <code>undefined</code>, it means that there is no errors.
- * @trigger peerJoined, incomingStream, mediaAccessRequired
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._waitForOpenChannel = function(mediaOptions, callback) {
-  var self = this;
-  // when reopening room, it should stay as 0
-  self._socketCurrentReconnectionAttempt = 0;
-
-  // wait for ready state before opening
-  self._wait(function() {
-    self._condition('channelOpen', function() {
-      mediaOptions = mediaOptions || {};
-
-      // parse user data settings
-      self._parseUserData(mediaOptions.userData || self._userData);
-      self._parseBandwidthSettings(mediaOptions.bandwidth);
-
-      // wait for local mediastream
-      self._waitForLocalMediaStream(callback, mediaOptions);
-    }, function() { // open channel first if it's not opened
-
-      if (!self._channelOpen) {
-        self._openChannel();
-      }
-      return self._channelOpen;
-    }, function(state) {
-      return true;
-    });
-  }, function() {
-    return self._readyState === self.READY_STATE_CHANGE.COMPLETED;
-  });
-
-};
-
-/**
- * Disconnects self from current connected room.
- * @method leaveRoom
- * @param {Boolean|JSON} [stopMediaOptions=true] The stop attached Stream options for
- *   Skylink when leaving the room. If provided options is a
- *   <var>typeof</var> <code>boolean</code>, it will be interpreted as both
- *   <code>userMedia</code> and <code>screenshare</code> Streams would be stopped.
- * @param {Boolean} [stopMediaOptions.userMedia=true]  The flag that indicates if leaving the room
- *   should automatically stop and clear the existing user media stream attached to skylink.
- *   This would trigger <code>mediaAccessStopped</code> for this Stream if available.
- * @param {Boolean} [stopMediaOptions.screenshare=true] The flag that indicates if leaving the room
- *   should automatically stop and clear the existing screensharing stream attached to skylink.
- *   This would trigger <code>mediaAccessStopped</code> for this Stream if available.
- * @param {Function} [callback] The callback fired after self has
- *   left the room successfully or have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {Object} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {String} callback.success.peerId The assigned previous Peer ID
- *   to self given when self was still connected to the room.
- * @param {String} callback.success.previousRoom The room self was disconnected
- *   from.
- * @example
- *   //Example 1: Just leaveRoom
- *   SkylinkDemo.leaveRoom();
- *
- *   //Example 2: leaveRoom with callback
- *   SkylinkDemo.leaveRoom(function(error, success){
- *     if (error){
- *       console.log("Error happened");
- *     }
- *     else{
- *       console.log("Successfully left room");
- *     }
- *   });
- * @trigger peerLeft, channelClose, streamEnded
- * @component Room
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype.leaveRoom = function(stopMediaOptions, callback) {
-  var self = this;
-  var error; // j-shint !!!
-  var stopUserMedia = true;
-  var stopScreenshare = true;
-
-  // shift parameters
-  if (typeof stopMediaOptions === 'function') {
-    callback = stopMediaOptions;
-    stopMediaOptions = true;
-  } else if (typeof stopMediaOptions === 'undefined') {
-    stopMediaOptions = true;
-  }
-
-  // stopMediaOptions === null or {} ?
-  if (typeof stopMediaOptions === 'object' && stopMediaOptions !== null) {
-    stopUserMedia = stopMediaOptions.userMedia !== false;
-    stopScreenshare = stopMediaOptions.screenshare !== false;
-
-  } else if (typeof stopMediaOptions !== 'boolean') {
-    error = 'stopMediaOptions parameter provided is not a boolean or valid object';
-    log.error(error, stopMediaOptions);
-    if (typeof callback === 'function') {
-      log.log([null, 'Socket', self._selectedRoom, 'Error occurred. ' +
-        'Firing callback with error -> '
-      ], error);
-      callback(new Error(error), null);
-    }
-    return;
-
-  } else if (stopMediaOptions === false) {
-    stopUserMedia = false;
-    stopScreenshare = false;
-  }
-
-  if (!self._inRoom) {
-    error = 'Unable to leave room as user is not in any room';
-    log.error(error);
-    if (typeof callback === 'function') {
-      log.log([null, 'Socket', self._selectedRoom, 'Error occurred. ' +
-        'Firing callback with error -> '
-      ], error);
-      callback(new Error(error), null);
-    }
-    return;
-  }
-
-  // NOTE: ENTER/WELCOME made but no peerconnection...
-  // which may result in peerLeft not triggered..
-  // WHY? but to ensure clear all
-  var peers = Object.keys(self._peerInformations);
-  var conns = Object.keys(self._peerConnections);
-  var i;
-  for (i = 0; i < conns.length; i++) {
-    if (peers.indexOf(conns[i]) === -1) {
-      peers.push(conns[i]);
-    }
-  }
-  for (i = 0; i < peers.length; i++) {
-    self._removePeer(peers[i]);
-  }
-  self._inRoom = false;
-  self._closeChannel();
-
-  self._stopLocalMediaStreams({
-    userMedia: stopUserMedia,
-    screenshare: stopScreenshare
-  });
-
-  self._wait(function() {
-    log.log([null, 'Socket', self._selectedRoom, 'User left the room. Callback fired.']);
-    self._trigger('peerLeft', self._user.sid, self.getPeerInfo(), true);
-
-    if (typeof callback === 'function') {
-      callback(null, {
-        peerId: self._user.sid,
-        previousRoom: self._selectedRoom
-      });
-    }
-  }, function() {
-    return (Object.keys(self._peerConnections).length === 0 &&
-      self._channelOpen === false); // &&
-      //self._readyState === self.READY_STATE_CHANGE.COMPLETED);
-  }, false);
-};
-
-/**
- * Locks the currently connected room to prevent other peers
- *   from joining the room.
- * @method lockRoom
- * @example
- *   SkylinkDemo.lockRoom();
- * @trigger roomLock
- * @component Room
- * @for Skylink
- * @since 0.5.0
- */
-Skylink.prototype.lockRoom = function() {
-  log.log('Update to isRoomLocked status ->', true);
-  this._sendChannelMessage({
-    type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
-    mid: this._user.sid,
-    rid: this._room.id,
-    lock: true
-  });
-  this._roomLocked = true;
-  this._trigger('roomLock', true, this._user.sid,
-    this.getPeerInfo(), true);
-};
-
-/**
- * Unlocks the currently connected room to allow other peers
- *   to join the room.
- * @method unlockRoom
- * @example
- *   SkylinkDemo.unlockRoom();
- * @trigger roomLock
- * @component Room
- * @for Skylink
- * @since 0.5.0
- */
-Skylink.prototype.unlockRoom = function() {
-  log.log('Update to isRoomLocked status ->', false);
-  this._sendChannelMessage({
-    type: this._SIG_MESSAGE_TYPE.ROOM_LOCK,
-    mid: this._user.sid,
-    rid: this._room.id,
-    lock: false
-  });
-  this._roomLocked = false;
-  this._trigger('roomLock', false, this._user.sid,
-    this.getPeerInfo(), true);
-};
-Skylink.prototype.READY_STATE_CHANGE = {
-  INIT: 0,
-  LOADING: 1,
-  COMPLETED: 2,
-  ERROR: -1
-};
-
-/**
- * These are the list of room initialization ready state errors that Skylink has.
- * - Ready state errors like <code>ROOM_LOCKED</code>, <code>API_NOT_ENOUGH_CREDIT</code>,
- *   <code>API_NOT_ENOUGH_PREPAID_CREDIT</code>, <code>API_FAILED_FINDING_PREPAID_CREDIT</code> and
- *   <code>SCRIPT_ERROR</code> has been removed as they are no longer supported.
- * @attribute READY_STATE_CHANGE_ERROR
- * @type JSON
- * @param {Number} API_INVALID <small>Value <code>4001</code></small>
- *   The error when provided Application Key does not exists <em>(invalid)</em>.<br>
- * For this error, it's recommended that you check if the Application Key exists in your account
- *   in the developer console.
- * @param {Number} API_DOMAIN_NOT_MATCH <small>Value <code>4002</code></small>
- *   The error when application accessing from backend IP address is not valid for provided Application Key.<br>
- * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
- * @param {Number} API_CORS_DOMAIN_NOT_MATCH <small>Value <code>4003</code></small>
- *   The error when application accessing from the CORS domain is not valid for provided Application Key.<br>
- * For this error, it's recommended that you check the CORS configuration for the provided Application Key
- *   in the developer console.
- * @param {Number} API_CREDENTIALS_INVALID <small>Value <code>4004</code></small>
- *   The error when credentials provided is not valid for provided Application Key.<br>
- * For this error, it's recommended to check the <code>credentials</code> provided in
- *   {{#crossLink "Skylink/init:method"}}init() configuration{{/crossLink}}.
- * @param {Number} API_CREDENTIALS_NOT_MATCH <small>Value <code>4005</code></small>
- *   The error when credentials does not match as expected generated credentials for provided Application Key.<br>
- * For this error, it's recommended to check the <code>credentials</code> provided in
- *   {{#crossLink "Skylink/init:method"}}init() configuration{{/crossLink}}.
- * @param {Number} API_INVALID_PARENT_KEY <small>Value <code>4006</code></small>
- *   The error when provided alias Application Key has an error because parent Application Key does not exists.<br>
- * For this error, it's recommended to provide another alias Application Key.
- * @param {Number} API_NO_MEETING_RECORD_FOUND <small>Value <code>4010</code></small>
- *   The error when there is no meeting currently that is open or available to join
- *   for self at the current time in the selected room.<br>
- * For this error, it's recommended to retrieve the list of meetings and check if it exists using
- *   the [Meeting Resource REST API](https://temasys.atlassian.net/wiki/display/TPD/SkylinkAPI+-+Meeting+%28Persistent+Room%29+Resources).
- * @param {Number} NO_SOCKET_IO <small>Value <code>1</code></small>
- *   The error when socket.io dependency is not loaded.<br>
- * For this error, it's recommended to load the
- *   [correct socket.io-client dependency](http://socket.io/download/) from the CDN.
- * @param {Number} NO_XMLHTTPREQUEST_SUPPORT <small>Value <code>2</code></small>
- *   The error when XMLHttpRequest is not supported in current browser.<br>
- * For this error, it's recommended to ask user to switch to another browser that supports <code>XMLHttpRequest</code>.
- * @param {Number} NO_WEBRTC_SUPPORT <small>Value <code>3</code></small>
- *   The error when WebRTC is not supported in current browser.<br>
- * For this error, it's recommended to ask user to switch to another browser that supports WebRTC.
- * @param {Number} NO_PATH <small>Value <code>4</code></small>
- *   The error when constructed path is invalid.<br>
- * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
- * @param {Number} INVALID_XMLHTTPREQUEST_STATUS <small>Value <code>5</code></small>
- *   The error when XMLHttpRequest does not return a HTTP status code of <code>200</code> but a HTTP failure.<br>
- * This rarely (and should not) occur and it's recommended to report this issue if this occurs.
- * @param {Number} ADAPTER_NO_LOADED <small>Value <code>7</code></small>
- *   The error when AdapterJS dependency is not loaded.<br>
- * For this error, it's recommended to load the
- *   [correct AdapterJS dependency](https://github.com/Temasys/AdapterJS/releases) from the CDN.
- * @param {Number} XML_HTTP_REQUEST_ERROR <small>Value <code>-1</code></small>
- *   The error when XMLHttpRequest failure on the network level when attempting to
- *   connect to the platform server to retrieve selected room connection information.<br>
- * This might happen when connection timeouts. If this is a persistent issue, it's recommended to report this issue.
- * @readOnly
- * @component Room
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype.READY_STATE_CHANGE_ERROR = {
-  API_INVALID: 4001,
-  API_DOMAIN_NOT_MATCH: 4002,
-  API_CORS_DOMAIN_NOT_MATCH: 4003,
-  API_CREDENTIALS_INVALID: 4004,
-  API_CREDENTIALS_NOT_MATCH: 4005,
-  API_INVALID_PARENT_KEY: 4006,
-  API_NO_MEETING_RECORD_FOUND: 4010,
-  //ROOM_LOCKED: 5001,
-  XML_HTTP_REQUEST_ERROR: -1,
-  NO_SOCKET_IO: 1,
-  NO_XMLHTTPREQUEST_SUPPORT: 2,
-  NO_WEBRTC_SUPPORT: 3,
-  NO_PATH: 4,
-  //INVALID_XMLHTTPREQUEST_STATUS: 5,
-  //SCRIPT_ERROR: 6,
-  ADAPTER_NO_LOADED: 7
-};
-
-/**
- * These are the list of available platform signaling servers Skylink
- *   should connect to for faster connectivity.
- * @attribute REGIONAL_SERVER
- * @type JSON
- * @param {String} APAC1 <small>Value <code>"sg"</code></small>
- *   The option to select the Asia pacific server 1 regional server.
- * @param {String} US1 <small>Value <code>"us2"</code></small>
- *   The option to select the US server 1 regional server.
- * @deprecated Signaling server selection is handled on
- *    the server side based on load and latency.
- * @readOnly
- * @component Room
- * @for Skylink
- * @since 0.5.0
- */
-Skylink.prototype.REGIONAL_SERVER = {
-  APAC1: 'sg',
-  US1: 'us2'
-};
-
-/**
- * The flag to enforce an SSL platform signaling and platform server connection.
- * If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used. This flag is mostly used for self domain accessing protocol
- *   that is <code>http:</code> and enforcing the SSL connections for
- *   platform signaling and platform server connection.
- * @attribute _forceSSL
- * @type Boolean
- * @default false
- * @required
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._forceSSL = false;
-
-/**
- * The flag to enforce an SSL TURN server connection.
- * If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used. This flag is mostly used for self domain accessing protocol
- *   that is <code>http:</code> and enforcing the SSL connections for
- *   TURN server connection.
- * This will configure TURN server connection using port <code>443</code> only and
- *   if <code>turns:</code> protocol is supported, it will use <code>turns:</code> protocol.
- * @attribute _forceTURNSSL
- * @type Boolean
- * @default false
- * @required
- * @private
- * @component Room
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._forceTURNSSL = false;
-
-/**
- * The flag to enforce TURN server connection for quicker connectivity.
- * @attribute _forceTURN
- * @type Boolean
- * @default false
- * @required
- * @private
- * @component Room
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._forceTURN = false;
-
-/**
- * The constructed REST path that Skylink makes a <code>HTTP /GET</code> from
- *   to retrieve the connection information required.
- * @attribute _path
- * @type String
- * @required
- * @private
- * @component Room
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._path = null;
-
-/**
- * The regional server that Skylink should connect to for fastest connectivity.
- * @attribute _serverRegion
- * @type String
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.0
- */
-Skylink.prototype._serverRegion = null;
-
-/**
- * The platform server URL that Skylink can construct the REST path with to make
- *   a <code>HTTP /GET</code> to retrieve the connection information required.
- * If the value is not the default value, it's mostly for debugging purposes.
- * It's not advisable to allow developers to set the custom server URL unless
- *   they are aware of what they are doing, as this is a debugging feature.
- * @attribute _roomServer
- * @type String
- * @default "//api.temasys.com.sg"
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._roomServer = '//api.temasys.com.sg';
-
-/**
- * Stores the Application Key that is configured in the
- *   {{#crossLink "Skylink/init:method"}}init(){{/crossLink}}.
- * @attribute _appKey
- * @type String
- * @private
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._appKey = null;
-
-/**
- * Stores the default room that is configured in the
- *   {{#crossLink "Skylink/init:method"}}init(){{/crossLink}}.
- * If no room is provided in {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}},
- *   this is the room that self would join to by default.
- * If the value is not provided in {{#crossLink "Skylink/init:method"}}init(){{/crossLink}},
- *   by default, the value is the Application Key that is configured
- *   in {{#crossLink "Skylink/init:method"}}init(){{/crossLink}}.
- * @attribute _defaultRoom
- * @type String
- * @default Skylink._appKey
- * @private
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._defaultRoom = null;
-
-/**
- * Stores the new persistent room meeting start datetime stamp in
- *   [(ISO 8601 format)](https://en.wikipedia.org/wiki/ISO_8601).
- * This will start a new meeting based on the starting datetime stamp
- *   in the room that was selected to join.
- * The start date time of the room will not affect non persistent room connection.
- * The persistent room feature is configurable in the Application Key
- *   in the developer console.
- * @attribute _roomStart
- * @type String
- * @private
- * @optional
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._roomStart = null;
-
-/**
- * Stores the new persistent room meeting duration (in hours)
- *   that the current new meeting duration should be in the room
- *   that was selected to join.
- * The duration will not affect non persistent room connection.
- * The persistent room feature is configurable in the Application Key
- *   in the developer console.
- * @attribute _roomDuration
- * @type Number
- * @private
- * @optional
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._roomDuration = null;
-
-/**
- * Stores the room credentials for Application Key.
- * This is required for rooms connecting without CORS verification
- *   or starting a new persistent room meeting.
- * To generate the credentials:
- * - Concatenate a string that consists of the room name
- *   the room meeting duration (in hours) and the start date timestamp (in ISO 8601 format).
- *   Format <code>room + duration + startDateTimeStamp</code>.
- * - Hash the concatenated string with the Application Key token using
- *   [SHA-1](https://en.wikipedia.org/wiki/SHA-1).
- *   You may use the [CryptoJS.HmacSHA1](https://code.google.com/p/crypto-js/#HMAC) function to do so.
- *   Example <code>var hash = CryptoJS.HmacSHA1(concatenatedString, token);</code>.
- * - Convert the hash to a [Base64](https://en.wikipedia.org/wiki/Base64) encoded string. You may use the
- *   [CryptoJS.enc.Base64](https://code.google.com/p/crypto-js/#The_Cipher_Output) function
- *   to do so. Example <code>var base64String = hash.toString(CryptoJS.enc.Base64); </code>.
- * - Encode the Base64 encoded string to a URI component using UTF-8 encoding with
- *   [encodeURIComponent()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent).
- *   Example <code>var credentials = encodeURIComponent(base64String);</code>
- * and the duration.
- * @attribute _roomCredentials
- * @type String
- * @private
- * @optional
- * @component Room
- * @for Skylink
- * @since 0.3.0
- */
-Skylink.prototype._roomCredentials = null;
-
-/**
- * Stores the current Skylink room connection retrieval ready state.
- * [Rel: Skylink.READY_STATE_CHANGE]
- * @attribute _readyState
- * @type Number
- * @private
- * @required
- * @component Room
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._readyState = 0;
-
-/**
- * Stores the Skylink server connection key for the selected room.
- * @attribute _key
- * @type String
- * @private
- * @component Room
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._key = null;
-
-/**
- * Stores the Skylink server Application Key owner string for the selected room.
- * @attribute _appKeyOwner
- * @type String
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._appKeyOwner = null;
-
-/**
- * Stores the room connection information that is passed for starting
- *   the selected room connection. Some of these information are also
- *   used and required to send for every messages sent to the platform
- *   signaling connection for targeting the correct room and
- *   self identification in the room.
- * @attribute _room
- * @type JSON
- * @param {String} id The room ID for identification to the platform signaling connection.
- * @param {String} token The generated room token given by the platform server for starting
- *    the platform signaling connection.
- * @param {String} startDateTime The start datetime stamp (in The startDateTime in
- *    [(ISO 8601 format)](https://en.wikipedia.org/wiki/ISO_8601) that the call has started
- *    sent by the platform server as an indication for the starting datetime of
- *    the platform signaling connection to self.
- * @param {String} duration The duration of the room meeting (in hours). This duration will
- *    not affect non persistent room.
- * @param {JSON} connection Connection The RTCPeerConnection constraints and configuration.
- * @param {JSON} connection.peerConstraints <i>Deprecated feature</i>. The RTCPeerConnection
- *    constraints that is passed in this format <code>new RTCPeerConnection(config, constraints);</code>.
- *    This feature is not documented in W3C Specification draft and not advisable to use.
- * @param {JSON} connection.peerConfig The RTCPeerConnection
- *    [RTCConfiguration](http://w3c.github.io/webrtc-pc/#idl-def-RTCConfiguration).
- * @param {JSON} connection.offerConstraints <i>Deprecated feature</i>. The RTCPeerConnection
- *    [RTCOfferOptions](http://w3c.github.io/webrtc-pc/#idl-def-RTCOfferOptions) used in
- *    <code>RTCPeerConnection.createOffer(successCb, failureCb, options);</code>.
- * @param {JSON} connection.sdpConstraints <i>Not in use</i>. The RTCPeerConnection
- *    [RTCAnswerOptions](http://w3c.github.io/webrtc-pc/#idl-def-RTCAnswerOptions) to be used
- *    in <code>RTCPeerConnection.createAnswer(successCb, failureCb, options);</code>.
- *    This is currently not in use due to not all browsers supporting this feature yet.
- * @param {JSON} connection.mediaConstraints <i>Deprecated feature</i>. The getUserMedia()
- *    [MediaStreamConstraints](https://w3c.github.io/mediacapture-main/getusermedia.html#idl-def-MediaStreamConstraints)
- *    in <code>getUserMedia(constraints, successCb, failureCb);</code>.
- * @required
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._room = null;
-
-/**
- * Starts a <code>HTTP /GET</code> REST call to the platform server to
- *   retrieve the required connection information.
- * @method _requestServerInfo
- * @param {String} method The HTTP method. The value should be provided as
- *   <code>"GET"</code>.
- * @param {String} url The HTTP URI to invoke the REST call to. The
- *   value should be {{#crossLink "Skylink/_path:attribute"}}_path{{/crossLink}}.
- * @param {Function} callback The callback fired The callback fired after the
- *   <code>HTTP /GET</code> REST call has a response from the platform server.
- * @param {Number} callback.status The HTTP status code of the HTTP response
- *   given by the platform server.
- * @param {JSON} callback.response The HTTP response data after the platform server
- *   has responded with the HTTP request.
- * @param {Boolean} callback.response.success The response from the platform server
- *   if Application Key connection retrieval is successful and validated or not.
- * @param {String} callback.response.pc_constraints For success state. The RTCPeerConnection
- *   constraints that would be configured in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.peerConstraints{{/crossLink}} in
- *   {{#crossLink "Skylink/_parseInfo:method"}}_parseInfo(){{/crossLink}}.
- *   The data is in JSON stringified string and requires converting the JSON string
- *      to an JSON object to use the object.
- * @param {String} callback.response.media_constraints For success state. The getUserMedia()
- *   MediaStreamConstraints that would be configured in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.mediaConstraints{{/crossLink}} in
- *   {{#crossLink "Skylink/_parseInfo:method"}}_parseInfo(){{/crossLink}}.
- *   The data is in JSON stringified string and requires converting the JSON string
- *     to an JSON object to use the object.
- * @param {String} callback.response.offer_constraints For success state. The RTCPeerConnection
- *   RTCOfferOptions that would be configured in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.offerConstraints{{/crossLink}} in
- *   {{#crossLink "Skylink/_parseInfo:method"}}_parseInfo(){{/crossLink}}.
- *   The data is in JSON stringified string and requires converting the JSON string
- *      to an JSON object to use the object.
- * @param {String} callback.response.bandwidth For success state. The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} callback.response.bandwidth.audio The default
- *   audio stream channel for self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} callback.response.bandwidth.video The default
- *   video stream channel for self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} callback.response.bandwidth.data The default
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {String} callback.response.cid For success state. The Skylink server connection key for the
- *   selected room. This would be stored in {{#crossLink "Skylink/_key:attribute"}}_key{{/crossLink}}
- *   in {{#crossLink "Skylink/_parseInfo:method"}}_parseInfo(){{/crossLink}}.
- * @param {String} callback.response.apiOwner For success state. The Skylink server Application
- *   Key owner string for the selected room. This would be stored in
- *   {{#crossLink "Skylink/_appKeyOwner:attribute"}}_appKeyOwner{{/crossLink}}
- *   in {{#crossLink "Skylink/_parseInfo:method"}}_parseInfo(){{/crossLink}}.
- * @param {Array} callback.response.httpPortList For success state. The list of HTTP
- *   ports for reconnection retries. This would be stored in
- *   {{#crossLink "Skylink/_socketPorts:attribute"}}_socketPorts.http:{{/crossLink}}.
- * @param {Number} callback.response.httpPortList.(#index) The HTTP port that Skylink
- *   could reattempt to establish for a signaling connection with <code>http:</code> protocol.
- * @param {Array} callback.response.httpsPortList For success state. The list of HTTPS
- *   ports for reconnection retries. This would be stored in
- *   {{#crossLink "Skylink/_socketPorts:attribute"}}_socketPorts.https:{{/crossLink}}.
- * @param {Number} callback.response.httpsPortList.(#index) The HTTPS port that Skylink
- *   could reattempt to establish for a signaling connection with <code>https:</code> protocol or
- *   when {{#crossLink "Skylink/_forceSSL:attribute"}}_forceSSL{{/crossLink}} is enabled.
- * @param {String} callback.response.ipSigserver For success state. The platform signaling endpoint URI
- *   to open socket connection with. This would be stored in
- *   {{#crossLink "Skylink/_signalingServer:attribute"}}_signalingServer{{/crossLink}}.
- * @param {String} callback.response.roomCred For success state. The generated room token given
- *   by the platform server for starting the platform signaling connection. This would be stored in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.token{{/crossLink}}.
- * @param {String} callback.response.room_key For success state. The room ID for identification
- *   to the platform signaling connection. This would be stored in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.id{{/crossLink}}.
- * @param {String} callback.response.start For success state. The start datetime stamp (in The startDateTime in
- *   [(ISO 8601 format)](https://en.wikipedia.org/wiki/ISO_8601) that the call has started
- *   sent by the platform server as an indication for the starting datetime of
- *   the platform signaling connection to self. This would be stored in
- *   {{#crossLink "Skylink/_room:attribute"}}_room.startDateTime{{/crossLink}}.
- * @param {String} callback.response.timeStamp For success state. The self session timestamp.
- *   This would be stored in {{#crossLink "Skylink/_user:attribute"}}_user.timeStamp{{/crossLink}}
- * @param {String} callback.response.userCred For success state. The self session access token.
- *   This would be stored in {{#crossLink "Skylink/_user:attribute"}}_user.token{{/crossLink}}.
- * @param {String} callback.response.username For success state. The self session ID.
- *   This would be stored in {{#crossLink "Skylink/_user:attribute"}}_user.username{{/crossLink}}.
- * @param {String} callback.response.info For failure state. The error message thrown by
- *   the platform server.
- * @param {Number} callback.response.error For failure state. The error code of the error thrown by
- *   the platform server.
- * @param {JSON} params HTTP Params The HTTP data parameters that would be
- *    <code>application/json;charset=UTF-8</code> encoded when sent to the
- *    platform server.
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._requestServerInfo = function(method, url, callback, params) {
-  var self = this;
-  // XDomainRequest is supported in IE8 - 9
-  var useXDomainRequest = typeof window.XDomainRequest === 'function' ||
-    typeof window.XDomainRequest === 'object';
-
-  self._socketUseXDR = useXDomainRequest;
-  var xhr;
-
-  // set force SSL option
-  url = (self._forceSSL) ? 'https:' + url : url;
-
-  if (useXDomainRequest) {
-    log.debug([null, 'XMLHttpRequest', method, 'Using XDomainRequest. ' +
-      'XMLHttpRequest is now XDomainRequest'], {
-      agent: window.webrtcDetectedBrowser,
-      version: window.webrtcDetectedVersion
-    });
+  // Use XDomainRequest
+  if (_this._room.session.useXDomainRequest) {
     xhr = new XDomainRequest();
     xhr.setContentType = function (contentType) {
       xhr.contentType = contentType;
     };
+
+    log.log([null, 'Room', _this._room.name, 'Using XDomainRequest to fetch Room session']);
+
+  // Use XMLHttpRequest
   } else {
-    log.debug([null, 'XMLHttpRequest', method, 'Using XMLHttpRequest'], {
-      agent: window.webrtcDetectedBrowser,
-      version: window.webrtcDetectedVersion
-    });
-    xhr = new window.XMLHttpRequest();
+    xhr = new XMLHttpRequest();
     xhr.setContentType = function (contentType) {
       xhr.setRequestHeader('Content-type', contentType);
     };
+
+    log.log([null, 'Room', _this._room.name, 'Using XMLHttpRequest to fetch Room session']);
   }
 
+  // XMLHttpRequest.onload event
   xhr.onload = function () {
-    var response = xhr.responseText || xhr.response;
+    var response = JSON.parse(xhr.responseText || xhr.response || '{}');
     var status = xhr.status || 200;
-    log.debug([null, 'XMLHttpRequest', method, 'Received sessions parameters'],
-      JSON.parse(response || '{}'));
-    callback(status, JSON.parse(response || '{}'));
-  };
 
-  xhr.onerror = function (error) {
-    log.error([null, 'XMLHttpRequest', method, 'Failed retrieving information:'],
-      { status: xhr.status });
-    self._readyState = -1;
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-      status: xhr.status || null,
-      content: 'Network error occurred. (Status: ' + xhr.status + ')',
-      errorCode: self.READY_STATE_CHANGE_ERROR.XML_HTTP_REQUEST_ERROR
-    }, self._selectedRoom);
-  };
+    log.debug([null, 'Room', _this._room.name, 'Received response from API server ->'], response);
 
-  xhr.onprogress = function () {
-    log.debug([null, 'XMLHttpRequest', method,
-      'Retrieving information and config from webserver. Url:'], url);
-    log.debug([null, 'XMLHttpRequest', method, 'Provided parameters:'], params);
-  };
+    if (!response.success) {
+      log.debug([null, 'Room', _this._room.name, 'Failed initialising session ->'], response.message);
 
-  xhr.open(method, url, true);
-  if (params) {
-    xhr.setContentType('application/json;charset=UTF-8');
-    xhr.send(JSON.stringify(params));
-  } else {
-    xhr.send();
-  }
-};
+      // READY_STATE_ERROR -> API response
+      callback({
 
-/**
- * Parses the connection information retrieved from the platform server and
- *   stores them into the relevant attributes in
- *   {{#crossLink "Skylink/_room:attribute"}}_room{{/crossLink}} and
- *   {{#crossLink "Skylink/_user:attribute"}}_user{{/crossLink}}.
- * @method _parseInfo
- * @param {JSON} info The HTTP response data if the HTTP status
- *   code is <code>200</code> (which means <var>HTTP OK</var> code)
- * @param {String} info.pc_constraints The RTCPeerConnection constraints.
- *   The data is in JSON stringified string and requires converting the JSON string
- *      to an JSON object to use the object.
- * @param {String} info.media_constraints The getUserMedia() MediaStreamConstraints.
- *   The data is in JSON stringified string and requires converting the JSON string
- *      to an JSON object to use the object.
- * @param {String} info.offer_constraints The RTCPeerConnection RTCOfferOptions.
- *   The data is in JSON stringified string and requires converting the JSON string
- *      to an JSON object to use the object.
- * @param {String} info.bandwidth The self
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} info.bandwidth.audio The default
- *   audio stream channel for self Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} info.bandwidth.video The default
- *   video stream channel for self Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} info.bandwidth.data The default
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {String} info.cid The Skylink server connection key for starting the
- *   selected room connection.
- * @param {String} info.apiOwner The Skylink server Application Key owner string for the selected room.
- * @param {Array} info.httpPortList The list of HTTP
- *   ports for reconnection retries.
- * @param {Number} info.httpPortList.(#index) The HTTP port that Skylink
- *   could reattempt to establish for a signaling connection with <code>http:</code> protocol.
- * @param {Array} info.httpsPortList The list of HTTPS
- *   ports for reconnection retries.
- * @param {Number} info.httpsPortList.(#index) The HTTPS port that Skylink
- *   could reattempt to establish for a signaling connection with <code>https:</code> protocol or
- *   when {{#crossLink "Skylink/_forceSSL:attribute"}}_forceSSL{{/crossLink}} is enabled.
- * @param {String} info.ipSigserver The platform signaling endpoint URI
- *   to open socket connection with.
- * @param {String} info.roomCred The generated room token given
- *   by the platform server for starting the platform signaling connection.
- * @param {String} info.room_key For success state. The room ID for identification
- *   to the platform signaling connection.
- * @param {String} info.start The start datetime stamp (in The startDateTime in
- *   [(ISO 8601 format)](https://en.wikipedia.org/wiki/ISO_8601) that the call has started
- *   sent by the platform server as an indication for the starting datetime of
- *   the platform signaling connection to self.
- * @param {String} info.timeStamp The self session timestamp.
- * @param {String} info.userCred The self session access token.
- * @param {String} info.username The self session ID.
- * @trigger readyStateChange
- * @private
- * @required
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._parseInfo = function(info) {
-  log.log('Parsing parameter from server', info);
-  if (!info.pc_constraints && !info.offer_constraints) {
-    this._trigger('readyStateChange', this.READY_STATE_CHANGE.ERROR, {
-      status: 200,
-      content: info.info,
-      errorCode: info.error
-    }, self._selectedRoom);
-    return;
-  }
+        status: xhr.status || 200,
+        errorCode: response.error,
+        content: new Error(response.info)
 
-  log.debug('Peer connection constraints:', info.pc_constraints);
-  log.debug('Offer constraints:', info.offer_constraints);
-
-  this._key = info.cid;
-  this._appKeyOwner = info.apiOwner;
-
-  this._signalingServer = info.ipSigserver;
-
-  this._isPrivileged = info.isPrivileged;
-  this._autoIntroduce = info.autoIntroduce;
-  this._parentKey = info.room_key.substring(0,36);
-
-  this._user = {
-    uid: info.username,
-    token: info.userCred,
-    timeStamp: info.timeStamp,
-    streams: [],
-    info: {}
-  };
-  this._room = {
-    id: info.room_key,
-    token: info.roomCred,
-    startDateTime: info.start,
-    duration: info.len,
-    connection: {
-      peerConstraints: JSON.parse(info.pc_constraints),
-      peerConfig: null,
-      offerConstraints: JSON.parse(info.offer_constraints),
-      sdpConstraints: {
-        mandatory: {
-          OfferToReceiveAudio: true,
-          OfferToReceiveVideo: true
-        }
-      },
-      mediaConstraints: JSON.parse(info.media_constraints)
-    }
-  };
-  this._parseDefaultMediaStreamSettings(this._room.connection.mediaConstraints);
-
-  // set the socket ports
-  this._socketPorts = {
-    'http:': info.httpPortList,
-    'https:': info.httpsPortList
-  };
-
-  // use default bandwidth and media resolution provided by server
-  //this._streamSettings.bandwidth = info.bandwidth;
-  //this._streamSettings.video = info.video;
-  this._readyState = 2;
-  this._trigger('readyStateChange', this.READY_STATE_CHANGE.COMPLETED, null, this._selectedRoom);
-  log.info('Parsed parameters from webserver. ' +
-    'Ready for web-realtime communication');
-
-};
-
-/**
- * Starts loading the required dependencies and then retrieve the required
- *   connection information from the platform server.
- * @method _loadInfo
- * @trigger readyStateChange
- * @private
- * @required
- * @component Room
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._loadInfo = function() {
-  var self = this;
-
-  // check if adapterjs has been loaded already first or not
-  var adapter = (function () {
-    try {
-      return window.AdapterJS || AdapterJS;
-    } catch (error) {
-      return false;
-    }
-  })();
-
-  if (!(!!adapter ? typeof adapter.webRTCReady === 'function' : false)) {
-    var noAdapterErrorMsg = 'AdapterJS dependency is not loaded or incorrect AdapterJS dependency is used';
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-      status: null,
-      content: noAdapterErrorMsg,
-      errorCode: self.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED
-    }, self._selectedRoom);
-    return;
-  }
-  if (!window.io) {
-    log.error('Socket.io not loaded. Please load socket.io');
-    self._readyState = -1;
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-      status: null,
-      content: 'Socket.io not found',
-      errorCode: self.READY_STATE_CHANGE_ERROR.NO_SOCKET_IO
-    }, self._selectedRoom);
-    return;
-  }
-  if (!window.XMLHttpRequest) {
-    log.error('XMLHttpRequest not supported. Please upgrade your browser');
-    self._readyState = -1;
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-      status: null,
-      content: 'XMLHttpRequest not available',
-      errorCode: self.READY_STATE_CHANGE_ERROR.NO_XMLHTTPREQUEST_SUPPORT
-    }, self._selectedRoom);
-    return;
-  }
-  if (!self._path) {
-    log.error('Skylink is not initialised. Please call init() first');
-    self._readyState = -1;
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-      status: null,
-      content: 'No API Path is found',
-      errorCode: self.READY_STATE_CHANGE_ERROR.NO_PATH
-    }, self._selectedRoom);
-    return;
-  }
-  adapter.webRTCReady(function () {
-    if (!window.RTCPeerConnection) {
-      log.error('WebRTC not supported. Please upgrade your browser');
-      self._readyState = -1;
-      self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-        status: null,
-        content: 'WebRTC not available',
-        errorCode: self.READY_STATE_CHANGE_ERROR.NO_WEBRTC_SUPPORT
-      }, self._selectedRoom);
+      }, null);
       return;
     }
-    self._readyState = 1;
-    self._trigger('readyStateChange', self.READY_STATE_CHANGE.LOADING, null, self._selectedRoom);
-    self._requestServerInfo('GET', self._path, function(status, response) {
-      if (status !== 200) {
-        // 403 - Room is locked
-        // 401 - API Not authorized
-        // 402 - run out of credits
-        var errorMessage = 'XMLHttpRequest status not OK\nStatus was: ' + status;
-        self._readyState = 0;
-        self._trigger('readyStateChange', self.READY_STATE_CHANGE.ERROR, {
-          status: status,
-          content: (response) ? (response.info || errorMessage) : errorMessage,
-          errorCode: response.error ||
-            self.READY_STATE_CHANGE_ERROR.INVALID_XMLHTTPREQUEST_STATUS
-        }, self._selectedRoom);
-        return;
-      }
-      self._parseInfo(response);
-    });
-  });
-};
 
-/**
- * Starts loading the required connection information to start connection
- *   based on the selected room in {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}}.
- * @method _initSelectedRoom
- * @param {String} [room] The room to retrieve required connection information
- *   to start connection. If room is not provided, the room
- *   would default to the the <code>defaultRoom</code> option set
- *   in {{#crossLink "Skylink/init:method"}}init() settings{{/crossLink}}.
- * @param {Function} callback The callback fired after required connection
- *   information has been retrieved successfully with the provided media
- *   settings or have met with an exception.
- * @param {Object} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @trigger readyStateChange
- * @private
- * @component Room
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._initSelectedRoom = function(room, callback) {
-  var self = this;
-  if (typeof room === 'function' || typeof room === 'undefined') {
-    log.error('Invalid room provided. Room:', room);
-    return;
-  }
-  var defaultRoom = self._defaultRoom;
-  var initOptions = {
-    roomServer: self._roomServer,
-    defaultRoom: room || defaultRoom,
-    appKey: self._appKey,
-    region: self._serverRegion,
-    enableDataChannel: self._enableDataChannel,
-    enableIceTrickle: self._enableIceTrickle
+    _this._room.session.data = response;
+
+    // Configure the socket connection
+    _this._socket.config.current = _this._socket.config.default;
+
+    // Configure the httpsPortsList
+    if (Array.isArray(response.httpsPortList) && response.httpsPortList.length > 0) {
+      _this._socket.config.current.ports['https:'] = response.httpsPortList;
+    }
+
+    // Configure the httpPortList
+    if (Array.isArray(response.httpPortList) && response.httpPortList.length > 0) {
+      _this._socket.config.current.ports['http:'] = response.httpPortList;
+    }
+
+    // Configure the ipSigserver
+    if (typeof response.ipSigserver === 'string') {
+      _this._socket.config.current.server = response.ipSigserver;
+    }
+
+    log.debug([null, 'Room', _this._room.name, 'Session has been initialized']);
+
+    callback(null, response);
   };
-  if (self._roomCredentials) {
-    initOptions.credentials = {
-      credentials: self._roomCredentials,
-      duration: self._roomDuration,
-      startDateTime: self._roomStart
-    };
-  }
-  self.init(initOptions, function (error, success) {
-    self._defaultRoom = defaultRoom;
-    if (error) {
-      callback(error);
-    } else {
-      callback(null);
-    }
-  });
+
+  // XMLHttpRequest.onerror event
+  xhr.onerror = function (error) {
+    log.error([null, 'Room', _this._room.name, 'Failed retrieving response from API server ->'], error);
+
+    callback({
+
+      status: xhr.status || null,
+      content: new Error('Network error occurred with HTTP status ' + xhr.status),
+      errorCode: _this.READY_STATE_CHANGE_ERROR.XML_HTTP_REQUEST_ERROR
+
+    }, null);
+  };
+
+  // XMLHttpRequest.onprogress
+  xhr.onprogress = function () {
+    log.debug([null, 'Room', _this._room.name, 'Retrieving response from API server']);
+  };
+
+  xhr.open('GET', _this._room.session.path, true);
+  xhr.send();
 };
 
 /**
- * Initialises and configures Skylink to begin any connection.
- * <b>NOTE</b> that this is the first method that has to be called before
- *   using any other functionalities other than debugging features like
- *   {{#crossLink "Skylink/setLogLevel:method"}}setLogLevel(){{/crossLink}} and
- *   {{#crossLink "Skylink/setDebugMode:method"}}setDebugMode(){{/crossLink}} and
- *   after all event subscriptions like {{#crossLink "Skylink/on:method"}}on(){{/crossLink}}
- *   or {{#crossLink "Skylink/once:method"}}once(){{/crossLink}} has been made.
- * This is where the Application Key is configured and attached to Skylink for usage.
- * @method init
- * @param {String|JSON} options The configuration settings for Skylink.
- *   If provided options is a <var>typeof</var> <code>string</code>, it will
- *   be interpreted as the Application Key being provided.
- * @param {String} options.appKey Previously known as <code>apiKey</code>.
- *   The Application Key that Skylink uses for initialising and connecting rooms.
- * @param {String} [options.defaultRoom=options.appKey] The default room that
- *   Skylink should connect to if there is no room provided in
- *   {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}}.
- *   If this value is not provided, the default room value would be
- *   the Application Key provided.
- * @param {String} [options.roomServer] The platform server URL that Skylink makes a
- *   <code>HTTP /GET</code> to retrieve the connection information required.
- *   This is a debugging feature, and it's not advisable to manipulate
- *     this value unless you are using a beta platform server.
- * @param {String} [options.region] <i>Deprecated feature</i>. The regional server that Skylink
- *    should connect to for fastest connectivity. [Rel: Skylink.REGIONAL_SERVER]
- * @param {Boolean} [options.enableIceTrickle=true] <i>Debugging Feature</i>.
- *    The flag that indicates if PeerConnections
- *    should enable trickling of ICE to connect the ICE connection. Configuring
- *    this value to <code>false</code> may result in a slower connection but
- *    a more stable connection.
- * @param {Boolean} [options.enableDataChannel=true] <i>Debugging feature</i>.
- *   The flag that indicates if PeerConnections
- *   should have any DataChannel connections. Configuring this value to <code>false</code>
- *   may result in failure to use features like
- *   {{#crossLink "Skylink/sendBlobData:method"}}sendBlobData(){{/crossLink}},
- *   {{#crossLink "Skylink/sendP2PMessage:method"}}sendP2PMessage(){{/crossLink}} and
- *   {{#crossLink "Skylink/sendURLData:method"}}sendURLData(){{/crossLink}} or any
- *   DataChannel connection related services.
- * @param {Boolean} [options.enableTURNServer=true] <i>Debugging feature</i>.
- *   The flag that indicates if PeerConnections connection should use any TURN server connection.
- *   Tampering this flag may disable any successful Peer connection
- *   that is behind any firewalls, so set this value at your own risk.
- * @param {Boolean} [options.enableSTUNServer=true] <i>Debugging feature</i>.
- *   The flag that indicates if PeerConnections connection should use any STUN server connection.
- *   Tampering this flag may cause issues to connections, so set this value at your own risk.
- * @param {Boolean} [options.forceTURN=false] The flag that indicates if PeerConnections connection
- *   should only use TURN server connection which enables a quicker connectivity.
- *   This configuration will override the settings for <code>enableTURNServer</code>
- *   and <code>enableSTUNServer</code> and set <code>enableTURNServer</code> as <code>true</code> and
- *   <code>enableSTUNServer</code> as <code>false</code> if the value is set to <code>true</code>.
- * @param {Boolean} [options.usePublicSTUN=true] The flag that indicates if PeerConnections connection
- *   should enable usage of public STUN server connection connectivity.
- *   This configuration would not work if <code>enableSTUNServer</code> is set to <code>false</code>
- *   or <code>forceTURN</code> is set to <code>true</code>.
- * @param {Boolean} [options.TURNServerTransport=Skylink.TURN_TRANSPORT.ANY] <i>Debugging feature</i>.
- *   The TURN server transport to enable for TURN server connections.
- *   Tampering this flag may cause issues to connections, so set this value at your own risk.
- *   [Rel: Skylink.TURN_TRANSPORT]
- * @param {JSON} [options.credentials] The credentials configured for starting a new persistent
- *   room meeting or connecting with Application Keys that do not use CORS authentication.
- *   Setting the <code>startDateTime</code> or the <code>duration</code> will not affect
- *   the actual duration for non persistent rooms. This feature would only affect connections with
- *   Application Keys that is configured for persistent room feature.
- *   To enable persistent room or disable CORS, you may set it in the developer console.
- *   CORS may be disabled by setting the platform to <code>"Other"</code>.
- * @param {String} options.credentials.startDateTime The room start datetime stamp in
- *   <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601 format</a>.
- *   This will start a new meeting based on the starting datetime stamp
- *   in the room that was selected to join for Application Key that is configured
- *   with persistent room feature. You may use
- *   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString">
- *   Date.toISOString()</a> to retrieve ISO 8601 formatted date time stamp.
- *   The start date time of the room will not affect non persistent room connection.
- * @param {Number} options.credentials.duration The duration (in hours)
- *   that the room duration should be in. This will set the duration starting from
- *   the provided <code>startDateTime</code> onwards and after the duration is over,
- *   the meeting is over and the room is closed for Application Key that is
- *   configured with persistent room feature.
- *   The duration will not affect non persistent room connection.The duration of the meeting in hours.<br>
- *   <small>E.g. <code>0.5</code> for half an hour, <code>1.4</code> for 1 hour and 24 minutes</small>
- * @param {String} options.credentials.credentials The room credentials for Application Key.
- *   This is required for rooms connecting without CORS verification or starting a new persistent room meeting.<br><br>
- *   <u>To generate the credentials:</u><br>
- *   <ol>
- *   <li>Concatenate a string that consists of the room name
- *     the room meeting duration (in hours) and the start date timestamp (in ISO 8601 format).<br>
- *     <small>Format <code>room + "_" + duration + "_" + startDateTimeStamp</code></small></li>
- *   <li>Hash the concatenated string with the Application Key token using
- *     <a href="https://en.wikipedia.org/wiki/SHA-1">SHA-1</a>.
- *     You may use the <a href="https://code.google.com/p/crypto-js/#HMAC">CryptoJS.HmacSHA1</a> function to do so.<br>
- *     <small>Example <code>var hash = CryptoJS.HmacSHA1(concatenatedString, token);</code></small></li>
- *   <li>Convert the hash to a <a href="https://en.wikipedia.org/wiki/Base64">Base64</a> encoded string. You may use the
- *     <a href="https://code.google.com/p/crypto-js/#The_Cipher_Output">CryptoJS.enc.Base64</a> function
- *     to do so.<br><small>Example <code>var base64String = hash.toString(CryptoJS.enc.Base64); </code></small></li>
- *   <li>Encode the Base64 encoded string to a URI component using UTF-8 encoding with
- *     <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent">encodeURIComponent()</a>.<br>
- *     <small>Example <code>var credentials = encodeURIComponent(base64String);</code></small></li>
- *   </ol><br>
- * @param {Boolean} [options.audioFallback=false] The flag that indicates if there is a failure in
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}} in retrieving user media
- *   video stream, it should fallback to retrieve audio stream only. This would not work for
- *   {{#crossLink "Skylink/joinRoom:method"}}joinRoom(){{/crossLink}} except
- *   {{#crossLink "Skylink/getUserMedia:method"}}getUserMedia(){{/crossLink}}.
- * @param {Boolean} [options.forceSSL=false] The flag to enforce an SSL platform signaling and platform server connection.
- *   If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used. This flag is mostly used for self domain accessing protocol
- *   that is <code>http:</code> and enforcing the SSL connections for
- *   platform signaling and platform server connection.
- * @param {String} [options.audioCodec=Skylink.AUDIO_CODEC.AUTO] <i>Debugging Feature</i>.
- *   The preferred audio codec that Peer connection
- *   streaming audio codec should use in the connection when available. If not available, the default
- *   codec would be the browser generated session description selected codec. [Rel: Skylink.AUDIO_CODEC]
- * @param {String} [options.videoCodec=Skylink.VIDEO_CODEC.AUTO] <i>Debugging Feature</i>.
- *   The preferred video codec that Peer connection
- *   streaming video codec should use in the connection when available. If not available, the default
- *   codec would be the browser generated session description selected codec. [Rel: Skylink.VIDEO_CODEC]
- * @param {Number} [options.socketTimeout=20000] The timeout that the socket connection should throw a
- *   timeout exception when socket fails to receive a response from connection. Depending on
- *   the max retries left based on the availability of ports given by the platform server,
- *   the socket will reattempt to establish a socket connection with the signaling server.<br>
- *   The mininum timeout value is <code>5000</code>.
- * @param {Boolean} [options.forceTURNSSL=false] The flag to enforce an SSL TURN server connection.
- *   If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used. This flag is mostly used for self domain accessing protocol
- *   that is <code>http:</code> and enforcing the SSL connections for
- *   TURN server connection.
- * This will configure TURN server connection using port <code>443</code> only and
- *   if <code>turns:</code> protocol is supported, it will use <code>turns:</code> protocol.
- * @param {Function} [callback] The callback fired after Skylink has been
- *   initialised successfully or have met with an exception.
- *   The callback signature is <code>function (error, success)</code>.
- * @param {JSON} callback.error The error object received in the callback.
- *   If received as <code>null</code>, it means that there is no errors.
- * @param {Number} callback.error.errorCode The
- *   <a href="#attr_READY_STATE_CHANGE_ERROR">READY_STATE_CHANGE_ERROR</a>
- *   if there is an <a href="#event_readyStateChange">readyStateChange</a>
- *   event error that caused the failure for initialising Skylink.
- *   [Rel: Skylink.READY_STATE_CHANGE_ERROR]
- * @param {Object} callback.error.error The exception thrown that caused the failure
- *   for initialising Skylink.
- * @param {Number} callback.error.status The XMLHttpRequest status code received
- *   when exception is thrown that caused the failure for initialising Skylink.
- * @param {JSON} callback.success The success object received in the callback.
- *   If received as <code>null</code>, it means that there are errors.
- * @param {String} callback.success.appKey Previously known as <code>apiKey</code>.
- *   The Application Key that Skylink uses for initialising and connecting rooms.
- * @param {String} callback.success.defaultRoom The default room that
- *   Skylink should connect to if there is no room provided in
- *   <a href="#method_joinRoom">joinRoom()</a>.
- * @param {String} callback.success.roomServer The platform server URL that Skylink makes a
- *   <code>HTTP /GET</code> to retrieve the connection information required.
- * @param {Boolean} callback.success.enableIceTrickle The flag that indicates if PeerConnections
- *    should enable trickling of ICE to connect the ICE connection.
- * @param {Boolean} callback.success.enableDataChannel The flag that indicates if PeerConnections
- *   should have any DataChannel connections.
- * @param {Boolean} callback.success.enableTURNServer The flag that indicates if
- *   PeerConnections connection should use any TURN server connection.
- * @param {Boolean} callback.success.enableSTUNServer The flag that indicates if
- *   PeerConnections connection should use any STUN server connection.
- * @param {Boolean} callback.success.TURNServerTransport The TURN server transport
- *   to enable for TURN server connections.
- *   [Rel: Skylink.TURN_TRANSPORT]
- * @param {String} [callback.success.serverRegion] The regional server that Skylink
- *    should connect to for fastest connectivity. [Rel: Skylink.REGIONAL_SERVER]
- * @param {Boolean} callback.success.audioFallback The flag that indicates if there is a failure in
- *   <a href="#method_getUserMedia">getUserMedia()</a> in retrieving user media
- *   video stream, it should fallback to retrieve audio stream only.
- * @param {Boolean} callback.success.forceSSL The flag to enforce an SSL platform signaling and platform server connection.
- *   If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used.
- * @param {String} callback.success.audioCodec The preferred audio codec that Peer connection
- *   streaming audio codec should use in the connection when available. [Rel: Skylink.AUDIO_CODEC]
- * @param {String} callback.success.videoCodec The preferred video codec that Peer connection
- *   streaming video codec should use in the connection when available. [Rel: Skylink.VIDEO_CODEC]
- * @param {Number} callback.success.socketTimeout The timeout that the socket connection should throw a
- *   timeout exception when socket fails to receive a response from connection. Depending on
- *   the max retries left based on the availability of ports given by the platform server,
- *   the socket will reattempt to establish a socket connection with the signaling server.
- * @param {Boolean} callback.success.forceTURNSSL The flag to enforce an SSL TURN server connection.
- *   If self domain accessing protocol is <code>https:</code>, SSL connections
- *   would be automatically used.
- * This will configure TURN server connection using port <code>443</code> only and
- *   if <code>turns:</code> protocol is supported, it will use <code>turns:</code> protocol.
- * @param {Boolean} callback.success.forceTURN The flag that indicates if PeerConnections connection
- *   should only use TURN server connection which enables a quicker connectivity.
- *   This configuration will override the settings for <code>enableTURNServer</code>
- *   and <code>enableSTUNServer</code> and set <code>enableTURNServer</code> as <code>true</code> and
- *   <code>enableSTUNServer</code> as <code>false</code> if the value is set to <code>true</code>.
- * @param {Boolean} callback.success.usePublicSTUN The flag that indicates if PeerConnections connection
- *   should enable usage of public STUN server connection connectivity.
- *   This configuration would not work if <code>enableSTUNServer</code> is set to <code>false</code>
- *   or <code>forceTURN</code> is set to <code>true</code>.
- * @example
- *   // Note: Default room is appKey when no room
- *   // Example 1: To initalize without setting any default room.
- *   SkylinkDemo.init("YOUR_APP_KEY_HERE");
- *
- *   // Example 2: To initialize with appKey and defaultRoom
- *   SkylinkDemo.init({
- *     appKey: "YOUR_APP_KEY_HERE",
- *     defaultRoom: "mainHangout"
- *   });
- *
- *   // Example 3: To initialize with credentials to set startDateTime and
- *   // duration of the room
- *   var hash = CryptoJS.HmacSHA1(roomname + "_" + duration + "_" +
- *     (new Date()).toISOString(), token);
- *   var credentials = encodeURIComponent(hash.toString(CryptoJS.enc.Base64));
- *   SkylinkDemo.init({
- *     appKey: "YOUR_APP_KEY_HERE",
- *     defaultRoom: "mainHangout"
- *     credentials: {
- *        startDateTime: (new Date()).toISOString(),
- *        duration: 500,
- *        credentials: credentials
- *     }
- *   });
- *
- *   // Example 4: To initialize with callback
- *   SkylinkDemo.init("YOUR_APP_KEY_HERE", function(error,success){
- *     if (error){
- *       console.error("Init failed:", error);
- *     }
- *     else{
- *       console.info("Init succeed:", success);
- *     }
- *   });
- *
- * @trigger readyStateChange
- * @required
- * @component Room
+ * Constructs the Room session path.
+ * @method _roomConstructSessionPath
+ * @private
+ * @since 0.6.8
  * @for Skylink
- * @since 0.5.5
  */
-Skylink.prototype.init = function(options, callback) {
-  var self = this;
+Skylink.prototype._roomConstructSessionPath = function () {
+  var _this = this;
+  var append = '?&';
 
-  if (typeof options === 'function'){
-    callback = options;
-    options = undefined;
+  // Configure the session protocol
+  _this._room.session.protocol = window.location.protocol;
+  // Force set to "https:" for forceSSL
+  if (_this._room.config.current.forceSSL) {
+    _this._room.session.protocol = 'https:';
+  }
+  // Warn users using custom roomServer
+  if (_this._room.config.current.roomServer !== _this._room.config.default.roomServer) {
+    log.warn([null, 'Room', _this._room.name,
+      'Room is using custom server and this may affect Skylink functionalities ->'],
+      _this._room.config.current.roomServer);
   }
 
-  if (!options) {
-    var error = 'No API key provided';
-    log.error(error);
-    if (typeof callback === 'function'){
-      callback(error,null);
+  // Construct the path
+  _this._room.session.path =
+  // Append the protocol
+    _this._room.session.protocol + '//' +
+  // Append the roomServer
+    _this._room.config.current.roomServer + '/api/' +
+  // Append the appKey and selected room
+    _this._room.config.current.appKey + '/' + _this._room.name;
+
+  // Check if credentials is needed
+  if (_this._room.config.current.credentials) {
+    _this._room.session.path +=
+    // Append the credentials.startDateTime
+      _this._room.config.current.credentials.startDateTime + '/' +
+    // Append the credentials.duration
+      _this._room.config.current.credentials.duration + append +
+    // Append the credentials.credentials
+      'cred=' + _this._room.config.current.credentials.credentials;
+    // Update append
+    append = '&';
+  }
+
+  // Check if region is needed
+  if (_this._room.config.current.region) {
+    _this._room.session.path += append +
+    // Append the region
+      'rg=' + _this._room.config.current.region;
+    // Update append
+    append = '&';
+  }
+
+  // Add the random string
+  _this._room.session.random = (new Date()).getTime();
+  _this._room.session.path += append + 'rand=' + _this._room.session.random;
+
+  log.debug([null, 'Room', _this._room.name, 'Session path has been constructed']);
+};
+
+/**
+ * Parses the init() configuration.
+ * @method _initParseConfig
+ * @param {JSON} config The configuration passed.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._initParseConfig = function (config) {
+  var _this = this;
+
+  // Preset to defaults
+  _this._room.config.current = clone(_this._room.config.default);
+
+  // init({} -> appKey)
+  if (typeof config.appKey === 'string') {
+    _this._room.config.current.appKey = config.appKey;
+  // init({} -> apiKey)
+  } else if (typeof config.apiKey === 'string') {
+    _this._room.config.current.appKey = config.apiKey;
+  // init({} -> ERROR - no key)
+  } else {
+    throw new Error('Failed initializing as appKey is not found');
+  }
+
+  // init({} -> defaultRoom)
+  if (typeof config.defaultRoom === 'string') {
+    _this._room.config.current.defaultRoom = config.defaultRoom;
+  // Fallback to default
+  } else {
+    _this._room.config.current.defaultRoom = _this._room.config.current.appKey;
+  }
+
+  // Configure the selected room first
+  _this._room.name = _this._room.config.current.defaultRoom;
+
+  // init({} -> roomServer)
+  if (typeof config.roomServer === 'string') {
+    if (config.roomServer !== _this._room.config.default.roomServer) {
+      _this._room.config.current.roomServer = config.roomServer;
     }
+  }
+
+  // init({} -> region)
+  if (typeof config.region === 'string') {
+    // Loop to check if option is valid in REGIONAL_SERVER list
+    objForEach(_this.REGIONAL_SERVER, function (region) {
+      if (options.region === region) {
+        _this._room.config.current.region = options.region;
+      }
+    });
+
+    // Option is not found, throw error
+    if (_this._room.config.current.region === null) {
+      throw new Error('Provided region is invalid. ' +
+        'Please select the list of options from REGIONAL_SERVER list');
+    }
+  }
+
+  // init({} -> credentials)
+  if (typeof config.credentials === 'object' && config.credentials !== null) {
+    // init({} -> credentials.startDateTime)
+    if (typeof config.credentials.startDateTime !== 'string') {
+      throw new Error('Provided credentials.startDateTime DateTime string (ISO 8601) is invalid');
+    }
+    // init({} -> credentials.duration)
+    if (typeof config.credentials.duration !== 'number') {
+      throw new Error('Provided credentials.duration (in hours) is invalid');
+    }
+    // init({} -> credentials.credentials)
+    if (typeof config.credentials.credentials !== 'string') {
+      throw new Error('Provided credentials.credentials string is invalid');
+    }
+
+    _this._room.config.current.credentials = {
+      startDateTime: config.credentials.startDateTime,
+      duration: config.credentials.duration,
+      credentials: config.credentials.credentials
+    };
+  }
+
+  // init({} -> forceSSL)
+  if (config.forceSSL === true) {
+    _this._room.config.current.forceSSL = true;
+  }
+
+  // init({} -> socketTimeout)
+  if (typeof config.socketTimeout === 'number') {
+    if (config.socketTimeout < 5000) {
+      throw new Error('Provided socketTimeout is less than mininum value of 5000');
+    }
+    _this._room.config.current.socketTimeout = config.socketTimeout;
+  }
+
+  // init({} -> enableTURNServer)
+  if (config.enableTURNServer === false) {
+    _this._room.config.current.enableTURNServer = false;
+  }
+
+  // init({} -> enableSTUNServer)
+  if (config.enableSTUNServer === false) {
+    _this._room.config.current.enableSTUNServer = false;
+  }
+
+  // init({} -> forceTURN)
+  if (config.forceTURN === true) {
+    _this._room.config.current.forceTURN = true;
+  }
+
+  // init({} -> forceTURNSSL)
+  if (config.forceTURNSSL === true) {
+    _this._room.config.current.forceTURNSSL = true;
+  }
+
+  // init({} -> usePublicSTUN)
+  if (config.usePublicSTUN === false) {
+    _this._room.config.current.usePublicSTUN = false;
+  }
+
+  // init({} -> enableDataChannel)
+  if (config.enableDataChannel === false) {
+    _this._room.config.current.enableDataChannel = false;
+  }
+
+  // init({} -> enableIceTrickle)
+  if (config.enableIceTrickle === false) {
+    _this._room.config.current.enableIceTrickle = false;
+  }
+
+  // init({} -> TURNServerTransport)
+  if (typeof config.TURNServerTransport === 'string') {
+    objForEach(_this.TURN_TRANSPORT, function (transport) {
+      if (options.TURNServerTransport === transport) {
+        _this._room.config.current.TURNServerTransport = transport;
+      }
+    });
+
+    // Option is not found, throw error
+    if (_this._room.config.current.TURNServerTransport === null) {
+      throw new Error('Provided TURNServerTransport is invalid. ' +
+        'Please select the list of options from TURN_TRANSPORT list');
+    }
+  }
+
+  // init({} -> audioCodec)
+  if (typeof config.audioCodec === 'string') {
+    objForEach(_this.AUDIO_CODEC, function (codec) {
+      if (options.audioCodec === codec) {
+        _this._room.config.current.audioCodec = codec;
+      }
+    });
+
+    // Option is not found, throw error
+    if (_this._room.config.current.audioCodec === null) {
+      throw new Error('Provided audioCodec is invalid. ' +
+        'Please select the list of options from AUDIO_CODEC list');
+    }
+  }
+
+  // init({} -> videoCodec)
+  if (typeof config.videoCodec === 'string') {
+    objForEach(_this.VIDEO_CODEC, function (codec) {
+      if (options.videoCodec === codec) {
+        _this._room.config.current.videoCodec = codec;
+      }
+    });
+
+    // Option is not found, throw error
+    if (_this._room.config.current.videoCodec === null) {
+      throw new Error('Provided videoCodec is invalid. ' +
+        'Please select the list of options from VIDEO_CODEC list');
+    }
+  }
+
+  // init({} -> audioFallback)
+  if (config.audioFallback === true) {
+    _this._room.config.current.audioFallback = true;
+  }
+
+  log.debug('init() configuration has been parsed');
+};
+
+/**
+ * Checks and load the init() dependencies.
+ * @method _initLoadDependencies
+ * @method {Function} callback The callback triggered upon error or success.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._initLoadDependencies = function (callback) {
+  var _this = this;
+
+  // When AdapterJS is not loaded
+  if (typeof window.AdapterJS !== 'object' || window.AdapterJS === null) {
+    callback({
+
+      status: null,
+      errorCode: _this.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
+      content: new Error('AdapterJS dependency is not loaded. ' +
+        'Please load AdapterJS version 0.12.3 in https://github.com/Temasys/AdapterJS')
+
+    });
+    return;
+
+  // When AdapterJS version is incorrect
+  } else if (window.AdapterJS.VERSION !== '0.12.3') {
+    callback({
+
+      status: null,
+      errorCode: _this.READY_STATE_CHANGE_ERROR.ADAPTER_NO_LOADED,
+      content: new Error('Incorrect AdapterJS dependency loaded. ' +
+        'Please load the AdapterJS version 0.12.3 in https://github.com/Temasys/AdapterJS')
+
+    });
     return;
   }
 
-  var appKey, room, defaultRoom, region;
-  var startDateTime, duration, credentials;
-  var roomServer = self._roomServer;
-  // NOTE: Should we get all the default values from the variables
-  // rather than setting it?
-  var enableIceTrickle = true;
-  var enableDataChannel = true;
-  var enableSTUNServer = true;
-  var enableTURNServer = true;
-  var TURNTransport = self.TURN_TRANSPORT.ANY;
-  var audioFallback = false;
-  var forceSSL = false;
-  var socketTimeout = 0;
-  var forceTURNSSL = false;
-  var audioCodec = self.AUDIO_CODEC.AUTO;
-  var videoCodec = self.VIDEO_CODEC.AUTO;
-  var forceTURN = false;
-  var usePublicSTUN = true;
+  // When socket.io-client is not loaded
+  // NOTE: We are unable to determine the version (or any proper documented way at least)
+  if (typeof window.io !== 'function') {
+    callback({
 
-  log.log('Provided init options:', options);
+      status: null,
+      errorCode: _this.READY_STATE_CHANGE_ERROR.NO_XMLHTTPREQUEST_SUPPORT,
+      content: new Error('XMLHttpRequest is not supported. ' +
+        'Please upgrade your browser with the latest in http://browsehappy.com')
 
-  if (typeof options === 'string') {
-    // set all the default api key, default room and room
-    appKey = options;
-    defaultRoom = appKey;
-    room = appKey;
-  } else {
-    // set the api key
-    appKey = options.appKey || options.apiKey;
-    // set the room server
-    roomServer = (typeof options.roomServer === 'string') ?
-      options.roomServer : roomServer;
-    // check room server if it ends with /. Remove the extra /
-    roomServer = (roomServer.lastIndexOf('/') ===
-      (roomServer.length - 1)) ? roomServer.substring(0,
-      roomServer.length - 1) : roomServer;
-    // set the region
-    region = (typeof options.region === 'string') ?
-      options.region : region;
-    // set the default room
-    defaultRoom = (typeof options.defaultRoom === 'string') ?
-      options.defaultRoom : appKey;
-    // set the selected room
-    room = defaultRoom;
-    // set ice trickle option
-    enableIceTrickle = (typeof options.enableIceTrickle === 'boolean') ?
-      options.enableIceTrickle : enableIceTrickle;
-    // set data channel option
-    enableDataChannel = (typeof options.enableDataChannel === 'boolean') ?
-      options.enableDataChannel : enableDataChannel;
-    // set stun server option
-    enableSTUNServer = (typeof options.enableSTUNServer === 'boolean') ?
-      options.enableSTUNServer : enableSTUNServer;
-    // set turn server option
-    enableTURNServer = (typeof options.enableTURNServer === 'boolean') ?
-      options.enableTURNServer : enableTURNServer;
-    // set the force ssl always option
-    forceSSL = (typeof options.forceSSL === 'boolean') ?
-      options.forceSSL : forceSSL;
-    // set the socket timeout option
-    socketTimeout = (typeof options.socketTimeout === 'number') ?
-      options.socketTimeout : socketTimeout;
-    // set the socket timeout option to be above 5000
-    socketTimeout = (socketTimeout < 5000) ? 5000 : socketTimeout;
-    // set the force turn ssl always option
-    forceTURNSSL = (typeof options.forceTURNSSL === 'boolean') ?
-      options.forceTURNSSL : forceTURNSSL;
-    // set the preferred audio codec
-    audioCodec = typeof options.audioCodec === 'string' ?
-      options.audioCodec : audioCodec;
-    // set the preferred video codec
-    videoCodec = typeof options.videoCodec === 'string' ?
-      options.videoCodec : videoCodec;
-    // set the force turn server option
-    forceTURN = (typeof options.forceTURN === 'boolean') ?
-      options.forceTURN : forceTURN;
-    // set the use public stun option
-    usePublicSTUN = (typeof options.usePublicSTUN === 'boolean') ?
-      options.usePublicSTUN : usePublicSTUN;
-
-    // set turn transport option
-    if (typeof options.TURNServerTransport === 'string') {
-      // loop out for every transport option
-      for (var type in self.TURN_TRANSPORT) {
-        if (self.TURN_TRANSPORT.hasOwnProperty(type)) {
-          // do a check if the transport option is valid
-          if (self.TURN_TRANSPORT[type] === options.TURNServerTransport) {
-            TURNTransport = options.TURNServerTransport;
-            break;
-          }
-        }
-      }
-    }
-    // set audio fallback option
-    audioFallback = options.audioFallback || audioFallback;
-    // Custom default meeting timing and duration
-    // Fallback to default if no duration or startDateTime provided
-    if (options.credentials &&
-      typeof options.credentials.credentials === 'string' &&
-      typeof options.credentials.duration === 'number' &&
-      typeof options.credentials.startDateTime === 'string') {
-      // set start data time
-      startDateTime = options.credentials.startDateTime;
-      // set the duration
-      duration = options.credentials.duration;
-      // set the credentials
-      credentials = options.credentials.credentials;
-    }
-
-    // if force turn option is set to on
-    if (forceTURN === true) {
-      enableTURNServer = true;
-      enableSTUNServer = false;
-    }
-  }
-  // api key path options
-  self._appKey = appKey;
-  self._roomServer = roomServer;
-  self._defaultRoom = defaultRoom;
-  self._selectedRoom = room;
-  self._serverRegion = region || null;
-  self._path = roomServer + '/api/' + appKey + '/' + room;
-  // set credentials if there is
-  if (credentials && startDateTime && duration) {
-    self._roomStart = startDateTime;
-    self._roomDuration = duration;
-    self._roomCredentials = credentials;
-    self._path += (credentials) ? ('/' + startDateTime + '/' +
-      duration + '?&cred=' + credentials) : '';
+    });
+    return;
   }
 
-  self._path += ((credentials) ? '&' : '?') + 'rand=' + (new Date()).toISOString();
+  // When XMLHttpRequest is not supported
+  if (!window.XMLHttpRequest && !_this._room.session.useXDomainRequest) {
+    callback({
 
-  // check if there is a other query parameters or not
-  if (region) {
-    self._path += '&rg=' + region;
+      status: null,
+      errorCode: _this.READY_STATE_CHANGE_ERROR.NO_SOCKET_IO,
+      content: new Error('socket.io-client dependency is not loaded. ' +
+        'Please load socket.io-client version 1.3.7 in http://socket.io/download/')
+
+    });
+    return;
   }
-  // skylink functionality options
-  self._enableIceTrickle = enableIceTrickle;
-  self._enableDataChannel = enableDataChannel;
-  self._enableSTUN = enableSTUNServer;
-  self._enableTURN = enableTURNServer;
-  self._TURNTransport = TURNTransport;
-  self._audioFallback = audioFallback;
-  self._forceSSL = forceSSL;
-  self._socketTimeout = socketTimeout;
-  self._forceTURNSSL = forceTURNSSL;
-  self._selectedAudioCodec = audioCodec;
-  self._selectedVideoCodec = videoCodec;
-  self._forceTURN = forceTURN;
-  self._usePublicSTUN = usePublicSTUN;
 
-  log.log('Init configuration:', {
-    serverUrl: self._path,
-    readyState: self._readyState,
-    appKey: self._appKey,
-    roomServer: self._roomServer,
-    defaultRoom: self._defaultRoom,
-    selectedRoom: self._selectedRoom,
-    serverRegion: self._serverRegion,
-    enableDataChannel: self._enableDataChannel,
-    enableIceTrickle: self._enableIceTrickle,
-    enableTURNServer: self._enableTURN,
-    enableSTUNServer: self._enableSTUN,
-    TURNTransport: self._TURNTransport,
-    audioFallback: self._audioFallback,
-    forceSSL: self._forceSSL,
-    socketTimeout: self._socketTimeout,
-    forceTURNSSL: self._forceTURNSSL,
-    audioCodec: self._selectedAudioCodec,
-    videoCodec: self._selectedVideoCodec,
-    forceTURN: self._forceTURN,
-    usePublicSTUN: self._usePublicSTUN
+  // Load AdapterJS
+  AdapterJS.webRTCReady(function () {
+    // When RTCPeerConnection is not loaded and supported with no plugin support
+    if (!window.RTCPeerConnection) {
+      callback({
+
+        status: null,
+        errorCode: _this.READY_STATE_CHANGE_ERROR.NO_WEBRTC_SUPPORT,
+        content: new Error('Your browser does not support WebRTC. Please switch to Chrome, Firefox, Opera ' +
+          'or install our Temasys free Plugin for IE and Safari')
+
+      });
+      return;
+    }
+
+    log.debug('init() WebRTC functions has been loaded');
+
+    callback(null);
   });
-  // trigger the readystate
-  self._readyState = 0;
-  self._trigger('readyStateChange', self.READY_STATE_CHANGE.INIT, null, self._selectedRoom);
-
-  if (typeof callback === 'function'){
-    var hasTriggered = false;
-
-    var readyStateChangeFn = function (readyState, error) {
-      if (!hasTriggered) {
-        if (readyState === self.READY_STATE_CHANGE.COMPLETED) {
-          log.log([null, 'Socket', null, 'Firing callback. ' +
-          'Ready state change has met provided state ->'], readyState);
-          hasTriggered = true;
-          self.off('readyStateChange', readyStateChangeFn);
-          callback(null,{
-            serverUrl: self._path,
-            readyState: self._readyState,
-            appKey: self._appKey,
-            roomServer: self._roomServer,
-            defaultRoom: self._defaultRoom,
-            selectedRoom: self._selectedRoom,
-            serverRegion: self._serverRegion,
-            enableDataChannel: self._enableDataChannel,
-            enableIceTrickle: self._enableIceTrickle,
-            enableTURNServer: self._enableTURN,
-            enableSTUNServer: self._enableSTUN,
-            TURNTransport: self._TURNTransport,
-            audioFallback: self._audioFallback,
-            forceSSL: self._forceSSL,
-            socketTimeout: self._socketTimeout,
-            forceTURNSSL: self._forceTURNSSL,
-            audioCodec: self._selectedAudioCodec,
-            videoCodec: self._selectedVideoCodec,
-            forceTURN: self._forceTURN,
-            usePublicSTUN: self._usePublicSTUN
-          });
-        } else if (readyState === self.READY_STATE_CHANGE.ERROR) {
-          log.log([null, 'Socket', null, 'Firing callback. ' +
-            'Ready state change has met provided state ->'], readyState);
-          log.debug([null, 'Socket', null, 'Ready state met failure'], error);
-          hasTriggered = true;
-          self.off('readyStateChange', readyStateChangeFn);
-          callback({
-            error: new Error(error),
-            errorCode: error.errorCode,
-            status: error.status
-          },null);
-        }
-      }
-    };
-
-    self.on('readyStateChange', readyStateChangeFn);
-  }
-
-  self._loadInfo();
 };
-
-
-
-
-
 
 Skylink.prototype.LOG_LEVEL = {
   DEBUG: 4,
@@ -18207,2156 +20229,399 @@ Skylink.prototype._throttle = function(func, wait){
       self._timestamp.func = now;
   };
 };
-Skylink.prototype.SOCKET_ERROR = {
-  CONNECTION_FAILED: 0,
-  RECONNECTION_FAILED: -1,
-  CONNECTION_ABORTED: -2,
-  RECONNECTION_ABORTED: -3,
-  RECONNECTION_ATTEMPT: -4
+Skylink.prototype._socket = {
+  connected: false,
+  socket: null,
+  session: {
+    path: null,
+    protocol: null,
+    transport: 'WebSocket',
+    port: null,
+    retries: {
+      max: 3,
+      delay: 1000,
+      current: 0
+    },
+    dead: false
+  },
+  config: {
+    default: {
+      server: 'signaling.temasys.com.sg',
+      ports: {
+        'http:': [80, 3000],
+        'https:': [443, 3443]
+      }
+    },
+    current: {}
+  },
+  transports: {
+    'WebSocket': ['websocket'],
+    'Polling': ['xhr-polling', 'jsonp-polling', 'polling']
+  },
+  messaging: {
+    queue: [],
+    timestamp: null,
+    interval: 1000,
+    throughput: 16,
+    timer: null,
+    typesToQueue: ['stream', 'updateUserEvent', 'roomLockEvent', 'muteAudioEvent', 'muteVideoEvent', 'public']
+  }
 };
 
 /**
- * Stores the queued socket messages to sent to the platform signaling to
- *   prevent messages from being dropped due to messages being sent in
- *   less than a second interval.
- * @attribute _socketMessageQueue
- * @type Array
+ * Starts a socket connection to the signaling.
+ * @method _socketConnect
  * @private
- * @required
- * @component Socket
+ * @since 0.6.8
  * @for Skylink
- * @since 0.5.8
  */
-Skylink.prototype._socketMessageQueue = [];
+Skylink.prototype._socketConnect = function () {
+  var _this = this;
 
-/**
- * Limits the socket messages being sent in less than a second interval
- *   using the <code>setTimeout</code> object to prevent messages being sent
- *   in less than a second interval.
- * The messaegs are stored in
- *   {{#crossLink "Skylink/_socketMessageQueue:attribute"}}_socketMessageQueue{{/crossLink}}.
- * @attribute _socketMessageTimeout
- * @type Object
- * @private
- * @required
- * @component Socket
- * @for Skylink
- * @since 0.5.8
- */
-Skylink.prototype._socketMessageTimeout = null;
+  // Connection is not connected
+  _this._socket.connected = false;
 
+  // Construct session path
+  _this._socketConstructConnectPath();
 
-/**
- * Stores the list of fallback ports that Skylink can attempt
- *   to establish a socket connection with platform signaling.
- * @attribute _socketPorts
- * @type JSON
- * @param {Array} http:// The array of <code>HTTP</code> protocol fallback ports.
- *    By default, the ports are <code>[80, 3000]</code>.
- * @param {Array} https:// The The array of <code>HTTP</code> protocol fallback ports.
- *    By default, the ports are <code>[443, 3443]</code>.
- * @private
- * @required
- * @component Socket
- * @for Skylink
- * @since 0.5.8
- */
-Skylink.prototype._socketPorts = {
-  'http:': [80, 3000],
-  'https:': [443, 3443]
+  log.debug([null, 'Socket', _this._room.name, 'Connecting to signaling server ->'],
+    _this._socket.session.path);
+
+  // Create the socket.io-client io object
+  _this._socket.socket = io.connect(_this._socket.session.path, {
+
+    forceNew: true,
+    //'sync disconnect on unload' : true,
+    reconnection: true,
+    reconnectionAttempts: _this._socket.session.retries.max,
+    reconectionDelayMax: _this._socket.session.retries.delay,
+    timeout: _this._room.config.current.socketTimeout,
+    transports: _this._socket.transports[_this._socket.session.transport]
+
+  });
+
+  // io.on('connect_error') event
+  _this._socket.socket.on('connect_error', function(error) {
+    log.debug([null, 'Socket', _this._room.name, 'Connection error state -> connect_error'], error);
+
+    if (_this._socket.session.retries.current === 0) {
+      _this._trigger('socketError', _this.SOCKET_ERROR.CONNECTION_FAILED,
+        error, _this._socket.session.transport);
+    }
+  });
+
+  // io.on('reconnect_attempt') event
+  _this._socket.socket.on('reconnect_attempt', function(attempt) {
+    log.debug([null, 'Socket', _this._room.name, 'Connection error state -> reconnect_attempt'], attempt);
+
+    _this._socket.session.retries.current++;
+
+    _this._trigger('socketError', _this.SOCKET_ERROR.RECONNECTION_ATTEMPT,
+      null, _this._socket.session.transport);
+    _this._trigger('channelRetry', _this._socket.session.transport,
+      _this._socket.session.retries.current);
+  });
+
+  // io.on('reconnect_error') event
+  _this._socket.socket.on('reconnect_error', function(error) {
+    log.debug([null, 'Socket', _this._room.name, 'Connection error state -> reconnect_error'], error);
+
+    _this._trigger('socketError', _this.SOCKET_ERROR.RECONNECTION_FAILED,
+      error, _this._socket.session.transport);
+  });
+
+  // io.on('reconnect_failed') event
+  _this._socket.socket.on('reconnect_failed', function() {
+    log.debug([null, 'Socket', _this._room.name, 'Connection error state -> reconnect_failed']);
+
+    _this._trigger('socketError', _this.SOCKET_ERROR.RECONNECTION_FAILED,
+      new Error('Reconnection attempts have failed for port ' + _this._socket.session.port +
+      ' and transport "' + _this._socket.session.transport + '"'), _this._socket.session.transport);
+
+    _this._socketReconnect();
+  });
+
+  var connectHandler = function() {
+    _this._socket.connected = true;
+
+    log.debug([null, 'Socket', _this._room.name, 'Connection to signaling server connection has been opened']);
+
+    _this._trigger('channelOpen');
+  };
+
+  // io.on('connect') event
+  _this._socket.socket.on('connect', connectHandler);
+  // io.on('reconnect') event
+  _this._socket.socket.on('reconnect', connectHandler);
+
+  // io.on('error') event
+  _this._socket.socket.on('error', function(error) {
+    log.error([null, 'Socket', _this._room.name, 'Connection has caught an exception ->'], error);
+
+    _this._trigger('channelError', error);
+  });
+
+  // io.on('disconnect') event
+  _this._socket.socket.on('disconnect', function() {
+    log.debug([null, 'Socket', _this._room.name, 'Connection to signaling server connection has been closed']);
+
+    _this._socket.connected = false;
+    _this._trigger('channelClose');
+  });
+
+  // io.on('message') event
+  _this._socket.socket.on('message', function(messageString) {
+    var message = JSON.parse(messageString);
+
+    log.debug([null, 'Socket', _this._room.name, 'Received message ->'], message);
+    _this._trigger('channelMessage', message);
+
+    if (message.type === 'group') {
+      // NOTE: For those who never follow the protocol, I dont care :(
+      message.lists.foreach(function (messageItem) {
+        _this._messageReactRouter(messageItem);
+      });
+    } else {
+      _this._messageReactRouter(message);
+    }
+  });
+
+  log.debug([null, 'Socket', _this._room.name, 'Listening to events']);
 };
 
 /**
- * These are the list of fallback attempt types that Skylink would attempt with.
- * @attribute SOCKET_FALLBACK
- * @type JSON
- * @param {String} NON_FALLBACK <small>Value <code>"nonfallback"</code> | Protocol <code>"http:"</code>,
- * <code>"https:"</code> | Transports <code>"WebSocket"</code>, <code>"Polling"</code></small>
- *   The current socket connection attempt
- *   is using the first selected socket connection port for
- *   the current selected transport <code>"Polling"</code> or <code>"WebSocket"</code>.
- * @param {String} FALLBACK_PORT <small>Value <code>"fallbackPortNonSSL"</code> | Protocol <code>"http:"</code>
- *  | Transports <code>"WebSocket"</code></small>
- *   The current socket connection reattempt
- *   is using the next selected socket connection port for
- *   <code>HTTP</code> protocol connection with the current selected transport
- *   <code>"Polling"</code> or <code>"WebSocket"</code>.
- * @param {String} FALLBACK_PORT_SSL <small>Value <code>"fallbackPortSSL"</code> | Protocol <code>"https:"</code>
- *  | Transports <code>"WebSocket"</code></small>
- *   The current socket connection reattempt
- *   is using the next selected socket connection port for
- *   <code>HTTPS</code> protocol connection with the current selected transport
- *   <code>"Polling"</code> or <code>"WebSocket"</code>.
- * @param {String} LONG_POLLING <small>Value <code>"fallbackLongPollingNonSSL"</code> | Protocol <code>"http:"</code>
- *  | Transports <code>"Polling"</code></small>
- *   The current socket connection reattempt
- *   is using the next selected socket connection port for
- *   <code>HTTP</code> protocol connection with <code>"Polling"</code> after
- *   many attempts of <code>"WebSocket"</code> has failed.
- *   This occurs only for socket connection that is originally using
- *   <code>"WebSocket"</code> transports.
- * @param {String} LONG_POLLING_SSL <small>Value <code>"fallbackLongPollingSSL"</code> | Protocol <code>"https:"</code>
- *  | Transports <code>"Polling"</code></small>
- *   The current socket connection reattempt
- *   is using the next selected socket connection port for
- *   <code>HTTPS</code> protocol connection with <code>"Polling"</code> after
- *   many attempts of <code>"WebSocket"</code> has failed.
- *   This occurs only for socket connection that is originally using
- *   <code>"WebSocket"</code> transports.
- * @readOnly
- * @component Socket
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype.SOCKET_FALLBACK = {
-  NON_FALLBACK: 'nonfallback',
-  FALLBACK_PORT: 'fallbackPortNonSSL',
-  FALLBACK_SSL_PORT: 'fallbackPortSSL',
-  LONG_POLLING: 'fallbackLongPollingNonSSL',
-  LONG_POLLING_SSL: 'fallbackLongPollingSSL'
-};
-
-/**
- * The flag that indicates if the current socket connection with
- *   platform signaling is opened.
- * @attribute _channelOpen
- * @type Boolean
+ * Constructs the socket connection path.
+ * @method _socketConstructConnectPath
  * @private
- * @required
- * @component Socket
+ * @since 0.6.8
  * @for Skylink
- * @since 0.5.2
  */
-Skylink.prototype._channelOpen = false;
+Skylink.prototype._socketConstructConnectPath = function () {
+  var _this = this;
 
-/**
- * Stores the platform signaling endpoint URI to open socket connection with.
- * @attribute _signalingServer
- * @type String
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.2
- */
-Skylink.prototype._signalingServer = null;
+  // Configure the session protocol
+  _this._socket.session.protocol = window.location.protocol;
 
-/**
- * Stores the current platform signaling protocol to open socket connection with.
- * @attribute _signalingServerProtocol
- * @type String
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._signalingServerProtocol = window.location.protocol;
-
-/**
- * Stores the current platform signaling port to open socket connection with.
- * @attribute _signalingServerPort
- * @type Number
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._signalingServerPort = null;
-
-/**
- * Stores the [socket.io-client <code>io</code> object](http://socket.io/docs/client-api/) that
- *   handles the middleware socket connection with platform signaling.
- * @attribute _socket
- * @type Object
- * @required
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._socket = null;
-
-/**
- * Stores the timeout (in ms) set to await in seconds for response from platform signaling
- *   before throwing a connection timeout exception when Skylink is attemtping
- *   to establish a connection with platform signaling.
- * If the value is <code>0</code>, it will use the default timeout from
- *   socket.io-client that is in <code>20000</code>.
- * @attribute _socketTimeout
- * @type Number
- * @default 0
- * @required
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._socketTimeout = 0;
-
-/**
- * The flag that indicates if the current socket connection for
- *   transports types with <code>"Polling"</code> uses
- *   [XDomainRequest](https://msdn.microsoft.com/en-us/library/cc288060(v=vs.85).aspx)
- *   instead of [XMLHttpRequest](http://www.w3schools.com/Xml/dom_httprequest.asp)
- *   due to the IE 8 / 9 <code>XMLHttpRequest</code> not supporting CORS access.
- * @attribute _socketUseXDR
- * @type Boolean
- * @default false
- * @required
- * @component Socket
- * @private
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._socketUseXDR = false;
-
-/**
- * Sends socket message over the platform signaling socket connection.
- * @method _sendChannelMessage
- * @param {JSON} message The socket message object.
- * @param {String} message.type Required. Protocol type of the socket message object.
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.8
- */
-Skylink.prototype._sendChannelMessage = function(message) {
-  var self = this;
-  var interval = 1000;
-  var throughput = 16;
-
-  if (!self._channelOpen) {
-    return;
+  if (_this._room.config.current.forceSSL) {
+    _this._socket.session.protocol = 'https:';
   }
 
-  var messageString = JSON.stringify(message);
+  // Configure the first port if not selected
+  if (!_this._socket.session.port) {
+    _this._socket.session.port = _this._socket.config.current.ports[_this._socket.session.protocol][0];
+  }
 
-  var sendLater = function(){
-    if (self._socketMessageQueue.length > 0){
+  // Configure to set as Polling first if WebSocket is not supported
+  if (!window.WebSocket) {
+    _this._socket.session.transport = 'Polling';
 
-      if (self._socketMessageQueue.length<throughput){
+    log.warn([null, 'Socket', null, 'Your browser does not support WebSocket transports, ' +
+      'hence defaulting to Polling transports']);
+  }
 
-        log.debug([(message.target ? message.target : 'server'), null, null,
-          'Sending delayed message' + ((!message.target) ? 's' : '') + ' ->'], {
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.slice(0,self._socketMessageQueue.length),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
+  // Construct the path
+  _this._socket.session.path =
+  // Append the protocol
+    _this._socket.session.protocol + '//' +
+  // Append the url and port
+    _this._socket.config.current.server + ':' + _this._socket.session.port;
 
-        // fix for self._socket undefined errors in firefox
-        if (self._socket) {
-          self._socket.send({
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.splice(0,self._socketMessageQueue.length),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
-        } else {
-          log.error([(message.target ? message.target : 'server'), null, null,
-            'Dropping delayed message' + ((!message.target) ? 's' : '') +
-            ' as socket object is no longer defined ->'], {
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.slice(0,self._socketMessageQueue.length),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
-        }
+  log.debug([null, 'Socket', null, 'Session path has been constructed']);
+};
 
-        clearTimeout(self._socketMessageTimeout);
-        self._socketMessageTimeout = null;
+/**
+ * Restarts the socket connection to the signaling.
+ * @method _socketReconnect
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._socketReconnect = function () {
+  var _this = this;
 
+  // Remove all listeners to socket.io-client object
+  if (_this._socket) {
+    _this._socket.socket.removeAllListeners('connect_error');
+    _this._socket.socket.removeAllListeners('reconnect_attempt');
+    _this._socket.socket.removeAllListeners('reconnect_error');
+    _this._socket.socket.removeAllListeners('reconnect_failed');
+    _this._socket.socket.removeAllListeners('connect');
+    _this._socket.socket.removeAllListeners('reconnect');
+    _this._socket.socket.removeAllListeners('error');
+    _this._socket.socket.removeAllListeners('disconnect');
+    _this._socket.socket.removeAllListeners('message');
+
+    _this._socketDisconnect();
+  }
+
+  // Select the current port
+  var ports = _this._socket.config.current.ports[_this._socket.session.protocol];
+  var portIndex = ports.indexOf(_this._socket.session.port);
+
+  if (portIndex < ports.length - 1) {
+    _this._socket.session.port = ports[portIndex + 1];
+    // Final port, now check the transport type to determine if we want to terminate connection
+  } else {
+    // Restart from WebSocket to Polling after failure
+    if (_this._socket.session.transport === 'WebSocket') {
+      _this._socket.session.transport = 'Polling';
+      _this._socket.session.port = ports[0];
+      // Abort reconnections because it failed
+    } else {
+      log.error([null, 'Socket', _this._room.name,
+        'Failed connecting to server with Socket connection. Retries and transports have been maxed out']);
+
+      _this._socket.session.dead = true;
+
+      _this._trigger('socketError',_this.SOCKET_ERROR.RECONNECTION_ABORTED,
+        new Error('Reconnection is aborted as all transports type and ports have been attempted'),
+        _this._socket.session.transport);
+      return;
+    }
+  }
+
+  // Restart socket connection
+  log.debug([null, 'Socket', _this._room.name,
+    'Attempting to reconnect with a different port and transport ->'], {
+      port: _this._socket.session.port,
+      transport: _this._socket.session.transport
+  });
+
+  _this._socketConnect();
+};
+
+/**
+ * Stops the socket connection with the signaling.
+ * @method _socketDisconnect
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._socketDisconnect = function () {
+  var _this = this;
+
+  if (_this._socket.socket) {
+    _this._socket.socket.disconnect();
+  }
+
+  log.debug([null, 'Socket', _this._room.name, 'Disconnecting']);
+};
+
+/**
+ * Sends a message with the signaling connection.
+ * @method _socketSendMessage
+ * @param {JSON} message The message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._socketSendMessage = function(message) {
+  var _this = this;
+
+  _this._socketLimitMessageInterval(function(groupMessage) {
+    if (!_this._socket.socket) {
+      log.warn([null, 'Socket', _this._room.name,
+        'Dropping message as connection is not yet initialized ->'], groupMessage);
+      return;
+    }
+
+    if (!_this._socket.connected) {
+      log.warn([null, 'Socket', _this._room.name,
+        'Dropping message as connection is not yet connected ->'], groupMessage);
+      return;
+    }
+
+    log.debug([null, 'Socket', _this._room.name, 'Sending message ->'], groupMessage);
+
+    // Normal case when messages are sent not so rapidly
+    var messageString = JSON.stringify(groupMessage);
+
+    _this._socket.socket.send(messageString);
+
+  }, message);
+};
+
+/**
+ * Limits broadcasted socket messages and groups them when required
+ *   to prevent messages from being dropped.
+ * @method _socketLimitMessageInterval
+ * @param {Function} fn The function to send delayed messages.
+ * @param {JSON} message The message object
+ * @param {JSON} groupMessage The grouped (or not) message object.
+ * @private
+ * @since 0.6.8
+ * @for Skylink
+ */
+Skylink.prototype._socketLimitMessageInterval = function(fn, message) {
+  var _this = this;
+
+  var delayFn = function() {
+    if (_this._socket.messaging.queue.length > 0) {
+      var data = _this._socket.messaging.queue[0];
+
+      if (_this._socket.messaging.queue.length < _this._socket.messaging.throughput) {
+        log.debug([null, 'Socket', _this._room.name, 'Sending delayed messages ->'], _this._socket.messaging.queue);
+
+        // NOTE: What happens when one message rid is different :o
+        fn({
+          type: 'group',
+          lists: _this._socket.messaging.queue.splice(0, _this._socket.messaging.queue.length),
+          mid: _this._room.session.data.sid,
+          rid: _this._room.session.data.room_key
+        });
+
+        clearTimeout(_this._socket.messaging.timer);
+
+        _this._socket.messaging.timer = null;
+
+      } else {
+        log.debug([null, 'Socket', _this._room.name, 'Sending delayed first 16 messages ->'], _this._socket.messaging.queue);
+
+        fn({
+          type: 'group',
+          lists: _this._socket.messaging.queue.splice(0, _this._socket.messaging.throughput),
+          mid: data.mid,
+          rid: data.rid
+        });
+
+        // To send later after sending the first 16
+        clearTimeout(_this._socket.messaging.timer);
+
+        _this._socket.messaging.timer = null;
+        _this._socket.messaging.timer = setTimeout(delayFn, _this._socket.messaging.interval);
       }
-      else{
 
-        log.debug([(message.target ? message.target : 'server'), null, null,
-          'Sending delayed message' + ((!message.target) ? 's' : '') + ' ->'], {
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.slice(0,throughput),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
-
-        // fix for self._socket undefined errors in firefox
-        if (self._socket) {
-          self._socket.send({
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.splice(0,throughput),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
-        } else {
-          log.error([(message.target ? message.target : 'server'), null, null,
-            'Dropping delayed message' + ((!message.target) ? 's' : '') +
-            ' as socket object is no longer defined ->'], {
-            type: self._SIG_MESSAGE_TYPE.GROUP,
-            lists: self._socketMessageQueue.slice(0,throughput),
-            mid: self._user.sid,
-            rid: self._room.id
-          });
-        }
-
-        clearTimeout(self._socketMessageTimeout);
-        self._socketMessageTimeout = null;
-        self._socketMessageTimeout = setTimeout(sendLater,interval);
-
-      }
-      self._timestamp.now = Date.now() || function() { return +new Date(); };
+      _this._socket.messaging.timestamp = Date.now() || function() {
+        return +new Date();
+      };
     }
   };
 
   //Delay when messages are sent too rapidly
-  if ((Date.now() || function() { return +new Date(); }) - self._timestamp.now < interval &&
-    self._groupMessageList.indexOf(message.type) > -1) {
+  if ((Date.now() || function() {
+      return +new Date();
+    }) - _this._socket.messaging.timestamp < _this._socket.messaging.interval &&
+    _this._socket.messaging.typesToQueue.indexOf(message.type) > -1) {
 
-      log.warn([(message.target ? message.target : 'server'), null, null,
-      'Messages fired too rapidly. Delaying.'], {
-        interval: 1000,
-        throughput: 16,
-        message: message
-      });
+    log.warn([null, 'Socket', _this._room.name, 'Messages has been fired too rapidly. Delaying messages with queue']);
 
-      self._socketMessageQueue.push(messageString);
+    _this._socket.messaging.queue.push(JSON.stringify(message));
 
-      if (!self._socketMessageTimeout){
-        self._socketMessageTimeout = setTimeout(sendLater,
-          interval - ((Date.now() || function() { return +new Date(); })-self._timestamp.now));
-      }
-      return;
+    if (!_this._socket.messaging.timer) {
+      _this._socket.messaging.timer = setTimeout(delayFn,
+        _this._socket.messaging.interval - ((Date.now() || function() {
+          return +new Date();
+        }) - _this._socket.messaging.timestamp));
+    }
+    return;
   }
 
-  log.debug([(message.target ? message.target : 'server'), null, null,
-    'Sending to peer' + ((!message.target) ? 's' : '') + ' ->'], message);
+  fn(message);
 
-  //Normal case when messages are sent not so rapidly
-  self._socket.send(messageString);
-  self._timestamp.now = Date.now() || function() { return +new Date(); };
-
-};
-
-/**
- * Starts a socket.io connection with the platform signaling.
- * @method _createSocket
- * @param {String} type The transport type of socket.io connection to use.
- * <ul>
- * <li><code>"WebSocket"</code>: Uses the WebSocket connection.<br>
- *   <code>options.transports = ["websocket"]</code></li>
- * <li><code>"Polling"</code>: Uses the Polling connection.<br>
- *   <code>options.transports = ["xhr-polling", "jsonp-polling", "polling"]</code></li>
- * </ul>
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.10
- */
-Skylink.prototype._createSocket = function (type) {
-  var self = this;
-
-  var options = {
-    forceNew: true,
-    //'sync disconnect on unload' : true,
-    reconnection: false
+  _this._socket.messaging.timestamp = Date.now() || function() {
+    return +new Date();
   };
-
-  var ports = self._socketPorts[self._signalingServerProtocol];
-
-  var connectionType = null;
-
-  // just beginning
-  if (self._signalingServerPort === null) {
-    self._signalingServerPort = ports[0];
-    connectionType = self.SOCKET_FALLBACK.NON_FALLBACK;
-
-  // reached the end of the last port for the protocol type
-  } else if ( ports.indexOf(self._signalingServerPort) === ports.length - 1 ) {
-
-    // re-refresh to long-polling port
-    if (type === 'WebSocket') {
-      console.log(type, self._signalingServerPort);
-
-      type = 'Polling';
-      self._signalingServerPort = ports[0];
-
-    } else if (type === 'Polling') {
-      options.reconnection = true;
-      options.reconnectionAttempts = 4;
-      options.reconectionDelayMax = 1000;
-    }
-
-  // move to the next port
-  } else {
-    self._signalingServerPort = ports[ ports.indexOf(self._signalingServerPort) + 1 ];
-  }
-
-  var url = self._signalingServerProtocol + '//' + self._signalingServer + ':' + self._signalingServerPort;
-    //'http://ec2-52-8-93-170.us-west-1.compute.amazonaws.com:6001';
-
-  if (type === 'WebSocket') {
-    options.transports = ['websocket'];
-  } else if (type === 'Polling') {
-    options.transports = ['xhr-polling', 'jsonp-polling', 'polling'];
-  }
-
-  // if socket instance already exists, exit
-  if (self._socket) {
-    self._socket.removeAllListeners('connect_error');
-    self._socket.removeAllListeners('reconnect_attempt');
-    self._socket.removeAllListeners('reconnect_error');
-    self._socket.removeAllListeners('reconnect_failed');
-    self._socket.removeAllListeners('connect');
-    self._socket.removeAllListeners('reconnect');
-    self._socket.removeAllListeners('error');
-    self._socket.removeAllListeners('disconnect');
-    self._socket.removeAllListeners('message');
-    self._socket.disconnect();
-    self._socket = null;
-  }
-
-  self._channelOpen = false;
-
-  log.log('Opening channel with signaling server url:', {
-    url: url,
-    useXDR: self._socketUseXDR,
-    options: options
-  });
-
-  self._socket = io.connect(url, options);
-
-  if (connectionType === null) {
-    connectionType = self._signalingServerProtocol === 'http:' ?
-      (type === 'Polling' ? self.SOCKET_FALLBACK.LONG_POLLING :
-        self.SOCKET_FALLBACK.FALLBACK_PORT) :
-      (type === 'Polling' ? self.SOCKET_FALLBACK.LONG_POLLING_SSL :
-        self.SOCKET_FALLBACK.FALLBACK_SSL_PORT);
-  }
-
-  self._socket.on('connect_error', function (error) {
-    self._channelOpen = false;
-
-    self._trigger('socketError', self.SOCKET_ERROR.CONNECTION_FAILED,
-      error, connectionType);
-
-    self._trigger('channelRetry', connectionType, 1);
-
-    if (options.reconnection === false) {
-      self._createSocket(type);
-    }
-  });
-
-  self._socket.on('reconnect_attempt', function (attempt) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ATTEMPT,
-      attempt, connectionType);
-
-    self._trigger('channelRetry', connectionType, attempt);
-  });
-
-  self._socket.on('reconnect_error', function (error) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_FAILED,
-      error, connectionType);
-  });
-
-  self._socket.on('reconnect_failed', function (error) {
-    self._channelOpen = false;
-    self._trigger('socketError', self.SOCKET_ERROR.RECONNECTION_ABORTED,
-      error, connectionType);
-  });
-
-  self._socket.on('connect', function () {
-    if (!self._channelOpen) {
-      self._channelOpen = true;
-      self._trigger('channelOpen');
-      log.log([null, 'Socket', null, 'Channel opened']);
-    }
-  });
-
-  self._socket.on('reconnect', function () {
-    if (!self._channelOpen) {
-      self._channelOpen = true;
-      self._trigger('channelOpen');
-      log.log([null, 'Socket', null, 'Channel opened']);
-    }
-  });
-
-  self._socket.on('error', function(error) {
-    self._channelOpen = false;
-    self._trigger('channelError', error);
-    log.error([null, 'Socket', null, 'Exception occurred:'], error);
-  });
-
-  self._socket.on('disconnect', function() {
-    self._channelOpen = false;
-    self._trigger('channelClose');
-    log.log([null, 'Socket', null, 'Channel closed']);
-  });
-
-  self._socket.on('message', function(message) {
-    log.log([null, 'Socket', null, 'Received message']);
-    self._processSigMessage(message);
-  });
 };
-
-/**
- * Connects to the socket connection endpoint URI to platform signaling that is constructed with
- *  {{#crossLink "Skylink/_signalingServerProtocol:attribute"}}_signalingServerProtocol{{/crossLink}},
- *  {{#crossLink "Skylink/_signalingServer:attribute"}}_signalingServer{{/crossLink}} and
- *  {{#crossLink "Skylink/_signalingServerPort:attribute"}}_signalingServerPort{{/crossLink}}.
- *  <small>Example format: <code>protocol//serverUrl:port</code></small>.<br>
- * Once URI is formed, it will start a new socket.io connection with
- *  {{#crossLink "Skylink/_createSocket:method"}}_createSocket(){{/crossLink}}.
- * @method _openChannel
- * @trigger channelMessage, channelOpen, channelError, channelClose
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._openChannel = function() {
-  var self = this;
-  if (self._channelOpen) {
-    log.error([null, 'Socket', null, 'Unable to instantiate a new channel connection ' +
-      'as there is already an ongoing channel connection']);
-    return;
-  }
-
-  if (self._readyState !== self.READY_STATE_CHANGE.COMPLETED) {
-    log.error([null, 'Socket', null, 'Unable to instantiate a new channel connection ' +
-      'as readyState is not ready']);
-    return;
-  }
-
-  // set if forceSSL
-  if (self._forceSSL) {
-    self._signalingServerProtocol = 'https:';
-  } else {
-    self._signalingServerProtocol = window.location.protocol;
-  }
-
-  var socketType = 'WebSocket';
-
-  // For IE < 9 that doesn't support WebSocket
-  if (!window.WebSocket) {
-    socketType = 'Polling';
-  }
-
-  // Begin with a websocket connection
-  self._createSocket(socketType);
-};
-
-/**
- * Disconnects the current socket connection with the platform signaling.
- * @method _closeChannel
- * @private
- * @component Socket
- * @for Skylink
- * @since 0.5.5
- */
-Skylink.prototype._closeChannel = function() {
-  if (!this._channelOpen) {
-    return;
-  }
-  if (this._socket) {
-    this._socket.removeAllListeners('connect_error');
-    this._socket.removeAllListeners('reconnect_attempt');
-    this._socket.removeAllListeners('reconnect_error');
-    this._socket.removeAllListeners('reconnect_failed');
-    this._socket.removeAllListeners('connect');
-    this._socket.removeAllListeners('reconnect');
-    this._socket.removeAllListeners('error');
-    this._socket.removeAllListeners('disconnect');
-    this._socket.removeAllListeners('message');
-    this._socket.disconnect();
-    this._socket = null;
-  }
-  this._channelOpen = false;
-  this._trigger('channelClose');
-};
-Skylink.prototype.SM_PROTOCOL_VERSION = '0.1.1';
-
-/**
- * The list of Protocol types that is used for messaging using
- *   the platform signaling socket connection.
- * @attribute _SIG_MESSAGE_TYPE
- * @type JSON
- * @param {String} JOIN_ROOM Protocol sent from Skylink to platform signaling to let
- *    self join the room. Join room Step 1.
- * @param {String} IN_ROOM Protocol received from platform signaling to inform
- *    Skylink that self has joined the room. Join room Step 2 (Completed).
- * @param {String} ENTER Protocol Skylink sends to all Peer peers
- *    in the room to start handshake connection. Handshake connection Step 1.
- * @param {String} WELCOME Protocol received to Peer as a response
- *    to self <code>ENTER</code> message. This is sent as a response to
- *    Peer <code>ENTER</code> message. Handshake connection Step 2.
- * @param {String} OFFER Protocol sent to Peer as a response
- *    to the <code>WELCOME</code> message received after generating the offer session description with
- *    <code>RTCPeerConnection.createOffer()</code>. This is received as a response from
- *    Peer after sending <code>WELCOME</code> message and requires
- *    setting into the Peer connection before sending the
- *    <code>ANSWER</code> response. Handshake connection Step 3.
- * @param {String} ANSWER Protocol received from Peer as a response
- *    to self <code>OFFER</code> message offer session description and requires setting
- *    into the Peer connection. This is sent to Peer as a response
- *    to the <code>OFFER</code> message received after setting the received <code>OFFER</code>
- *    message and generating the answer session description with <code>RTCPeerConnection.createAnswer()</code>.
- *    Handshake connection Step 4 (Completed).
- * @param {String} CANDIDATE Protocol received from Peer when connection
- *    ICE candidate has been generated and requires self to add to the Peer connection.
- * @param {String} BYE Protocol received from platform signaling when a Peer has left
- *    the room.
- * @param {String} REDIRECT Protocol received from platform signaling when self is kicked out from
- *    the currently joined room.
- * @param {String} UPDATE_USER Protocol received when a Peer information has been
- *    updated. The message object should contain the updated peer information.
- *    This is broadcasted by self when self peer information is updated.
- * @param {String} ROOM_LOCK Protocol received when the current joined room lock status have
- *    been updated. The message object should contain the updated room lock status.
- *    This is broadcasted by self when self updates the room lock status.
- * @param {String} MUTE_VIDEO Protocol received when a Peer Stream video media streaming
- *    muted status have been updated. The message object should contain the updated Stream video media
- *    streaming muted status. This is broadcasted by self when self Stream video media streaming
- *    muted status have been updated.
- * @param {String} MUTE_AUDIO Protocol received when a Peer connection Stream audio media streaming
- *    muted status have been updated. The message object should contain the updated Stream audio media
- *    streaming muted status. This is broadcasted by self when self Stream audio media streaming
- *    muted status have been updated.
- * @param {String} PUBLIC_MESSAGE Protocol received when a Peer broadcasts a message
- *    object to all Peer peers via the platform signaling socket connection.
- *    This is broadcasted by self when self sends the message object.
- * @param {String} PRIVATE_MESSAGE Protocol received when a Peer sends a message
- *    object targeted to several Peer peers via the platform signaling socket connection.
- *    This is sent by self when self sends the message object.
- * @param {String} RESTART Protocol received when a Peer connection requires a reconnection.
- *    At this point, the Peer connection have to recreate the <code>RTCPeerConnection</code>
- *    object again. This is sent by self when self initiates the reconnection.
- * @param {String} STREAM Protocol received when a Peer connection Stream status have
- *    changed.
- * @param {String} GET_PEERS Protocol for privileged self to get the list of Peer peers
- *    under the same parent Application Key.
- * @param {String} PEER_LIST Protocol to retrieve a list of peers under the same parent.
- * @param {String} INTRODUCE Protocol sent to the platform signaling to
- *    introduce Peer peers to each other.
- * @param {String} INTRODUCE_ERROR Protocol received when Peer peers introduction failed.
- * @param {String} APPROACH Protocol to indicate that a Peer has been introduced.
- *    At this point, self would send an <code>ENTER</code> to introduced Peer
- *    to start the handshake connection.
- * @param {String} GROUP Protocol received that bundles messages together when socket messages are
- *    sent less than 1 second interval apart from the previous sent socket message. This would
- *    prevent receiving <code>REDIRECT</code> from the platform signaling.
- * @readOnly
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype._SIG_MESSAGE_TYPE = {
-  JOIN_ROOM: 'joinRoom',
-  IN_ROOM: 'inRoom',
-  ENTER: 'enter',
-  WELCOME: 'welcome',
-  RESTART: 'restart',
-  OFFER: 'offer',
-  ANSWER: 'answer',
-  CANDIDATE: 'candidate',
-  BYE: 'bye',
-  REDIRECT: 'redirect',
-  UPDATE_USER: 'updateUserEvent',
-  ROOM_LOCK: 'roomLockEvent',
-  MUTE_VIDEO: 'muteVideoEvent',
-  MUTE_AUDIO: 'muteAudioEvent',
-  PUBLIC_MESSAGE: 'public',
-  PRIVATE_MESSAGE: 'private',
-  STREAM: 'stream',
-  GROUP: 'group',
-  GET_PEERS: 'getPeers',
-  PEER_LIST: 'peerList',
-  INTRODUCE: 'introduce',
-  INTRODUCE_ERROR: 'introduceError',
-  APPROACH: 'approach'
-};
-
-/**
- * The flag that indicates if MCU is enabled.
- * @attribute _hasMCU
- * @type Boolean
- * @development true
- * @private
- * @component MCU
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._hasMCU = false;
-
-/**
- * Stores the list of types of socket messages that requires to be queued or bundled
- *    before sending to the server to prevent platform signaling from dropping of socket messages.
- * @attribute _groupMessageList
- * @type Array
- * @private
- * @required
- * @component Message
- * @for Skylink
- * @since 0.5.10
- */
-Skylink.prototype._groupMessageList = [
-  Skylink.prototype._SIG_MESSAGE_TYPE.STREAM,
-  Skylink.prototype._SIG_MESSAGE_TYPE.UPDATE_USER,
-  Skylink.prototype._SIG_MESSAGE_TYPE.ROOM_LOCK,
-  Skylink.prototype._SIG_MESSAGE_TYPE.MUTE_AUDIO,
-  Skylink.prototype._SIG_MESSAGE_TYPE.MUTE_VIDEO,
-  Skylink.prototype._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
-];
-
-/**
- * The flag that indicates if MCU is in the room and is enabled.
- * @attribute _hasMCU
- * @type Boolean
- * @development true
- * @default false
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._hasMCU = false;
-
-
-/**
- * The flag that indicates that the current self connection
- *   should only receive streaming Stream objects from other Peer connection
- *   and not send streaming Stream objects to other Peer connection.
- * @attribute _receiveOnly
- * @type Boolean
- * @default false
- * @private
- * @required
- * @component Message
- * @for Skylink
- * @since 0.5.10
- */
- Skylink.prototype._receiveOnly = false;
-
-
-/**
- * Parses any <code>GROUP</code> type of message received and split them up to
- *   send them to {{#crossLink "Skylink/_processSingleMessage:method"}}_processSingleMessage(){{/crossLink}}
- *   to handle the individual message object received.
- * If the message is not <code>GROUP</code> type of message received, it will send
- *   it directly to {{#crossLink "Skylink/_processSingleMessage:method"}}_processSingleMessage(){{/crossLink}}
- * @method _processSigMessage
- * @param {String} messageString The message object in JSON string.
- * @private
- * @component Message
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._processSigMessage = function(messageString) {
-  var message = JSON.parse(messageString);
-  if (message.type === this._SIG_MESSAGE_TYPE.GROUP) {
-    log.debug('Bundle of ' + message.lists.length + ' messages');
-    for (var i = 0; i < message.lists.length; i++) {
-      this._processSingleMessage(JSON.parse(message.lists[i]));
-    }
-  } else {
-    this._processSingleMessage(message);
-  }
-};
-
-/**
- * Routes the data received to the relevant Protocol handler based on the socket message received.
- * @method _processingSingleMessage
- * @param {JSON} message The message object received.
- * @private
- * @component Message
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._processSingleMessage = function(message) {
-  this._trigger('channelMessage', message);
-  var origin = message.mid;
-  if (!origin || origin === this._user.sid) {
-    origin = 'Server';
-  }
-  log.debug([origin, null, null, 'Received from peer ->'], message.type);
-  if (message.mid === this._user.sid &&
-    message.type !== this._SIG_MESSAGE_TYPE.REDIRECT &&
-    message.type !== this._SIG_MESSAGE_TYPE.IN_ROOM) {
-    log.debug([origin, null, null, 'Ignoring message ->'], message.type);
-    return;
-  }
-  switch (message.type) {
-  //--- BASIC API Messages ----
-  case this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE:
-    this._publicMessageHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.PRIVATE_MESSAGE:
-    this._privateMessageHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.IN_ROOM:
-    this._inRoomHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.ENTER:
-    this._enterHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.WELCOME:
-    this._welcomeHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.RESTART:
-    this._restartHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.OFFER:
-    this._offerHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.ANSWER:
-    this._answerHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.CANDIDATE:
-    this._candidateHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.BYE:
-    this._byeHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.REDIRECT:
-    this._redirectHandler(message);
-    break;
-    //--- ADVANCED API Messages ----
-  case this._SIG_MESSAGE_TYPE.UPDATE_USER:
-    this._updateUserEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.MUTE_VIDEO:
-    this._muteVideoEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.MUTE_AUDIO:
-    this._muteAudioEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.STREAM:
-    this._streamEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.ROOM_LOCK:
-    this._roomLockEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.PEER_LIST:
-    this._peerListEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.INTRODUCE_ERROR:
-    this._introduceErrorEventHandler(message);
-    break;
-  case this._SIG_MESSAGE_TYPE.APPROACH:
-    this._approachEventHandler(message);
-    break;
-  default:
-    log.error([message.mid, null, null, 'Unsupported message ->'], message.type);
-    break;
-  }
-};
-
-/**
- * Handles the PEER_LIST message event received from the platform signaling.
- * @method _peerListEventHandler
- * @param {String} message.type Protocol step: <code>"peerList"</code>.
- * @param {JSON} message The message object received from platform signaling.
- * @param {String} message.type Protocol step: <code>"peerList"</code>.
- * @param {Object} message.result The received resulting object
- *   <small>E.g. <code>{room1: [peer1, peer2], room2: ...}</code></small>.
- * @private
- * @component Message
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._peerListEventHandler = function(message){
-  var self = this;
-  self._peerList = message.result;
-  log.log(['Server', null, message.type, 'Received list of peers'], self._peerList);
-  self._trigger('getPeersStateChange',self.GET_PEERS_STATE.RECEIVED, self._user.sid, self._peerList);
-};
-
-/**
- * Handles the INTRODUCE_ERROR message event received from the platform signaling.
- * @method _introduceErrorEventHandler
- * @param {JSON} message The message object received from platform signaling.
- * @param {String} message.type Protocol step <code>"introduceError"</code>.
- * @param {Object} message.reason The error message.
- * @param {Object} message.sendingPeerId Id of the peer initiating the handshake
- * @param {Object} message.receivingPeerId Id of the peer receiving the handshake
- * @private
- * @component Message
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._introduceErrorEventHandler = function(message){
-  var self = this;
-  log.log(['Server', null, message.type, 'Introduce failed. Reason: '+message.reason]);
-  self._trigger('introduceStateChange',self.INTRODUCE_STATE.ERROR, self._user.sid,
-    message.sendingPeerId, message.receivingPeerId, message.reason);
-};
-
-/**
- * Handles the APPROACH message event received from the platform signaling.
- * @method _approachEventHandler
- * @param {JSON} message The message object received from platform signaling.
- * @param {String} message.type Protocol step <code>"approach"</code>.
- * @param {Object} message.target The peer to initiate the handshake to
- * @private
- * @component Message
- * @for Skylink
- * @since 0.6.1
- */
-Skylink.prototype._approachEventHandler = function(message){
-  var self = this;
-  log.log(['Server', null, message.type, 'Approaching peer'], message.target);
-  // self._room.connection.peerConfig = self._setIceServers(message.pc_config);
-  // self._inRoom = true;
-  self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ENTER, self._user.sid);
-  self._sendChannelMessage({
-    type: self._SIG_MESSAGE_TYPE.ENTER,
-    mid: self._user.sid,
-    rid: self._room.id,
-    agent: window.webrtcDetectedBrowser,
-    version: window.webrtcDetectedVersion,
-    os: window.navigator.platform,
-    userInfo: self.getPeerInfo(),
-    receiveOnly: self._receiveOnly,
-    sessionType: !!self._mediaScreen ? 'screensharing' : 'stream',
-    target: message.target
-  });
-};
-
-/**
- * Handles the REDIRECT message event received from the platform signaling.
- * @method _redirectHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>REDIRECT</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.info The message received from the platform signaling when
- *   the system action and reason is given.
- * @param {String} message.action The system action that is received from the platform signaling.
- *   [Rel: Skylink.SYSTEM_ACTION]
- * @param {String} message.reason The reason received from the platform signaling behind the
- *   system action given. [Rel: Skylink.SYSTEM_ACTION_REASON]
- * @param {String} message.type Protocol step <code>"redirect"</code>.
- * @trigger systemAction
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._redirectHandler = function(message) {
-  log.log(['Server', null, message.type, 'System action warning:'], {
-    message: message.info,
-    reason: message.reason,
-    action: message.action
-  });
-
-  if (message.action === this.SYSTEM_ACTION.REJECT) {
-  	for (var key in this._peerConnections) {
-  		if (this._peerConnections.hasOwnProperty(key)) {
-  			this._removePeer(key);
-  		}
-  	}
-  }
-  this._trigger('systemAction', message.action, message.info, message.reason);
-};
-
-/**
- * Handles the UPDATE_USER Protocol message event received from the platform signaling.
- * @method _updateUserEventHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>UPDATE_USER</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {JSON|String} message.userData The updated Peer information
- *    custom user data.
- * @param {String} message.type Protocol step <code>"updateUserEvent"</code>.
- * @trigger peerUpdated
- * @private
- * @component Message
- * @for Skylink
- * @since 0.2.0
- */
-Skylink.prototype._updateUserEventHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type, 'Peer updated userData:'], message.userData);
-  if (this._peerInformations[targetMid]) {
-    this._peerInformations[targetMid].userData = message.userData || {};
-    this._trigger('peerUpdated', targetMid,
-      this.getPeerInfo(targetMid), false);
-  } else {
-    log.log([targetMid, null, message.type, 'Peer does not have any user information']);
-  }
-};
-
-/**
- * Handles the ROOM_LOCK Protocol message event received from the platform signaling.
- * @method _roomLockEventHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>ROOM_LOCK</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.lock The flag that indicates if the currently joined room is locked.
- * @param {String} message.type Protocol step <code>"roomLockEvent"</code>.
- * @trigger roomLock
- * @private
- * @component Message
- * @for Skylink
- * @since 0.2.0
- */
-Skylink.prototype._roomLockEventHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, message.type, 'Room lock status:'], message.lock);
-  this._trigger('roomLock', message.lock, targetMid,
-    this.getPeerInfo(targetMid), false);
-};
-
-/**
- * Handles the MUTE_AUDIO Protocol message event received from the platform signaling.
- * @method _muteAudioEventHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>MUTE_AUDIO</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {Boolean} message.muted The flag that
- *   indicates if the remote Stream object audio streaming is muted.
- * @param {String} message.type Protocol step <code>"muteAudioEvent"</code>.
- * @trigger peerUpdated
- * @private
- * @component Message
- * @for Skylink
- * @since 0.2.0
- */
-Skylink.prototype._muteAudioEventHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type, 'Peer\'s audio muted:'], message.muted);
-  if (this._peerInformations[targetMid]) {
-    this._peerInformations[targetMid].mediaStatus.audioMuted = message.muted;
-    this._trigger('peerUpdated', targetMid,
-      this.getPeerInfo(targetMid), false);
-  } else {
-    log.log([targetMid, message.type, 'Peer does not have any user information']);
-  }
-};
-
-/**
- * Handles the MUTE_VIDEO Protocol message event received from the platform signaling.
- * @method _muteVideoEventHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>MUTE_VIDEO</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.muted The flag that
- *   indicates if the remote Stream object video streaming is muted.
- * @param {String} message.type Protocol step <code>"muteVideoEvent"</code>.
- * @trigger peerUpdated
- * @private
- * @component Message
- * @for Skylink
- * @since 0.2.0
- */
-Skylink.prototype._muteVideoEventHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type, 'Peer\'s video muted:'], message.muted);
-  if (this._peerInformations[targetMid]) {
-    this._peerInformations[targetMid].mediaStatus.videoMuted = message.muted;
-    this._trigger('peerUpdated', targetMid,
-      this.getPeerInfo(targetMid), false);
-  } else {
-    log.log([targetMid, null, message.type, 'Peer does not have any user information']);
-  }
-};
-
-/**
- * Handles the STREAM Protocol message event received from the platform signaling.
- * @method _streamEventHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>STREAM</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.status The Peer connection remote Stream streaming current status.
- * <ul>
- * <li><code>ended</code>: The Peer connection remote Stream streaming has ended</li>
- * </ul>
- * @param {String} message.cid The Skylink server connection key for the selected room.
- * @param {String} message.sessionType The Peer connection remote Stream streaming
- *   session type. If value is <code>"stream"</code>, the Stream streaming session
- *   is normal user media streaming, else if it is <code>"screensharing"</code>, the
- *   Stream streaming session is screensharing session.
- * @param {String} message.type Protocol step <code>"stream"</code>.
- * @trigger streamEnded
- * @private
- * @component Message
- * @for Skylink
- * @since 0.2.0
- */
-Skylink.prototype._streamEventHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type, 'Peer\'s stream status:'], message.status);
-
-  if (this._peerInformations[targetMid]) {
-
-  	if (message.status === 'ended') {
-  		this._trigger('streamEnded', targetMid, this.getPeerInfo(targetMid),
-        false, message.sessionType === 'screensharing');
-
-      if (this._peerConnections[targetMid]) {
-        this._peerConnections[targetMid].hasStream = false;
-        if (message.sessionType === 'screensharing') {
-          this._peerConnections[targetMid].hasScreen = false;
-        }
-      } else {
-        log.log([targetMid, null, message.type, 'Peer connection not found']);
-      }
-  	}
-
-  } else {
-    log.log([targetMid, null, message.type, 'Peer does not have any user information']);
-  }
-};
-
-/**
- * Handles the BYE Protocol message event received from the platform signaling.
- * @method _byeHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>BYE</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.type Protocol step <code>"bye"</code>.
- * @trigger peerLeft
- * @private
- * @component Message
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._byeHandler = function(message) {
-  var targetMid = message.mid;
-  var selfId = (this._user || {}).sid;
-
-  if (selfId !== targetMid){
-    log.log([targetMid, null, message.type, 'Peer has left the room']);
-    this._removePeer(targetMid);
-  } else {
-    log.log([targetMid, null, message.type, 'Self has left the room']);
-  }
-};
-
-/**
- * Handles the PRIVATE_MESSAGE Protocol message event received from the platform signaling.
- * @method _privateMessageHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>PRIVATE_MESSAGE</code> payload.
- * @param {JSON|String} message.data The Message object.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.cid The Skylink server connection key for the selected room.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {String} message.type Protocol step: <code>"private"</code>.
- * @trigger incomingMessage
- * @private
- * @component Message
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype._privateMessageHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type,
-    'Received private message from peer:'], message.data);
-  this._trigger('incomingMessage', {
-    content: message.data,
-    isPrivate: true,
-    targetPeerId: message.target, // is not null if there's user
-    isDataChannel: false,
-    senderPeerId: targetMid
-  }, targetMid, this.getPeerInfo(targetMid), false);
-};
-
-/**
- * Handles the PUBLIC_MESSAGE Protocol message event received from the platform signaling.
- * @method _publicMessageHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>PUBLIC_MESSAGE</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.cid The Skylink server connection key for the selected room.
- * @param {String} message.muted The flag to indicate if the User's audio
- *    stream is muted or not.
- * @param {String} message.type Protocol step: <code>"public"</code>.
- * @trigger incomingMessage
- * @private
- * @component Message
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype._publicMessageHandler = function(message) {
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type,
-    'Received public message from peer:'], message.data);
-  this._trigger('incomingMessage', {
-    content: message.data,
-    isPrivate: false,
-    targetPeerId: null, // is not null if there's user
-    isDataChannel: false,
-    senderPeerId: targetMid
-  }, targetMid, this.getPeerInfo(targetMid), false);
-};
-
-/**
- * Handles the IN_ROOM Protocol message event received from the platform signaling.
- * @method _inRoomHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>IN_ROOM</code> payload.
- * @param {JSON} message Expected IN_ROOM data object format.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.sid The self session socket connection ID. This
- *   is used by the signalling socket connection as ID to target
- *   self and the peers Peer ID.
- * @param {JSON} message.pc_config The Peer connection iceServers configuration.
- * @param {String} message.type Protocol step: <code>"inRoom"</code>.
- * @trigger peerJoined
- * @private
- * @component Message
- * @for Skylink
- * @since 0.1.0
- */
-Skylink.prototype._inRoomHandler = function(message) {
-  var self = this;
-  log.log(['Server', null, message.type, 'User is now in the room and ' +
-    'functionalities are now available. Config received:'], message.pc_config);
-  self._room.connection.peerConfig = self._setIceServers(message.pc_config);
-  self._inRoom = true;
-  self._user.sid = message.sid;
-  self._peerPriorityWeight = (new Date()).getTime();
-
-  self._trigger('peerJoined', self._user.sid, self.getPeerInfo(), true);
-  self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ENTER, self._user.sid);
-
-  if (typeof message.tieBreaker === 'number') {
-    self._peerPriorityWeight = message.tieBreaker;
-  }
-
-  if (self._mediaScreen && self._mediaScreen !== null) {
-    self._trigger('incomingStream', self._user.sid, self._mediaScreen, true, self.getPeerInfo());
-  } else if (self._mediaStream && self._mediaStream !== null) {
-    self._trigger('incomingStream', self._user.sid, self._mediaStream, true, self.getPeerInfo());
-  }
-  // NOTE ALEX: should we wait for local streams?
-  // or just go with what we have (if no stream, then one way?)
-  // do we hardcode the logic here, or give the flexibility?
-  // It would be better to separate, do we could choose with whom
-  // we want to communicate, instead of connecting automatically to all.
-  self._sendChannelMessage({
-    type: self._SIG_MESSAGE_TYPE.ENTER,
-    mid: self._user.sid,
-    rid: self._room.id,
-    agent: window.webrtcDetectedBrowser,
-    version: window.webrtcDetectedVersion,
-    os: window.navigator.platform,
-    userInfo: self.getPeerInfo(),
-    receiveOnly: self._receiveOnly,
-    sessionType: !!self._mediaScreen ? 'screensharing' : 'stream'
-  });
-};
-
-/**
- * Handles the ENTER Protocol message event received from the platform signaling.
- * @method _enterHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>ENTER</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {Boolean} [message.receiveOnly=false] The flag that indicates if the Peer
- *   connection would send Stream or not (receive only).
- * @param {JSON} message.userInfo The peer information associated
- *   with the Peer Connection.
- * @param {String|JSON} message.userInfo.userData The custom user data
- *   information set by developer. This custom user data can also
- *   be set in <a href="#method_setUserData">setUserData()</a>.
- * @param {JSON} message.userInfo.settings The Peer Stream
- *   streaming settings information. If both audio and video
- *   option is <code>false</code>, there should be no
- *   receiving remote Stream object from this associated Peer.
- * @param {Boolean|JSON} [message.userInfo.settings.audio=false] The
- *   Peer Stream streaming audio settings. If
- *   <code>false</code>, it means that audio streaming is disabled in
- *   the remote Stream of the Peer.
- * @param {Boolean} [message.userInfo.settings.audio.stereo] The flag that indicates if
- *   stereo should be enabled in the Peer connection Stream
- *   audio streaming.
- * @param {Boolean|JSON} [message.userInfo.settings.video=false] The Peer
- *   Stream streaming video settings. If <code>false</code>, it means that
- *   video streaming is disabled in the remote Stream of the Peer.
- * @param {JSON} [message.userInfo.settings.video.resolution] The Peer
- *   Stream streaming video resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [message.userInfo.settings.video.resolution.width] The Peer
- *   Stream streaming video resolution width.
- * @param {Number} [message.userInfo.settings.video.resolution.height] The Peer
- *   Stream streaming video resolution height.
- * @param {Number} [message.userInfo.settings.video.frameRate] The Peer
- *   Stream streaming video maximum frameRate.
- * @param {Boolean} [message.userInfo.settings.video.screenshare=false] The flag
- *   that indicates if the Peer connection Stream object sent
- *   is a screensharing stream or not.
- * @param {String} [message.userInfo.settings.bandwidth] The Peer
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.audio] The configured
- *   audio stream channel for the remote Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.video] The configured
- *   video stream channel for the remote Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.data] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {JSON} message.userInfo.mediaStatus The Peer Stream mute
- *   settings for both audio and video streamings.
- * @param {Boolean} [message.userInfo.mediaStatus.audioMuted=true] The flag that
- *   indicates if the remote Stream object audio streaming is muted. If
- *   there is no audio streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {Boolean} [message.userInfo.mediaStatus.videoMuted=true] The flag that
- *   indicates if the remote Stream object video streaming is muted. If
- *   there is no video streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {String} message.agent.name The Peer platform browser or agent name.
- * @param {Number} message.version The Peer platform browser or agent version.
- * @param {Number} message.os The Peer platform name.
- * @param {String} message.sessionType The Peer connection remote Stream streaming
- *   session type. If value is <code>"stream"</code>, the Stream streaming session
- *   is normal user media streaming, else if it is <code>"screensharing"</code>, the
- *   Stream streaming session is screensharing session.
- * @param {String} message.type Protocol step <code>"enter"</code>.
- * @trigger handshakeProgress, peerJoined
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._enterHandler = function(message) {
-  var self = this;
-  var targetMid = message.mid;
-  log.log([targetMid, null, message.type, 'Incoming peer have initiated ' +
-    'handshake. Peer\'s information:'], message.userInfo);
-  // need to check entered user is new or not.
-  // peerInformations because it takes a sequence before creating the
-  // peerconnection object. peerInformations are stored at the start of the
-  // handshake, so user knows if there is a peer already.
-  if (self._peerInformations[targetMid]) {
-    // NOTE ALEX: and if we already have a connection when the peer enter,
-    // what should we do? what are the possible use case?
-    log.log([targetMid, null, message.type, 'Ignoring message as peer is already added']);
-    return;
-  }
-  // add peer
-  self._addPeer(targetMid, {
-    agent: message.agent,
-    version: message.version,
-    os: message.os
-  }, false, false, message.receiveOnly, message.sessionType === 'screensharing');
-  self._peerInformations[targetMid] = message.userInfo || {};
-  self._peerInformations[targetMid].agent = {
-    name: message.agent,
-    version: message.version,
-    os: message.os || ''
-  };
-  if (targetMid !== 'MCU') {
-    self._trigger('peerJoined', targetMid, message.userInfo, false);
-
-  } else {
-    log.info([targetMid, 'RTCPeerConnection', 'MCU', 'MCU feature has been enabled'], message);
-    log.log([targetMid, null, message.type, 'MCU has joined'], message.userInfo);
-    this._hasMCU = true;
-    this._trigger('serverPeerJoined', targetMid, this.SERVER_PEER_TYPE.MCU);
-  }
-
-  self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ENTER, targetMid);
-
-  self._sendChannelMessage({
-    type: self._SIG_MESSAGE_TYPE.WELCOME,
-    mid: self._user.sid,
-    rid: self._room.id,
-    receiveOnly: self._peerConnections[targetMid] ?
-    	!!self._peerConnections[targetMid].receiveOnly : false,
-    enableIceTrickle: self._enableIceTrickle,
-    enableDataChannel: self._enableDataChannel,
-    agent: window.webrtcDetectedBrowser,
-    version: window.webrtcDetectedVersion,
-    os: window.navigator.platform,
-    userInfo: self.getPeerInfo(),
-    target: targetMid,
-    weight: self._peerPriorityWeight,
-    sessionType: !!self._mediaScreen ? 'screensharing' : 'stream'
-  });
-
-  self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.WELCOME, targetMid);
-};
-
-/**
- * Handles the RESTART Protocol message event received from the platform signaling.
- * @method _restartHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>RESTART</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {Boolean} [message.receiveOnly=false] The flag that indicates if the Peer
- *   connection would send Stream or not (receive only).
- * @param {Boolean} [message.enableIceTrickle=false] The flag that indicates
- *    if PeerConnections should enable trickling of ICE to connect the ICE connection.
- * @param {Boolean} [message.enableDataChannel=false] The flag that indicates if
- *   Peer connection should have any DataChannel connections.
- * @param {JSON} message.userInfo The peer information associated
- *   with the Peer Connection.
- * @param {String|JSON} message.userInfo.userData The custom user data
- *   information set by developer. This custom user data can also
- *   be set in <a href="#method_setUserData">setUserData()</a>.
- * @param {JSON} message.userInfo.settings The Peer Stream
- *   streaming settings information. If both audio and video
- *   option is <code>false</code>, there should be no
- *   receiving remote Stream object from this associated Peer.
- * @param {Boolean|JSON} [message.userInfo.settings.audio=false] The
- *   Peer Stream streaming audio settings. If
- *   <code>false</code>, it means that audio streaming is disabled in
- *   the remote Stream of the Peer.
- * @param {Boolean} [message.userInfo.settings.audio.stereo] The flag that indicates if
- *   stereo should be enabled in the Peer connection Stream
- *   audio streaming.
- * @param {Boolean|JSON} [message.userInfo.settings.video=false] The Peer
- *   Stream streaming video settings. If <code>false</code>, it means that
- *   video streaming is disabled in the remote Stream of the Peer.
- * @param {JSON} [message.userInfo.settings.video.resolution] The Peer
- *   Stream streaming video resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [message.userInfo.settings.video.resolution.width] The Peer
- *   Stream streaming video resolution width.
- * @param {Number} [message.userInfo.settings.video.resolution.height] The Peer
- *   Stream streaming video resolution height.
- * @param {Number} [message.userInfo.settings.video.frameRate] The Peer
- *   Stream streaming video maximum frameRate.
- * @param {Boolean} [message.userInfo.settings.video.screenshare=false] The flag
- *   that indicates if the Peer connection Stream object sent
- *   is a screensharing stream or not.
- * @param {String} [message.userInfo.settings.bandwidth] The Peer
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.audio] The configured
- *   audio stream channel for the remote Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.video] The configured
- *   video stream channel for the remote Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.data] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {JSON} message.userInfo.mediaStatus The Peer Stream mute
- *   settings for both audio and video streamings.
- * @param {Boolean} [message.userInfo.mediaStatus.audioMuted=true] The flag that
- *   indicates if the remote Stream object audio streaming is muted. If
- *   there is no audio streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {Boolean} [message.userInfo.mediaStatus.videoMuted=true] The flag that
- *   indicates if the remote Stream object video streaming is muted. If
- *   there is no video streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {String} message.agent.name The Peer platform browser or agent name.
- * @param {Number} message.version The Peer platform browser or agent version.
- * @param {Number} message.os The Peer platform name.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {Number} message.weight The generated handshake reconnection
- *   weight for associated Peer.
- * @param {Number} message.lastRestart The datetime stamp generated using
- *   [Date.now()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/now)
- *   (in ms) used to throttle the Peer reconnection functionality
- *   to prevent less Peer reconnection handshaking errors.
- * @param {Boolean} message.isConnectionRestart The flag that indicates whether the restarting action
- *   is caused by ICE connection or handshake connection failure. Currently, this feature works the same as
- *   <code>message.explict</code> parameter.
- * @param {Boolean} message.explict The flag that indicates whether the restart functionality
- *   is invoked by the application or by Skylink when the ICE connection fails to establish
- *   a "healthy" connection state. Currently, this feature works the same as
- *   <code>message.isConnectionRestart</code> parameter.
- * @param {String} message.sessionType The Peer connection remote Stream streaming
- *   session type. If value is <code>"stream"</code>, the Stream streaming session
- *   is normal user media streaming, else if it is <code>"screensharing"</code>, the
- *   Stream streaming session is screensharing session.
- * @param {String} message.type Protocol step <code>"restart"</code>.
- * @trigger handshakeProgress, peerRestart
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype._restartHandler = function(message){
-  var self = this;
-  var targetMid = message.mid;
-
-  if (!self._peerInformations[targetMid]) {
-    log.error([targetMid, null, null, 'Peer does not have an existing ' +
-      'session. Ignoring restart process.']);
-    return;
-  }
-
-  // NOTE: for now we ignore, but we should take-note to implement in the near future
-  if (self._hasMCU) {
-    self._trigger('peerRestart', targetMid, self.getPeerInfo(targetMid), false);
-    return;
-  }
-
-  self.lastRestart = message.lastRestart || Date.now() || function() { return +new Date(); };
-
-  if (!self._peerConnections[targetMid]) {
-    log.error([targetMid, null, null, 'Peer does not have an existing ' +
-      'connection. Unable to restart']);
-    return;
-  }
-
-  // mcu has re-joined
-  // NOTE: logic trip since _hasMCU flags are ignored, this could result in failure perhaps?
-  if (targetMid === 'MCU') {
-    log.log([targetMid, null, message.type, 'MCU has restarted its connection']);
-    self._hasMCU = true;
-  }
-
-  // Uncomment because we do not need this
-  //self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.WELCOME, targetMid);
-
-  message.agent = (!message.agent) ? 'chrome' : message.agent;
-  self._enableIceTrickle = (typeof message.enableIceTrickle === 'boolean') ?
-    message.enableIceTrickle : self._enableIceTrickle;
-  self._enableDataChannel = (typeof message.enableDataChannel === 'boolean') ?
-    message.enableDataChannel : self._enableDataChannel;
-
-  // re-add information
-  self._peerInformations[targetMid] = message.userInfo || {};
-  self._peerInformations[targetMid].agent = {
-    name: message.agent,
-    version: message.version,
-    os: message.os || ''
-  };
-
-  var agent = (self.getPeerInfo(targetMid) || {}).agent || {};
-
-  // This variable is not used
-  //var peerConnectionStateStable = false;
-
-  log.info([targetMid, 'RTCPeerConnection', null, 'Received restart request from peer'], message);
-  // we are no longer adding any peer
-  /*self._addPeer(targetMid, {
-    agent: message.agent,
-    version: message.version,
-    os: message.os
-  }, true, true, message.receiveOnly, message.sessionType === 'screensharing');*/
-
-  //Only consider peer's restart weight if self also sent a restart which cause a potential conflict
-  //Otherwise go ahead with peer's restart
-  var beOfferer = false;
-
-  // Works in this matter.. no idea why.
-  if (window.webrtcDetectedBrowser !== 'firefox' && message.agent === 'firefox') {
-    log.debug([targetMid, 'RTCPeerConnection', null, 'Restarting as offerer as peer cannot be offerer'], agent);
-    beOfferer = true;
-  } else {
-    // Checks if weight is lesser than peer's weight
-    // If lesser, always do the restart mechanism
-    if (self._peerPriorityWeight < message.weight) {
-      beOfferer = true;
-    }
-  }
-
-  if (beOfferer) {
-    log.debug([targetMid, 'RTCPeerConnection', null, 'Restarting negotiation'], agent);
-    self._doOffer(targetMid, {
-      agent: agent.name,
-      version: agent.version,
-      os: agent.os
-    }, true);
-
-  } else {
-    log.debug([targetMid, 'RTCPeerConnection', null, 'Waiting for peer to start re-negotiation'], agent);
-    self._sendChannelMessage({
-      type: self._SIG_MESSAGE_TYPE.WELCOME,
-      mid: self._user.sid,
-      rid: self._room.id,
-      agent: window.webrtcDetectedBrowser,
-      version: window.webrtcDetectedVersion,
-      os: window.navigator.platform,
-      userInfo: self.getPeerInfo(),
-      target: targetMid,
-      weight: -1,
-      sessionType: !!self._mediaScreen ? 'screensharing' : 'stream'
-    });
-  }
-
-  self._trigger('peerRestart', targetMid, self.getPeerInfo(targetMid), false);
-
-  // following the previous logic to do checker always
-  self._startPeerConnectionHealthCheck(targetMid, false);
-};
-
-/**
- * Handles the WELCOME Protocol message event received from the platform signaling.
- * @method _welcomeHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>WELCOME</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {Boolean} [message.receiveOnly=false] The flag that indicates if the Peer
- *   connection would send Stream or not (receive only).
- * @param {Boolean} [message.enableIceTrickle=false] The flag that indicates
- *    if PeerConnections should enable trickling of ICE to connect the ICE connection.
- * @param {Boolean} [message.enableDataChannel=false] The flag that indicates if
- *   Peer connection should have any DataChannel connections.
- * @param {String|JSON} message.userInfo.userData The custom user data
- *   information set by developer. This custom user data can also
- *   be set in <a href="#method_setUserData">setUserData()</a>.
- * @param {JSON} message.userInfo.settings The Peer Stream
- *   streaming settings information. If both audio and video
- *   option is <code>false</code>, there should be no
- *   receiving remote Stream object from this associated Peer.
- * @param {Boolean|JSON} [message.userInfo.settings.audio=false] The
- *   Peer Stream streaming audio settings. If
- *   <code>false</code>, it means that audio streaming is disabled in
- *   the remote Stream of the Peer.
- * @param {Boolean} [message.userInfo.settings.audio.stereo] The flag that indicates if
- *   stereo should be enabled in the Peer connection Stream
- *   audio streaming.
- * @param {Boolean|JSON} [message.userInfo.settings.video=false] The Peer
- *   Stream streaming video settings. If <code>false</code>, it means that
- *   video streaming is disabled in the remote Stream of the Peer.
- * @param {JSON} [message.userInfo.settings.video.resolution] The Peer
- *   Stream streaming video resolution settings. Setting the resolution may
- *   not force set the resolution provided as it depends on the how the
- *   browser handles the resolution. [Rel: Skylink.VIDEO_RESOLUTION]
- * @param {Number} [message.userInfo.settings.video.resolution.width] The Peer
- *   Stream streaming video resolution width.
- * @param {Number} [message.userInfo.settings.video.resolution.height] The Peer
- *   Stream streaming video resolution height.
- * @param {Number} [message.userInfo.settings.video.frameRate] The Peer
- *   Stream streaming video maximum frameRate.
- * @param {Boolean} [message.userInfo.settings.video.screenshare=false] The flag
- *   that indicates if the Peer connection Stream object sent
- *   is a screensharing stream or not.
- * @param {String} [message.userInfo.settings.bandwidth] The Peer
- *   streaming bandwidth settings. Setting the bandwidth flags may not
- *   force set the bandwidth for each connection stream channels as it depends
- *   on how the browser handles the bandwidth bitrate. Values are configured
- *   in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.audio] The configured
- *   audio stream channel for the remote Stream object bandwidth
- *   that audio streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.video] The configured
- *   video stream channel for the remote Stream object bandwidth
- *   that video streaming should use in <var>kb/s</var>.
- * @param {String} [message.userInfo.settings.bandwidth.data] The configured
- *   datachannel channel for the DataChannel connection bandwidth
- *   that datachannel connection per packet should be able use in <var>kb/s</var>.
- * @param {JSON} message.userInfo.mediaStatus The Peer Stream mute
- *   settings for both audio and video streamings.
- * @param {Boolean} [message.userInfo.mediaStatus.audioMuted=true] The flag that
- *   indicates if the remote Stream object audio streaming is muted. If
- *   there is no audio streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {Boolean} [message.userInfo.mediaStatus.videoMuted=true] The flag that
- *   indicates if the remote Stream object video streaming is muted. If
- *   there is no video streaming enabled for the Peer, by default,
- *   it is set to <code>true</code>.
- * @param {String} message.agent.name The Peer platform browser or agent name.
- * @param {Number} message.version The Peer platform browser or agent version.
- * @param {Number} message.os The Peer platform name.
- * @param {String} message.type Protocol step <code>"enter"</code>.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {Number} message.weight The generated handshake connection
- *   weight for associated Peer.
- * @param {String} message.sessionType The Peer connection remote Stream streaming
- *   session type. If value is <code>"stream"</code>, the Stream streaming session
- *   is normal user media streaming, else if it is <code>"screensharing"</code>, the
- *   Stream streaming session is screensharing session.
- * @param {String} message.type Protocol step <code>"welcome"</code>.
- * @trigger handshakeProgress, peerJoined
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.4
- */
-Skylink.prototype._welcomeHandler = function(message) {
-  var targetMid = message.mid;
-  var restartConn = false;
-  var beOfferer = this._peerPriorityWeight < message.weight;
-
-  log.log([targetMid, null, message.type, 'Received peer\'s response ' +
-    'to handshake initiation. Peer\'s information:'], message.userInfo);
-
-  if (this._peerConnections[targetMid]) {
-    if (!this._peerConnections[targetMid].setOffer || message.weight < 0) {
-      if (message.weight < 0) {
-        log.log([targetMid, null, message.type, 'Peer\'s weight is lower ' +
-          'than 0. Proceeding with offer'], message.weight);
-        restartConn = true;
-        beOfferer = true;
-
-        // -2: hard restart of connection
-        if (message.weight === -2) {
-          this._restartHandler(message);
-          return;
-        }
-
-      } else if (beOfferer) {
-        log.log([targetMid, null, message.type, 'Peer\'s generated weight ' +
-          'is higher than user\'s. Proceeding with offer'
-          ], this._peerPriorityWeight + ' < ' + message.weight);
-        restartConn = true;
-
-      } else {
-        log.log([targetMid, null, message.type, 'Peer\'s generated weight ' +
-          'is lesser than user\'s. Ignoring message'
-          ], this._peerPriorityWeight + ' > ' + message.weight);
-        return;
-      }
-    } else {
-      log.warn([targetMid, null, message.type,
-        'Ignoring message as peer is already added']);
-      return;
-    }
-  }
-
-  message.agent = (!message.agent) ? 'chrome' : message.agent;
-  this._enableIceTrickle = (typeof message.enableIceTrickle === 'boolean') ?
-    message.enableIceTrickle : this._enableIceTrickle;
-  this._enableDataChannel = (typeof message.enableDataChannel === 'boolean') ?
-    message.enableDataChannel : this._enableDataChannel;
-
-  // mcu has joined
-  if (targetMid === 'MCU') {
-    log.info([targetMid, 'RTCPeerConnection', 'MCU', 'MCU feature is currently enabled'],
-      message);
-    log.log([targetMid, null, message.type, 'MCU has ' +
-      ((message.weight > -1) ? 'joined and ' : '') + ' responded']);
-    this._hasMCU = true;
-    this._trigger('serverPeerJoined', targetMid, this.SERVER_PEER_TYPE.MCU);
-    beOfferer = true;
-  } else {
-    // if it is not MCU and P2P make sure that beOfferer is false for firefox -> chrome/opera/ie/safari
-    if (window.webrtcDetectedBrowser === 'firefox' && message.agent !== 'firefox') {
-      beOfferer = false;
-    }
-  }
-
-  if (this._hasMCU) {
-    log.log([targetMid, null, message.type, 'Always setting as offerer because MCU is present']);
-    beOfferer = true;
-  }
-
-  if (!this._peerInformations[targetMid]) {
-    this._peerInformations[targetMid] = message.userInfo || {};
-    this._peerInformations[targetMid].agent = {
-      name: message.agent,
-      version: message.version,
-      os: message.os || ''
-    };
-    // disable mcu for incoming peer sent by MCU
-    /*if (message.agent === 'MCU') {
-    	this._enableDataChannel = false;
-
-    }*/
-    // user is not mcu
-    if (targetMid !== 'MCU') {
-      this._trigger('peerJoined', targetMid, message.userInfo, false);
-    }
-
-    this._trigger('handshakeProgress', this.HANDSHAKE_PROGRESS.WELCOME, targetMid);
-  }
-
-  log.debug([targetMid, 'RTCPeerConnection', null, 'Should peer start the connection'], beOfferer);
-
-  this._addPeer(targetMid, {
-    agent: message.agent,
-		version: message.version,
-		os: message.os
-  }, beOfferer, restartConn, message.receiveOnly, message.sessionType === 'screensharing');
-
-  if (!beOfferer) {
-    log.debug([targetMid, 'RTCPeerConnection', null, 'Peer has to start the connection. Sending restart message'], beOfferer);
-
-    this._sendChannelMessage({
-      type: this._SIG_MESSAGE_TYPE.WELCOME,
-      mid: this._user.sid,
-      rid: this._room.id,
-      agent: window.webrtcDetectedBrowser,
-      version: window.webrtcDetectedVersion,
-      os: window.navigator.platform,
-      userInfo: this.getPeerInfo(),
-      target: targetMid,
-      weight: -1,
-      sessionType: !!this._mediaScreen ? 'screensharing' : 'stream'
-    });
-  }
-};
-
-/**
- * Handles the OFFER Protocol message event received from the platform signaling.
- * @method _offerHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>OFFER</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.sdp The generated offer session description.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {String} message.type Protocol step <code>"offer"</code>.
- * @trigger handshakeProgress
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._offerHandler = function(message) {
-  var self = this;
-  var targetMid = message.mid;
-  var pc = self._peerConnections[targetMid];
-
-  if (!pc) {
-    log.error([targetMid, null, message.type, 'Peer connection object ' +
-      'not found. Unable to setRemoteDescription for offer']);
-    return;
-  }
-
-  /*if (pc.localDescription ? !!pc.localDescription.sdp : false) {
-    log.warn([targetMid, null, message.type, 'Peer has an existing connection'],
-      pc.localDescription);
-    return;
-  }*/
-
-  log.log([targetMid, null, message.type, 'Received offer from peer. ' +
-    'Session description:'], message.sdp);
-  var offer = new window.RTCSessionDescription({
-    type: message.type,
-    sdp: message.sdp
-  });
-  log.log([targetMid, 'RTCSessionDescription', message.type,
-    'Session description object created'], offer);
-
-  // This is always the initial state. or even after negotiation is successful
-  if (pc.signalingState !== self.PEER_CONNECTION_STATE.STABLE) {
-    log.warn([targetMid, null, message.type, 'Peer connection state is not in ' +
-      '"stable" state for re-negotiation. Dropping message.'], {
-        signalingState: pc.signalingState,
-        isRestart: !!message.resend
-      });
-    return;
-  }
-
-  pc.setRemoteDescription(offer, function() {
-    log.debug([targetMid, 'RTCSessionDescription', message.type, 'Remote description set']);
-    pc.setOffer = 'remote';
-    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.OFFER, targetMid);
-    self._addIceCandidateFromQueue(targetMid);
-    self._doAnswer(targetMid);
-  }, function(error) {
-    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
-    log.error([targetMid, null, message.type, 'Failed setting remote description:'], error);
-  });
-};
-
-
-/**
- * Handles the CANDIDATE Protocol message event received from the platform signaling.
- * @method _candidateHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>CANDIDATE</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.id The ICE candidate identifier of the "media stream identification"
- *    for the m-line this candidate is associated with if present.
- *    The value is retrieved from <code>RTCIceCandidate.sdpMid</code>.
- * @param {String} message.label The ICE candidate index (starting at zero) of the m-line
- *    in the SDP this candidate is associated with.
- *    The value is retrieved from <code>RTCIceCandidate.sdpMLineIndex</code>.
- * @param {String} message.candidate The ICE candidate candidate-attribute.
- *    The value is retrieved from <code>RTCIceCandidate.candidate</code>.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {String} message.type Protocol step: <code>"candidate"</code>.
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._candidateHandler = function(message) {
-  var targetMid = message.mid;
-  var pc = this._peerConnections[targetMid];
-  log.log([targetMid, null, message.type, 'Received candidate from peer. Candidate config:'], {
-    sdp: message.sdp,
-    target: message.target,
-    candidate: message.candidate,
-    label: message.label
-  });
-  // create ice candidate object
-  var messageCan = message.candidate.split(' ');
-  var canType = messageCan[7];
-  log.log([targetMid, null, message.type, 'Candidate type:'], canType);
-  // if (canType !== 'relay' && canType !== 'srflx') {
-  // trace('Skipping non relay and non srflx candidates.');
-  var index = message.label;
-  var candidate = new window.RTCIceCandidate({
-    sdpMLineIndex: index,
-    candidate: message.candidate,
-    //id: message.id,
-    sdpMid: message.id
-    //label: index
-  });
-  if (pc) {
-  	if (pc.signalingState === this.PEER_CONNECTION_STATE.CLOSED) {
-  		log.warn([targetMid, null, message.type, 'Peer connection state ' +
-  			'is closed. Not adding candidate']);
-	    return;
-  	}
-    /*if (pc.iceConnectionState === this.ICE_CONNECTION_STATE.CONNECTED) {
-      log.debug([targetMid, null, null,
-        'Received but not adding Candidate as we are already connected to this peer']);
-      return;
-    }*/
-    // set queue before ice candidate cannot be added before setRemoteDescription.
-    // this will cause a black screen of media stream
-    if ((pc.setOffer === 'local' && pc.setAnswer === 'remote') ||
-      (pc.setAnswer === 'local' && pc.setOffer === 'remote')) {
-      pc.addIceCandidate(candidate, this._onAddIceCandidateSuccess, this._onAddIceCandidateFailure);
-      // NOTE ALEX: not implemented in chrome yet, need to wait
-      // function () { trace('ICE  -  addIceCandidate Succesfull. '); },
-      // function (error) { trace('ICE  - AddIceCandidate Failed: ' + error); }
-      //);
-      log.debug([targetMid, 'RTCIceCandidate', message.type,
-        'Added candidate'], candidate);
-    } else {
-      this._addIceCandidateToQueue(targetMid, candidate);
-    }
-  } else {
-    // Added ice candidate to queue because it may be received before sending the offer
-    log.debug([targetMid, 'RTCIceCandidate', message.type,
-      'Not adding candidate as peer connection not present']);
-    // NOTE ALEX: if the offer was slow, this can happen
-    // we might keep a buffer of candidates to replay after receiving an offer.
-    this._addIceCandidateToQueue(targetMid, candidate);
-  }
-
-  if (!this._addedCandidates[targetMid]) {
-    this._addedCandidates[targetMid] = {
-      relay: [],
-      host: [],
-      srflx: []
-    };
-  }
-
-  // shouldnt happen but just incase
-  if (!this._addedCandidates[targetMid][canType]) {
-    this._addedCandidates[targetMid][canType] = [];
-  }
-
-  this._addedCandidates[targetMid][canType].push('remote:' + messageCan[4] +
-    (messageCan[5] !== '0' ? ':' + messageCan[5] : '') +
-    (messageCan[2] ? '?transport=' + messageCan[2].toLowerCase() : ''));
-};
-
-/**
- * Handles the ANSWER Protocol message event received from the platform signaling.
- * @method _answerHandler
- * @param {JSON} message The message object received from platform signaling.
- *    This should contain the <code>ANSWER</code> payload.
- * @param {String} message.rid The room ID for identification to the platform signaling connection.
- * @param {String} message.sdp The generated answer session description.
- * @param {String} message.mid The Peer ID associated with this message.
- * @param {String} message.target The targeted Peer ID to receive the message object.
- * @param {String} message.type Protocol step <code>"answer"</code>.
- * @trigger handshakeProgress
- * @private
- * @component Message
- * @for Skylink
- * @since 0.5.1
- */
-Skylink.prototype._answerHandler = function(message) {
-  var self = this;
-  var targetMid = message.mid;
-
-  log.log([targetMid, null, message.type,
-    'Received answer from peer. Session description:'], message.sdp);
-
-  var pc = self._peerConnections[targetMid];
-
-  if (!pc) {
-    log.error([targetMid, null, message.type, 'Peer connection object ' +
-      'not found. Unable to setRemoteDescription for answer']);
-    return;
-  }
-
-  var answer = new window.RTCSessionDescription({
-    type: message.type,
-    sdp: message.sdp
-  });
-
-  log.log([targetMid, 'RTCSessionDescription', message.type,
-    'Session description object created'], answer);
-
-  /*if (pc.remoteDescription ? !!pc.remoteDescription.sdp : false) {
-    log.warn([targetMid, null, message.type, 'Peer has an existing connection'],
-      pc.remoteDescription);
-    return;
-  }
-
-  if (pc.signalingState === self.PEER_CONNECTION_STATE.STABLE) {
-    log.error([targetMid, null, message.type, 'Unable to set peer connection ' +
-      'at signalingState "stable". Ignoring remote answer'], pc.signalingState);
-    return;
-  }*/
-
-  // if firefox and peer is mcu, replace the sdp to suit mcu needs
-  if (window.webrtcDetectedType === 'moz' && targetMid === 'MCU') {
-    answer.sdp = answer.sdp.replace(/ generation 0/g, '');
-    answer.sdp = answer.sdp.replace(/ udp /g, ' UDP ');
-  }
-
-  // This should be the state after offer is received. or even after negotiation is successful
-  if (pc.signalingState !== self.PEER_CONNECTION_STATE.HAVE_LOCAL_OFFER) {
-    log.warn([targetMid, null, message.type, 'Peer connection state is not in ' +
-      '"have-local-offer" state for re-negotiation. Dropping message.'], {
-        signalingState: pc.signalingState,
-        isRestart: !!message.restart
-      });
-    return;
-  }
-
-  pc.setRemoteDescription(answer, function() {
-    log.debug([targetMid, null, message.type, 'Remote description set']);
-    pc.setAnswer = 'remote';
-    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ANSWER, targetMid);
-    self._addIceCandidateFromQueue(targetMid);
-
-  }, function(error) {
-    self._trigger('handshakeProgress', self.HANDSHAKE_PROGRESS.ERROR, targetMid, error);
-    log.error([targetMid, null, message.type, 'Failed setting remote description:'], {
-      error: error,
-      state: pc.signalingState
-    });
-  });
-};
-
-/**
- * Send a message object or string using the platform signaling socket connection
- *   to the list of targeted PeerConnections.
- * To send message objects with DataChannel connections, see
- *   {{#crossLink "Skylink/sendP2PMessage:method"}}sendP2PMessage(){{/crossLink}}.
- * @method sendMessage
- * @param {String|JSON} message The message object.
- * @param {String|Array} [targetPeerId] The array of targeted PeerConnections to
- *   transfer the message object to. Alternatively, you may provide this parameter
- *   as a string to a specific targeted Peer to transfer the message object.
- * @example
- *   // Example 1: Send to all peers
- *   SkylinkDemo.sendMessage("Hi there!"");
- *
- *   // Example 2: Send to a targeted peer
- *   SkylinkDemo.sendMessage("Hi there peer!", targetPeerId);
- * @trigger incomingMessage
- * @component Message
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype.sendMessage = function(message, targetPeerId) {
-  var params = {
-    cid: this._key,
-    data: message,
-    mid: this._user.sid,
-    rid: this._room.id,
-    type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
-  };
-
-  var listOfPeers = Object.keys(this._peerConnections);
-  var isPrivate = false;
-  var i;
-
-  if(Array.isArray(targetPeerId)) {
-    listOfPeers = targetPeerId;
-    isPrivate = true;
-
-  } else if (typeof targetPeerId === 'string') {
-    listOfPeers = [targetPeerId];
-    isPrivate = true;
-  }
-
-  if (!isPrivate) {
-    log.log([null, 'Socket', null, 'Broadcasting message to peers']);
-
-    this._sendChannelMessage({
-      cid: this._key,
-      data: message,
-      mid: this._user.sid,
-      rid: this._room.id,
-      type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
-    });
-  }
-
-  for (i = 0; i < listOfPeers.length; i++) {
-    var peerId = listOfPeers[i];
-
-    // Ignore MCU peer
-    if (peerId === 'MCU') {
-      continue;
-    }
-
-    if (isPrivate) {
-      log.log([peerId, 'Socket', null, 'Sending message to peer']);
-
-      this._sendChannelMessage({
-        cid: this._key,
-        data: message,
-        mid: this._user.sid,
-        rid: this._room.id,
-        target: peerId,
-        type: this._SIG_MESSAGE_TYPE.PRIVATE_MESSAGE
-      });
-    }
-  }
-
-  this._trigger('incomingMessage', {
-    content: message,
-    isPrivate: isPrivate,
-    targetPeerId: targetPeerId,
-    isDataChannel: false,
-    senderPeerId: this._user.sid
-  }, this._user.sid, this.getPeerInfo(), true);
-};
-
-Skylink.prototype.VIDEO_CODEC = {
-  AUTO: 'auto',
-  VP8: 'VP8',
-  H264: 'H264'
-};
-
-/**
- * These are the list of available audio codecs settings that Skylink would use
- *   when streaming audio stream with Peers.
- * - The audio codec would be used if the self and Peer's browser supports the selected codec.
- * - This would default to the browser selected codec. In most cases, option <code>OPUS</code> is
- *   used by default.
- * @attribute AUDIO_CODEC
- * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
- *   The option to let Skylink use any audio codec selected by the browser generated session description.
- * @param {String} OPUS <small>Value <code>"opus"</code></small>
- *   The option to let Skylink use the [OPUS](https://en.wikipedia.org/wiki/Opus_(audio_format)) codec.<br>
- *   This is the common and mandantory audio codec used.
- * @param {String} ISAC <small>Value <code>"ISAC"</code></small>
- *   The option to let Skylink use the [iSAC](https://en.wikipedia.org/wiki/Internet_Speech_Audio_Codec).<br>
- *   This only works if the browser supports the iSAC video codec.
- * @type JSON
- * @readOnly
- * @component Stream
- * @for Skylink
- * @since 0.5.10
- */
-Skylink.prototype.AUDIO_CODEC = {
-  AUTO: 'auto',
-  ISAC: 'ISAC',
-  OPUS: 'opus'
-};
-
 /**
  * Stores the preferred Peer connection streaming audio codec.
  * @attribute _selectedAudioCodec
@@ -20380,89 +20645,6 @@ Skylink.prototype._selectedAudioCodec = 'auto';
  * @since 0.5.10
  */
 Skylink.prototype._selectedVideoCodec = 'auto';
-
-
-/**
- * These are the list of suggested video resolutions that Skylink should configure
- *   when retrieving self user media video stream.
- * - Setting the resolution may not force set the resolution provided as it
- *   depends on the how the browser handles the resolution.
- * - It's recommended to use video resolution option to maximum <code>FHD</code>, as the other
- *   resolution options may be unrealistic and create performance issues. However, we provide them
- *   to allow developers to test with the browser capability, but do use it at your own risk.
- * - The higher the resolution, the more CPU usage might be used, hence it's recommended to
- *   use the default option <code>VGA</code>.
- * - This follows the
- *   [Wikipedia Graphics display resolution page](https://en.wikipedia.org/wiki/Graphics_display_resolution#Video_Graphics_Array)
- * @param {JSON} QQVGA <small>Value <code>{ width: 160, height: 120 }</code> | Aspect Ratio <code>4:3</code></small>
- *   The option to use QQVGA resolution.
- * @param {JSON} HQVGA <small>Value <code>{ width: 240, height: 160 }</code> | Aspect Ratio <code>3:2</code></small>
- *   The option to use HQVGA resolution.
- * @param {JSON} QVGA <small>Value <code>{ width: 320, height: 240 }</code> | Aspect Ratio <code>4:3</code></small>
- *   The option to use QVGA resolution.
- * @param {JSON} WQVGA <small>Value <code>{ width: 384, height: 240 }</code> | Aspect Ratio <code>16:10</code></small>
- *   The option to use WQVGA resolution.
- * @param {JSON} HVGA <small>Value <code>{ width: 480, height: 320 }</code> | Aspect Ratio <code>3:2</code></small>
- *   The option to use HVGA resolution.
- * @param {JSON} VGA <small><b>DEFAULT</b> | Value <code>{ width: 640, height: 480 }</code> | Aspect Ratio <code>4:3</code></small>
- *   The option to use VGA resolution.
- * @param {JSON} WVGA <small>Value <code>{ width: 768, height: 480 }</code> | Aspect Ratio <code>16:10</code></small>
- *   The option to use WVGA resolution.
- * @param {JSON} FWVGA <small>Value <code>{ width: 854, height: 480 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use FWVGA resolution.
- * @param {JSON} SVGA <small>Value <code>{ width: 800, height: 600 }</code> | Aspect Ratio <code>4:3</code></small>
- *   The option to use SVGA resolution.
- * @param {JSON} DVGA <small>Value <code>{ width: 960, height: 640 }</code> | Aspect Ratio <code>3:2</code></small>
- *   The option to use DVGA resolution.
- * @param {JSON} WSVGA <small>Value <code>{ width: 1024, height: 576 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use WSVGA resolution.
- * @param {JSON} HD <small>Value <code>{ width: 1280, height: 720 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use HD resolution.
- * @param {JSON} HDPLUS <small>Value <code>{ width: 1600, height: 900 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use HDPLUS resolution.
- * @param {JSON} FHD <small>Value <code>{ width: 1920, height: 1080 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use FHD resolution.
- * @param {JSON} QHD <small>Value <code>{ width: 2560, height: 1440 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use QHD resolution.
- * @param {JSON} WQXGAPLUS <small>Value <code>{ width: 3200, height: 1800 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use WQXGAPLUS resolution.
- * @param {JSON} UHD <small>Value <code>{ width: 3840, height: 2160 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use UHD resolution.
- * @param {JSON} UHDPLUS <small>Value <code>{ width: 5120, height: 2880 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use UHDPLUS resolution.
- * @param {JSON} FUHD <small>Value <code>{ width: 7680, height: 4320 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use FUHD resolution.
- * @param {JSON} QUHD <small>Value <code>{ width: 15360, height: 8640 }</code> | Aspect Ratio <code>16:9</code></small>
- *   The option to use QUHD resolution.
- * @attribute VIDEO_RESOLUTION
- * @type JSON
- * @readOnly
- * @component Stream
- * @for Skylink
- * @since 0.5.6
- */
-Skylink.prototype.VIDEO_RESOLUTION = {
-  QQVGA: { width: 160, height: 120, aspectRatio: '4:3' },
-  HQVGA: { width: 240, height: 160, aspectRatio: '3:2' },
-  QVGA: { width: 320, height: 240, aspectRatio: '4:3' },
-  WQVGA: { width: 384, height: 240, aspectRatio: '16:10' },
-  HVGA: { width: 480, height: 320, aspectRatio: '3:2' },
-  VGA: { width: 640, height: 480, aspectRatio: '4:3' },
-  WVGA: { width: 768, height: 480, aspectRatio: '16:10' },
-  FWVGA: { width: 854, height: 480, aspectRatio: '16:9' },
-  SVGA: { width: 800, height: 600, aspectRatio: '4:3' },
-  DVGA: { width: 960, height: 640, aspectRatio: '3:2' },
-  WSVGA: { width: 1024, height: 576, aspectRatio: '16:9' },
-  HD: { width: 1280, height: 720, aspectRatio: '16:9' },
-  HDPLUS: { width: 1600, height: 900, aspectRatio: '16:9' },
-  FHD: { width: 1920, height: 1080, aspectRatio: '16:9' },
-  QHD: { width: 2560, height: 1440, aspectRatio: '16:9' },
-  WQXGAPLUS: { width: 3200, height: 1800, aspectRatio: '16:9' },
-  UHD: { width: 3840, height: 2160, aspectRatio: '16:9' },
-  UHDPLUS: { width: 5120, height: 2880, aspectRatio: '16:9' },
-  FUHD: { width: 7680, height: 4320, aspectRatio: '16:9' },
-  QUHD: { width: 15360, height: 8640, aspectRatio: '16:9' }
-};
 
 /**
  * Stores the self user media MediaStream object.

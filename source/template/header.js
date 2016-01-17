@@ -40,6 +40,14 @@ if (!Object.keys) {
   })()
 }
 
+var objForEach = function (obj, callback) {
+  for (var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      callback(obj[key], key);
+    }
+  }
+};
+
 // Mozilla provided polyfill for Date.getISOString()
 (function() {
   function pad(number) {
@@ -954,7 +962,316 @@ Skylink.prototype.AUDIO_CODEC = {
   OPUS: 'opus'
 };
 
+/**
+ * These are the list of socket connection error states that Skylink would trigger.
+ * - These error states references the [socket.io-client events](http://socket.io/docs/client-api/).
+ * @attribute SOCKET_ERROR
+ * @type JSON
+ * @param {Number} CONNECTION_FAILED <small>Value <code>0</code></small>
+ *   The error state when Skylink have failed to establish a socket connection with
+ *   platform signaling in the first attempt.
+ * @param {String} RECONNECTION_FAILED <small>Value <code>-1</code></small>
+ *   The error state when Skylink have failed to
+ *   reestablish a socket connection with platform signaling after the first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} CONNECTION_ABORTED <small>Value <code>-2</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after the failed first attempt
+ *   <code>CONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ABORTED <small>Value <code>-3</code></small>
+ *   The error state when attempt to reestablish socket connection
+ *   with platform signaling has been aborted after several failed reattempts
+ *   <code>RECONNECTION_FAILED</code>.
+ * @param {String} RECONNECTION_ATTEMPT <small>Value <code>-4</code></small>
+ *   The error state when Skylink is attempting to reestablish
+ *   a socket connection with platform signaling after a failed attempt
+ *   <code>CONNECTION_FAILED</code> or <code>RECONNECTION_FAILED</code>.
+ * @readOnly
+ * @component Socket
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.SOCKET_ERROR = {
+  CONNECTION_FAILED: 0,
+  RECONNECTION_FAILED: -1,
+  CONNECTION_ABORTED: -2,
+  RECONNECTION_ABORTED: -3,
+  RECONNECTION_ATTEMPT: -4
+};
 
+/**
+ * These are the list of fallback attempt types that Skylink would attempt with.
+ * @attribute SOCKET_FALLBACK
+ * @type JSON
+ * @param {String} NON_FALLBACK <small>Value <code>"nonfallback"</code> | Protocol <code>"http:"</code>,
+ * <code>"https:"</code> | Transports <code>"WebSocket"</code>, <code>"Polling"</code></small>
+ *   The current socket connection attempt
+ *   is using the first selected socket connection port for
+ *   the current selected transport <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} FALLBACK_PORT <small>Value <code>"fallbackPortNonSSL"</code> | Protocol <code>"http:"</code>
+ *  | Transports <code>"WebSocket"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTP</code> protocol connection with the current selected transport
+ *   <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} FALLBACK_PORT_SSL <small>Value <code>"fallbackPortSSL"</code> | Protocol <code>"https:"</code>
+ *  | Transports <code>"WebSocket"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTPS</code> protocol connection with the current selected transport
+ *   <code>"Polling"</code> or <code>"WebSocket"</code>.
+ * @param {String} LONG_POLLING <small>Value <code>"fallbackLongPollingNonSSL"</code> | Protocol <code>"http:"</code>
+ *  | Transports <code>"Polling"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTP</code> protocol connection with <code>"Polling"</code> after
+ *   many attempts of <code>"WebSocket"</code> has failed.
+ *   This occurs only for socket connection that is originally using
+ *   <code>"WebSocket"</code> transports.
+ * @param {String} LONG_POLLING_SSL <small>Value <code>"fallbackLongPollingSSL"</code> | Protocol <code>"https:"</code>
+ *  | Transports <code>"Polling"</code></small>
+ *   The current socket connection reattempt
+ *   is using the next selected socket connection port for
+ *   <code>HTTPS</code> protocol connection with <code>"Polling"</code> after
+ *   many attempts of <code>"WebSocket"</code> has failed.
+ *   This occurs only for socket connection that is originally using
+ *   <code>"WebSocket"</code> transports.
+ * @readOnly
+ * @component Socket
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.SOCKET_FALLBACK = {
+  NON_FALLBACK: 'nonfallback',
+  FALLBACK_PORT: 'fallbackPortNonSSL',
+  FALLBACK_SSL_PORT: 'fallbackPortSSL',
+  LONG_POLLING: 'fallbackLongPollingNonSSL',
+  LONG_POLLING_SSL: 'fallbackLongPollingSSL'
+};
+
+/**
+ * These are the list of platform signaling system actions that Skylink would be given with.
+ * - Upon receiving from the signaling, the application has to reflect the
+ *   relevant actions given.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION_REASON:attribute"}}SYSTEM_ACTION_REASON{{/crossLink}}
+ *   for the types of system action reasons that would be given.
+ * @attribute SYSTEM_ACTION
+ * @type JSON
+ * @param {String} WARNING <small>Value <code>"warning"</code></small>
+ *   This action serves a warning to self. Usually if
+ *   warning is not heeded, it may result in an <code>REJECT</code> action.
+ * @param {String} REJECT <small>Value <code>"reject"</code></small>
+ *   This action means that self has been kicked out
+ *   of the current signaling room connection, and subsequent Peer connections
+ *   would be disconnected.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.1
+ */
+Skylink.prototype.SYSTEM_ACTION = {
+  WARNING: 'warning',
+  REJECT: 'reject'
+};
+
+/**
+ * These are the list of Skylink platform signaling codes as the reason
+ *   for the system action given by the platform signaling that Skylink would receive.
+ * - You may refer to {{#crossLink "Skylink/SYSTEM_ACTION:attribute"}}SYSTEM_ACTION{{/crossLink}}
+ *   for the types of system actions that would be given.
+ * - Reason codes like <code>FAST_MESSAGE</code>, <code>ROOM_FULL</code>, <code>VERIFICATION</code> and
+ *   <code>OVER_SEAT_LIMIT</code> has been removed as they are no longer supported.
+ * @attribute SYSTEM_ACTION_REASON
+ * @type JSON
+ * @param {String} ROOM_LOCKED <small>Value <code>"locked"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when room is locked and self is rejected from joining the room.
+ * @param {String} DUPLICATED_LOGIN <small>Value <code>"duplicatedLogin"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the credentials given is already in use, which the platform signaling
+ *   throws an exception for this error.<br>
+ * This rarely occurs as Skylink handles this issue, and it's recommended to report this issue if this occurs.
+ * @param {String} SERVER_ERROR <small>Value <code>"serverError"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the connection with the platform signaling has an exception with self.<br>
+ * This rarely (and should not) occur and it's recommended to  report this issue if this occurs.
+ * @param {String} EXPIRED <small>Value <code>"expired"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has expired so self is unable to join the room as
+ *   the end time of the meeting has ended.<br>
+ * Depending on other meeting timings available for this room, the persistent room will appear expired.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSED <small>Value <code>"roomclose"</code> | Action ties with <code>REJECT</code></small>
+ *   The reason code when the persistent room meeting has ended and has been rendered expired so self is rejected
+ *   from the room as the meeting is over.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @param {String} ROOM_CLOSING <small>Value <code>"toclose"</code> | Action ties with <code>WARNING</code></small>
+ *   The reason code when the persistent room meeting is going to end soon, so this warning is given to inform
+ *   users before self is rejected from the room.<br>
+ * This relates to the persistent room feature configured in the Application Key.
+ * @readOnly
+ * @component Room
+ * @for Skylink
+ * @since 0.5.2
+ */
+Skylink.prototype.SYSTEM_ACTION_REASON = {
+  //FAST_MESSAGE: 'fastmsg',
+  ROOM_LOCKED: 'locked',
+  //ROOM_FULL: 'roomfull',
+  DUPLICATED_LOGIN: 'duplicatedLogin',
+  SERVER_ERROR: 'serverError',
+  //VERIFICATION: 'verification',
+  EXPIRED: 'expired',
+  ROOM_CLOSED: 'roomclose',
+  ROOM_CLOSING: 'toclose'
+};
+
+/**
+ * The current version of the internal <u>Signaling Message (SM)</u> Protocol that Skylink is using.<br>
+ * - This is not a feature for developers to use but rather for SDK developers to
+ *   see the Protocol version used in this Skylink version.
+ * - In some cases, this information may be used for reporting issues with Skylink.
+ * - SM_PROTOCOL VERSION: <code>0.1.</code>.
+ * @attribute SM_PROTOCOL_VERSION
+ * @type String
+ * @required
+ * @component Socket
+ * @for Skylink
+ * @since 0.6.0
+ */
+Skylink.prototype.SM_PROTOCOL_VERSION = '0.1.1';
+
+/**
+ * These are the list of available video codecs settings that Skylink would use
+ *   when streaming video stream with Peers.
+ * - The video codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>VP8</code> is
+ *   used by default.
+ * @attribute VIDEO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any video codec selected by the browser generated session description.
+ * @param {String} VP8 <small>Value <code>"VP8"</code></small>
+ *   The option to let Skylink use the [VP8](https://en.wikipedia.org/wiki/VP8) codec.<br>
+ *   This is the common and mandantory video codec used by most browsers.
+ * @param {String} H264 <small>Value <code>"H264"</code></small>
+ *   The option to let Skylink use the [H264](https://en.wikipedia.org/wiki/H.264/MPEG-4_AVC) codec.<br>
+ *   This only works if the browser supports the H264 video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.VIDEO_CODEC = {
+  AUTO: 'auto',
+  VP8: 'VP8',
+  H264: 'H264'
+};
+
+/**
+ * These are the list of available audio codecs settings that Skylink would use
+ *   when streaming audio stream with Peers.
+ * - The audio codec would be used if the self and Peer's browser supports the selected codec.
+ * - This would default to the browser selected codec. In most cases, option <code>OPUS</code> is
+ *   used by default.
+ * @attribute AUDIO_CODEC
+ * @param {String} AUTO <small><b>DEFAULT</b> | Value <code>"auto"</code></small>
+ *   The option to let Skylink use any audio codec selected by the browser generated session description.
+ * @param {String} OPUS <small>Value <code>"opus"</code></small>
+ *   The option to let Skylink use the [OPUS](https://en.wikipedia.org/wiki/Opus_(audio_format)) codec.<br>
+ *   This is the common and mandantory audio codec used.
+ * @param {String} ISAC <small>Value <code>"ISAC"</code></small>
+ *   The option to let Skylink use the [iSAC](https://en.wikipedia.org/wiki/Internet_Speech_Audio_Codec).<br>
+ *   This only works if the browser supports the iSAC video codec.
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.10
+ */
+Skylink.prototype.AUDIO_CODEC = {
+  AUTO: 'auto',
+  ISAC: 'ISAC',
+  OPUS: 'opus'
+};
+
+/**
+ * These are the list of suggested video resolutions that Skylink should configure
+ *   when retrieving self user media video stream.
+ * - Setting the resolution may not force set the resolution provided as it
+ *   depends on the how the browser handles the resolution.
+ * - It's recommended to use video resolution option to maximum <code>FHD</code>, as the other
+ *   resolution options may be unrealistic and create performance issues. However, we provide them
+ *   to allow developers to test with the browser capability, but do use it at your own risk.
+ * - The higher the resolution, the more CPU usage might be used, hence it's recommended to
+ *   use the default option <code>VGA</code>.
+ * - This follows the
+ *   [Wikipedia Graphics display resolution page](https://en.wikipedia.org/wiki/Graphics_display_resolution#Video_Graphics_Array)
+ * @param {JSON} QQVGA <small>Value <code>{ width: 160, height: 120 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use QQVGA resolution.
+ * @param {JSON} HQVGA <small>Value <code>{ width: 240, height: 160 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use HQVGA resolution.
+ * @param {JSON} QVGA <small>Value <code>{ width: 320, height: 240 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use QVGA resolution.
+ * @param {JSON} WQVGA <small>Value <code>{ width: 384, height: 240 }</code> | Aspect Ratio <code>16:10</code></small>
+ *   The option to use WQVGA resolution.
+ * @param {JSON} HVGA <small>Value <code>{ width: 480, height: 320 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use HVGA resolution.
+ * @param {JSON} VGA <small><b>DEFAULT</b> | Value <code>{ width: 640, height: 480 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use VGA resolution.
+ * @param {JSON} WVGA <small>Value <code>{ width: 768, height: 480 }</code> | Aspect Ratio <code>16:10</code></small>
+ *   The option to use WVGA resolution.
+ * @param {JSON} FWVGA <small>Value <code>{ width: 854, height: 480 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FWVGA resolution.
+ * @param {JSON} SVGA <small>Value <code>{ width: 800, height: 600 }</code> | Aspect Ratio <code>4:3</code></small>
+ *   The option to use SVGA resolution.
+ * @param {JSON} DVGA <small>Value <code>{ width: 960, height: 640 }</code> | Aspect Ratio <code>3:2</code></small>
+ *   The option to use DVGA resolution.
+ * @param {JSON} WSVGA <small>Value <code>{ width: 1024, height: 576 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use WSVGA resolution.
+ * @param {JSON} HD <small>Value <code>{ width: 1280, height: 720 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use HD resolution.
+ * @param {JSON} HDPLUS <small>Value <code>{ width: 1600, height: 900 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use HDPLUS resolution.
+ * @param {JSON} FHD <small>Value <code>{ width: 1920, height: 1080 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FHD resolution.
+ * @param {JSON} QHD <small>Value <code>{ width: 2560, height: 1440 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use QHD resolution.
+ * @param {JSON} WQXGAPLUS <small>Value <code>{ width: 3200, height: 1800 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use WQXGAPLUS resolution.
+ * @param {JSON} UHD <small>Value <code>{ width: 3840, height: 2160 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use UHD resolution.
+ * @param {JSON} UHDPLUS <small>Value <code>{ width: 5120, height: 2880 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use UHDPLUS resolution.
+ * @param {JSON} FUHD <small>Value <code>{ width: 7680, height: 4320 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use FUHD resolution.
+ * @param {JSON} QUHD <small>Value <code>{ width: 15360, height: 8640 }</code> | Aspect Ratio <code>16:9</code></small>
+ *   The option to use QUHD resolution.
+ * @attribute VIDEO_RESOLUTION
+ * @type JSON
+ * @readOnly
+ * @component Stream
+ * @for Skylink
+ * @since 0.5.6
+ */
+Skylink.prototype.VIDEO_RESOLUTION = {
+  QQVGA: { width: 160, height: 120, aspectRatio: '4:3' },
+  HQVGA: { width: 240, height: 160, aspectRatio: '3:2' },
+  QVGA: { width: 320, height: 240, aspectRatio: '4:3' },
+  WQVGA: { width: 384, height: 240, aspectRatio: '16:10' },
+  HVGA: { width: 480, height: 320, aspectRatio: '3:2' },
+  VGA: { width: 640, height: 480, aspectRatio: '4:3' },
+  WVGA: { width: 768, height: 480, aspectRatio: '16:10' },
+  FWVGA: { width: 854, height: 480, aspectRatio: '16:9' },
+  SVGA: { width: 800, height: 600, aspectRatio: '4:3' },
+  DVGA: { width: 960, height: 640, aspectRatio: '3:2' },
+  WSVGA: { width: 1024, height: 576, aspectRatio: '16:9' },
+  HD: { width: 1280, height: 720, aspectRatio: '16:9' },
+  HDPLUS: { width: 1600, height: 900, aspectRatio: '16:9' },
+  FHD: { width: 1920, height: 1080, aspectRatio: '16:9' },
+  QHD: { width: 2560, height: 1440, aspectRatio: '16:9' },
+  WQXGAPLUS: { width: 3200, height: 1800, aspectRatio: '16:9' },
+  UHD: { width: 3840, height: 2160, aspectRatio: '16:9' },
+  UHDPLUS: { width: 5120, height: 2880, aspectRatio: '16:9' },
+  FUHD: { width: 7680, height: 4320, aspectRatio: '16:9' },
+  QUHD: { width: 15360, height: 8640, aspectRatio: '16:9' }
+};
 
 
 this.Skylink = Skylink;
