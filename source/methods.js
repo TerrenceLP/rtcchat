@@ -315,7 +315,7 @@ Skylink.prototype.init = function (passedOptions, passedCallback) {
     });
   };
 
-  try {
+  //try {
     // Parse init() configuration
     _this._initParseConfig(options);
     // Load dependencies
@@ -341,7 +341,7 @@ Skylink.prototype.init = function (passedOptions, passedCallback) {
       });
     });
 
-  } catch (error) {
+  /*} catch (error) {
     handleErrorCase({
 
       errorCode: _this.READY_STATE_CHANGE_ERROR.NO_PATH,
@@ -349,7 +349,7 @@ Skylink.prototype.init = function (passedOptions, passedCallback) {
       status: null
 
     });
-  }
+  }*/
 };
 
 /**
@@ -917,92 +917,6 @@ Skylink.prototype.unlockRoom = function() {
   this._roomLocked = false;
   this._trigger('roomLock', false, this._user.sid,
     this.getPeerInfo(), true);
-};
-
-/**
- * Send a message object or string using the platform signaling socket connection
- *   to the list of targeted PeerConnections.
- * To send message objects with DataChannel connections, see
- *   {{#crossLink "Skylink/sendP2PMessage:method"}}sendP2PMessage(){{/crossLink}}.
- * @method sendMessage
- * @param {String|JSON} message The message object.
- * @param {String|Array} [targetPeerId] The array of targeted PeerConnections to
- *   transfer the message object to. Alternatively, you may provide this parameter
- *   as a string to a specific targeted Peer to transfer the message object.
- * @example
- *   // Example 1: Send to all peers
- *   SkylinkDemo.sendMessage("Hi there!"");
- *
- *   // Example 2: Send to a targeted peer
- *   SkylinkDemo.sendMessage("Hi there peer!", targetPeerId);
- * @trigger incomingMessage
- * @component Message
- * @for Skylink
- * @since 0.4.0
- */
-Skylink.prototype.sendMessage = function(message, targetPeerId) {
-  var params = {
-    cid: this._key,
-    data: message,
-    mid: this._user.sid,
-    rid: this._room.id,
-    type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
-  };
-
-  var listOfPeers = Object.keys(this._peerConnections);
-  var isPrivate = false;
-  var i;
-
-  if(Array.isArray(targetPeerId)) {
-    listOfPeers = targetPeerId;
-    isPrivate = true;
-
-  } else if (typeof targetPeerId === 'string') {
-    listOfPeers = [targetPeerId];
-    isPrivate = true;
-  }
-
-  if (!isPrivate) {
-    log.log([null, 'Socket', null, 'Broadcasting message to peers']);
-
-    this._sendChannelMessage({
-      cid: this._key,
-      data: message,
-      mid: this._user.sid,
-      rid: this._room.id,
-      type: this._SIG_MESSAGE_TYPE.PUBLIC_MESSAGE
-    });
-  }
-
-  for (i = 0; i < listOfPeers.length; i++) {
-    var peerId = listOfPeers[i];
-
-    // Ignore MCU peer
-    if (peerId === 'MCU') {
-      continue;
-    }
-
-    if (isPrivate) {
-      log.log([peerId, 'Socket', null, 'Sending message to peer']);
-
-      this._sendChannelMessage({
-        cid: this._key,
-        data: message,
-        mid: this._user.sid,
-        rid: this._room.id,
-        target: peerId,
-        type: this._SIG_MESSAGE_TYPE.PRIVATE_MESSAGE
-      });
-    }
-  }
-
-  this._trigger('incomingMessage', {
-    content: message,
-    isPrivate: isPrivate,
-    targetPeerId: targetPeerId,
-    isDataChannel: false,
-    senderPeerId: this._user.sid
-  }, this._user.sid, this.getPeerInfo(), true);
 };
 
 /**

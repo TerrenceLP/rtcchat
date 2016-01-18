@@ -1,61 +1,150 @@
-/**
- * Modifies the array of session description received to enable
- *   stereo in the audio streaming connection.
- * @method _addSDPStereo
- * @param {Array} sdpLines The array of lines in the session description.
- * @return {Array} The updated array of lines in the session description
- *    with the stereo feature.
- * @private
- * @component SDP
- * @for Skylink
- * @since 0.5.10
- */
+Skylink.prototype._SDPParser = {
+
+  /**
+   * Appends OPUS stereo functionality.
+   * @method _SDPParser.addStereo
+   * @param {RTCSessionDescription} sessionDescription The RTCSessionDescription object.
+   * @private
+   * @since 0.6.8
+   * @for Skylink
+   */
+  addStereo: function (sessionDescription) {
+    var sdpLines = sessionDescription.sdp.split('\r\n');
+    var opusRtmpLineIndex = 0;
+    var opusLineFound = false;
+    var opusPayload = 0;
+    var fmtpLineFound = false;
+
+    var i, j;
+    var line;
+
+    for (i = 0; i < sdpLines.length; i += 1) {
+      line = sdpLines[i];
+
+      if (line.indexOf('a=rtpmap:') === 0) {
+        var parts = line.split(' ');
+
+        if (parts[1].indexOf('opus/48000/') === 0) {
+          opusLineFound = true;
+          opusPayload = parts[0].split(':')[1];
+          opusRtmpLineIndex = i;
+          break;
+        }
+      }
+    }
+
+    // if found
+    if (opusLineFound) {
+      log.debug([null, 'SDP', null, 'OPUS line is found. Enabling stereo']);
+
+      // loop for fmtp payload
+      for (j = 0; j < sdpLines.length; j += 1) {
+        line = sdpLines[j];
+
+        if (line.indexOf('a=fmtp:' + opusPayload) === 0) {
+          fmtpLineFound = true;
+          sdpLines[j] += '; stereo=1';
+          break;
+        }
+      }
+
+      // if line doesn't exists for an instance firefox
+      if (!fmtpLineFound) {
+        sdpLines.splice(opusRtmpLineIndex, 0, 'a=fmtp:' + opusPayload + ' stereo=1');
+      }
+    }
+
+    sessionDescription.sdp = sdpLines.join('\r\n');
+  },
+
+  /**
+   * Sets the bandwidth management.
+   * @method _SDPParser.setBandwidth
+   * @param {RTCSessionDescription} sessionDescription The RTCSessionDescription object.
+   * @private
+   * @since 0.6.8
+   * @for Skylink
+   */
+  setBandwidth: function (sessionDescription, type, value) {
+    // Three types: audio, video, application (data)
+    var sdpLines = sessionDescription.sdp.split('\r\n');
+    var index = 0;
+    var lineFound = false;
+
+    for (var i = 0; i < sdpLines.length; i += 1) {
+      // set the audio bandwidth
+      if (sdpLines[i].indexOf('a=' + type) === 0 || sdpLines[i].indexOf('m=' + type) === 0) {
+
+        sdpLines.splice(i + 1, 0, 'b=AS:' + value);
+        break;
+      }
+    }
+
+    sessionDescription.sdp = sdpLines.join('\r\n');
+  },
+
+  /**
+   * Sets the codec.
+   * @method _SDPParser.setCodec
+   * @param {RTCSessionDescription} sessionDescription The RTCSessionDescription object.
+   * @private
+   * @since 0.6.8
+   * @for Skylink
+   */
+  setCodec: function (sessionDescription, type, codec) {
+    // Two types: audio, video
+    var sdpLines = sessionDescription.sdp.split('\r\n');
+    var codecFound = false;
+    var payload = 0;
+
+    var i, j;
+    var line;
+
+    for (i = 0; i < sdpLines.length; i += 1) {
+      line = sdpLines[i];
+
+      if (line.indexOf('a=rtpmap:') === 0) {
+        if (line.indexOf(codec) > 0) {
+          codecFound = true;
+          payload = line.split(':')[1].split(' ')[0];
+          break;
+        }
+      }
+    }
+
+    if (codecFound) {
+      for (j = 0; j < sdpLines.length; j += 1) {
+        line = sdpLines[j];
+
+        if (line.indexOf('m=' + type) === 0 || line.indexOf('a=' + type) === 0) {
+          var parts = line.split(' ');
+          var payloads = line.split(' ');
+          payloads.splice(0, 3);
+
+          var selectedPayloadIndex = payloads.indexOf(payload);
+
+          if (selectedPayloadIndex === -1) {
+            payloads.splice(0, 0, payload);
+          } else {
+            var first = payloads[0];
+            payloads[0] = payload;
+            payloads[selectedPayloadIndex] = first;
+          }
+          sdpLines[j] = parts[0] + ' ' + parts[1] + ' ' + parts[2] + ' ' + payloads.join(' ');
+          break;
+        }
+      }
+    }
+
+    sessionDescription.sdp = sdpLines.join('\r\n');
+  },
+
+  /**
+}
+
+
 Skylink.prototype._addSDPStereo = function(sdpLines) {
-  var opusRtmpLineIndex = 0;
-  var opusLineFound = false;
-  var opusPayload = 0;
-  var fmtpLineFound = false;
 
-  var i, j;
-  var line;
-
-  for (i = 0; i < sdpLines.length; i += 1) {
-    line = sdpLines[i];
-
-    if (line.indexOf('a=rtpmap:') === 0) {
-      var parts = line.split(' ');
-
-      if (parts[1].indexOf('opus/48000/') === 0) {
-        opusLineFound = true;
-        opusPayload = parts[0].split(':')[1];
-        opusRtmpLineIndex = i;
-        break;
-      }
-    }
-  }
-
-  // if found
-  if (opusLineFound) {
-    log.debug([null, 'SDP', null, 'OPUS line is found. Enabling stereo']);
-
-    // loop for fmtp payload
-    for (j = 0; j < sdpLines.length; j += 1) {
-      line = sdpLines[j];
-
-      if (line.indexOf('a=fmtp:' + opusPayload) === 0) {
-        fmtpLineFound = true;
-        sdpLines[j] += '; stereo=1';
-        break;
-      }
-    }
-
-    // if line doesn't exists for an instance firefox
-    if (!fmtpLineFound) {
-      sdpLines.splice(opusRtmpLineIndex, 0, 'a=fmtp:' + opusPayload + ' stereo=1');
-    }
-  }
-
-  return sdpLines;
 };
 
 
